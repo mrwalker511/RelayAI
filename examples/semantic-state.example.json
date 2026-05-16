@@ -1,0 +1,17 @@
+{
+  "active_target": "auth_middleware.py",
+  "current_goal": "Fix 403 response during JWT validation",
+  "runtime_errors": ["403 Forbidden on line 24"],
+  "verified_hypotheses": [
+    "JWT token extraction succeeds",
+    "Validation fails after decoding"
+  ],
+  "rejected_hypotheses": [
+    "Request header is missing"
+  ],
+  "next_actions": [
+    "Inspect token audience validation",
+    "Compare expected issuer config"
+  ],
+  "code_changes": []
+}

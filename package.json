@@ -1,0 +1,19 @@
+{
+  "name": "relay-cli-monorepo",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Local-first context and prompt-cache optimizer for coding CLIs.",
+  "packageManager": "pnpm@9.12.0",
+  "scripts": {
+    "build": "pnpm -r build",
+    "dev": "pnpm --filter @relay/cli dev",
+    "lint": "pnpm -r lint",
+    "test": "pnpm -r test",
+    "typecheck": "pnpm -r typecheck",
+    "clean": "rm -rf packages/*/dist"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.1",
+    "typescript": "^5.7.2"
+  }
+}

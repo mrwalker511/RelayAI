@@ -1,6 +1,11 @@
 {
   "provider": {
-    "default": "codex"
+    "default": "claude",
+    "commands": {
+      "claude":  ["claude", "--print"],
+      "codex":   ["codex"],
+      "copilot": ["gh", "copilot", "suggest", "-t", "shell"]
+    }
   },
   "gc": {
     "enabled": true,

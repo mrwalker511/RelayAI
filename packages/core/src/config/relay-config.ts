@@ -2,7 +2,8 @@ import { z } from "zod";
 
 export const RelayConfigSchema = z.object({
   provider: z.object({
-    default: z.enum(["codex", "claude", "copilot", "raw-openai", "raw-anthropic"]).default("codex")
+    default: z.enum(["codex", "claude", "copilot", "raw-openai", "raw-anthropic"]).default("codex"),
+    commands: z.record(z.string(), z.array(z.string())).optional()
   }).default({ default: "codex" }),
   gc: z.object({
     enabled: z.boolean().default(true),

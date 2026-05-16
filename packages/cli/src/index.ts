@@ -5,13 +5,16 @@ import { join } from "node:path";
 import { createInterface } from "node:readline";
 import {
   DEFAULT_RELAY_CONFIG,
+  RelayConfigSchema,
   buildPromptPayload,
   buildStaticBlock,
   buildStateLayer,
   buildDynamicInput,
   checkTokenBudget,
+  compactHistoryToState,
   createEmptySemanticState,
   createSessionSnapshot,
+  createShellProvider,
   detectPromptLoop,
   estimateTokens,
   getGitDiffSince,
@@ -20,6 +23,7 @@ import {
   listTrackedFiles,
   serializeSemanticState
 } from "@relay/core";
+import type { RelayConfig } from "@relay/core";
 
 const program = new Command();
 const relayDir = join(process.cwd(), ".relay");
@@ -31,6 +35,14 @@ function ensureRelayDir(): void {
 
 function readOptional(path: string, fallback = ""): string {
   return existsSync(path) ? readFileSync(path, "utf8") : fallback;
+}
+
+function readRelayConfig(): RelayConfig {
+  try {
+    return RelayConfigSchema.parse(JSON.parse(readOptional(join(relayDir, "config.json"), "{}")));
+  } catch {
+    return DEFAULT_RELAY_CONFIG;
+  }
 }
 
 function confirm(question: string): Promise<boolean> {
@@ -110,7 +122,9 @@ session.command("status").description("Show current Relay session metadata.").ac
 program.command("ask")
   .argument("<prompt>", "Prompt to route through Relay context construction.")
   .description("Build a cache-optimized prompt payload.")
-  .action(async (prompt: string) => {
+  .option("--provider <name>", "Route the payload through this provider (e.g. claude, codex, copilot)")
+  .option("--dry-run", "Print the resolved command and payload without executing")
+  .action(async (prompt: string, options: { provider?: string; dryRun?: boolean }) => {
     ensureRelayDir();
 
     // Anomaly detection — include current call before checking threshold
@@ -122,15 +136,22 @@ program.command("ask")
       process.stderr.write(`Warning: anomalous call rate detected — ${anomaly.reasons.join("; ")}\n`);
     }
 
+    const cfg = readRelayConfig();
     const semanticState = readOptional(join(relayDir, "memory", "semantic-state.json"), serializeSemanticState(createEmptySemanticState()));
     const files = listTrackedFiles().slice(0, 200).join("\n");
     const sessionText = readOptional(join(relayDir, "session.json"), "{}");
-    const sessionData = JSON.parse(sessionText);
-    const baseRef = sessionData.base_git_sha ?? "HEAD";
+    let sessionData: Record<string, unknown>;
+    try {
+      sessionData = JSON.parse(sessionText);
+    } catch {
+      process.stderr.write("Error: .relay/session.json is corrupted. Delete it and run `relay session start`.\n");
+      process.exit(1);
+    }
+    const baseRef = (sessionData.base_git_sha as string | undefined) ?? "HEAD";
 
     const zones = buildZonesForAsk(prompt, baseRef, semanticState, files);
     const payload = buildPromptPayload(zones);
-    const budget = checkTokenBudget(payload, DEFAULT_RELAY_CONFIG.tokens);
+    const budget = checkTokenBudget(payload, cfg.tokens);
 
     printZoneBreakdown(zones);
 
@@ -151,6 +172,26 @@ program.command("ask")
       process.stderr.write(`Warning: ${budget.message} (${budget.tokens.toLocaleString()} tokens)\n`);
     }
 
+    if (options.dryRun) {
+      const name = options.provider ?? cfg.provider.default;
+      let provider;
+      try { provider = createShellProvider(name, cfg); }
+      catch (err) { process.stderr.write(`${(err as Error).message}\n`); process.exit(1); }
+      process.stderr.write(`[dry-run] ${provider.commandLine} < <relay-payload>\n`);
+      console.log("---BEGIN RELAY PAYLOAD---");
+      console.log(payload);
+      console.log("---END RELAY PAYLOAD---");
+      return;
+    }
+
+    if (options.provider) {
+      let provider;
+      try { provider = createShellProvider(options.provider, cfg); }
+      catch (err) { process.stderr.write(`${(err as Error).message}\n`); process.exit(1); }
+      const exitCode = await provider.sendPrompt(payload);
+      process.exit(exitCode);
+    }
+
     console.log("---BEGIN RELAY PAYLOAD---");
     console.log(payload);
     console.log("---END RELAY PAYLOAD---");
@@ -158,8 +199,14 @@ program.command("ask")
 
 program.command("diff").description("Show git diff since current session base SHA.").action(() => {
   const sessionText = readOptional(join(relayDir, "session.json"), "{}");
-  const sessionData = JSON.parse(sessionText);
-  console.log(getGitDiffSince(sessionData.base_git_sha ?? "HEAD"));
+  let sessionData: Record<string, unknown>;
+  try {
+    sessionData = JSON.parse(sessionText);
+  } catch {
+    process.stderr.write("Error: .relay/session.json is corrupted. Delete it and run `relay session start`.\n");
+    process.exit(1);
+  }
+  console.log(getGitDiffSince((sessionData.base_git_sha as string | undefined) ?? "HEAD"));
 });
 
 const cache = program.command("cache").description("Inspect deterministic prompt-cache metadata.");
@@ -191,8 +238,14 @@ tokens.command("inspect").description("Show zone-by-zone token breakdown for the
   const semanticState = readOptional(join(relayDir, "memory", "semantic-state.json"), serializeSemanticState(createEmptySemanticState()));
   const files = listTrackedFiles().slice(0, 200).join("\n");
   const sessionText = readOptional(join(relayDir, "session.json"), "{}");
-  const sessionData = JSON.parse(sessionText);
-  const baseRef = sessionData.base_git_sha ?? "HEAD";
+  let sessionData: Record<string, unknown>;
+  try {
+    sessionData = JSON.parse(sessionText);
+  } catch {
+    process.stderr.write("Error: .relay/session.json is corrupted. Delete it and run `relay session start`.\n");
+    process.exit(1);
+  }
+  const baseRef = (sessionData.base_git_sha as string | undefined) ?? "HEAD";
   const zones = buildZonesForAsk("(inspect)", baseRef, semanticState, files);
   const report = inspectZoneTokens(zones);
   const cfg = DEFAULT_RELAY_CONFIG.tokens;
@@ -216,15 +269,84 @@ const gc = program.command("gc").description("Manage token garbage collection.")
 gc.command("status").description("Show GC configuration.").action(() => {
   console.log(JSON.stringify(DEFAULT_RELAY_CONFIG.gc, null, 2));
 });
-gc.command("run").description("Placeholder compaction command.").action(() => {
+
+gc.command("run").description("Compact session history into semantic state (uses local claude CLI).").action(async () => {
   ensureRelayDir();
-  console.log("Context GC placeholder executed. Implement model-assisted or heuristic compaction next.");
+  const rawPath = join(relayDir, "memory", "session.raw.md");
+  const statePath = join(relayDir, "memory", "semantic-state.json");
+  const snapshotPath = join(relayDir, "memory", "semantic-state.snapshot.json");
+
+  const rawFull = readOptional(rawPath);
+  const rawHistory = rawFull.replace(/^#\s*Raw Session History\s*/m, "").trim();
+  if (!rawHistory) {
+    console.log("Session history is empty — nothing to compact.");
+    return;
+  }
+
+  const existingJson = readOptional(statePath, serializeSemanticState(createEmptySemanticState()));
+  let existingState: ReturnType<typeof createEmptySemanticState>;
+  try {
+    existingState = JSON.parse(existingJson);
+  } catch {
+    process.stderr.write("Error: semantic-state.json is corrupted. Run `relay gc restore` or `relay init`.\n");
+    process.exit(1);
+  }
+
+  writeFileSync(snapshotPath, existingJson);
+  process.stderr.write("Compacting session history via claude --print...\n");
+
+  try {
+    const result = await compactHistoryToState(rawHistory, existingState);
+    writeFileSync(statePath, serializeSemanticState(result.semanticState));
+    writeFileSync(rawPath, "# Raw Session History\n");
+    console.log(`Compacted: ${result.originalApproxTokens.toLocaleString()} → ${result.compactedApproxTokens.toLocaleString()} tokens.`);
+    console.log("Snapshot saved to semantic-state.snapshot.json. Run `relay gc restore` to roll back.");
+  } catch (err) {
+    process.stderr.write(`GC failed: ${(err as Error).message}\n`);
+    process.exit(1);
+  }
 });
-gc.command("preview").description("Preview compacted state.").action(() => {
-  console.log(readOptional(join(relayDir, "memory", "semantic-state.json"), "No semantic state found."));
+
+gc.command("preview").description("Preview compacted state without writing anything.").action(async () => {
+  ensureRelayDir();
+  const rawPath = join(relayDir, "memory", "session.raw.md");
+  const statePath = join(relayDir, "memory", "semantic-state.json");
+
+  const rawHistory = readOptional(rawPath).replace(/^#\s*Raw Session History\s*/m, "").trim();
+  if (!rawHistory) {
+    console.log("Session history is empty — nothing to preview.");
+    return;
+  }
+
+  let existingState: ReturnType<typeof createEmptySemanticState>;
+  try {
+    existingState = JSON.parse(readOptional(statePath, serializeSemanticState(createEmptySemanticState())));
+  } catch {
+    process.stderr.write("Error: semantic-state.json is corrupted. Run `relay gc restore` or `relay init`.\n");
+    process.exit(1);
+  }
+  process.stderr.write("Previewing compaction (no changes will be written)...\n");
+
+  try {
+    const result = await compactHistoryToState(rawHistory, existingState);
+    console.log(`Tokens: ${result.originalApproxTokens.toLocaleString()} → ${result.compactedApproxTokens.toLocaleString()}`);
+    console.log("\nNew semantic state:");
+    console.log(serializeSemanticState(result.semanticState));
+  } catch (err) {
+    process.stderr.write(`GC preview failed: ${(err as Error).message}\n`);
+    process.exit(1);
+  }
 });
-gc.command("restore").description("Placeholder restore command.").action(() => {
-  console.log("Restore is planned. Keep snapshots of session.compacted.md before destructive GC.");
+
+gc.command("restore").description("Roll back to the previous semantic state snapshot.").action(() => {
+  const snapshotPath = join(relayDir, "memory", "semantic-state.snapshot.json");
+  const statePath = join(relayDir, "memory", "semantic-state.json");
+  if (!existsSync(snapshotPath)) {
+    process.stderr.write("No snapshot found. Run `relay gc run` first to create one.\n");
+    process.exit(1);
+  }
+  writeFileSync(statePath, readFileSync(snapshotPath));
+  console.log("Restored semantic state from snapshot.");
 });
 
 program.command("context").description("Inspect context construction state.").action(() => {

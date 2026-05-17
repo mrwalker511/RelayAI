@@ -212,6 +212,40 @@ test("relay cache inspect reports corrupted session files clearly", { skip: canS
   assert.match(result.stderr, /session\.json is corrupted/);
 });
 
+test("relay cache warm --dry-run prints provider command and stable warmup payload", { skip: canSpawnNode ? false : "nested Node execution is unavailable in this sandbox" }, () => {
+  const cwd = tempWorkspace();
+  assert.equal(runRelay(["init"], cwd).result.status, 0);
+  const configPath = join(cwd, ".relay", "config.json");
+  const config = JSON.parse(readFileSync(configPath, "utf8"));
+  config.provider.commands = {
+    test: [process.execPath, "-e", "process.stdin.resume();"]
+  };
+  writeFileSync(configPath, JSON.stringify(config, null, 2));
+
+  const result = runRelay(["cache", "warm", "--provider", "test", "--dry-run"], cwd).result;
+
+  assert.equal(result.status, 0);
+  assert.match(result.stderr, /Prefix hash: [a-f0-9]{64}/);
+  assert.match(result.stderr, /Token breakdown:/);
+  assert.match(result.stderr, /\[dry-run\] /);
+  assert.match(result.stdout, /---BEGIN RELAY PAYLOAD---/);
+  assert.match(result.stdout, /<STATIC_BLOCK>/);
+  assert.match(result.stdout, /<STATE_LAYER>/);
+  assert.match(result.stdout, /<DYNAMIC_INPUT>/);
+  assert.match(result.stdout, /## User Prompt\n\(cache warm\)/);
+  assert.doesNotMatch(result.stdout, /diff --git/);
+});
+
+test("relay cache warm reports missing provider config clearly", { skip: canSpawnNode ? false : "nested Node execution is unavailable in this sandbox" }, () => {
+  const cwd = tempWorkspace();
+  assert.equal(runRelay(["init"], cwd).result.status, 0);
+
+  const result = runRelay(["cache", "warm", "--provider", "missing", "--dry-run"], cwd).result;
+
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /Unknown provider 'missing'/);
+});
+
 test("relay tokens budget uses configured token limits", { skip: canSpawnNode ? false : "nested Node execution is unavailable in this sandbox" }, () => {
   const cwd = tempWorkspace();
   assert.equal(runRelay(["init"], cwd).result.status, 0);

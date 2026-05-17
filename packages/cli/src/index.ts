@@ -292,9 +292,58 @@ cache.command("inspect").description("Inspect cache-relevant prefix details.").a
     }
   }), null, 2));
 });
-cache.command("warm").description("Placeholder command for provider cache warming.").action(() => {
-  console.log("Cache warming is planned. Current MVP emits deterministic payloads for external provider reuse.");
-});
+cache.command("warm")
+  .description("Send a stable prefix-shaped payload to a configured provider.")
+  .option("--provider <name>", "Route the warmup payload through a configured provider")
+  .option("--dry-run", "Print the resolved command and payload without executing")
+  .action(async (options: { provider?: string; dryRun?: boolean }) => {
+    ensureRelayDir();
+    const cfg = readRelayConfig();
+    const semanticState = readOptional(join(relayDir, "memory", "semantic-state.json"), serializeSemanticState(createEmptySemanticState()));
+    const files = listTrackedFiles().slice(0, 200).join("\n");
+    const zones = {
+      staticBlock: buildStaticBlock({}),
+      stateLayer: buildStateLayer({ semanticStateJson: semanticState, fileIndex: files }),
+      dynamicInput: buildDynamicInput({ prompt: "(cache warm)", gitDiff: "" })
+    };
+    const payload = buildPromptPayload(zones);
+    const budget = checkTokenBudget(payload, cfg.tokens);
+    const name = options.provider ?? cfg.provider.default;
+
+    process.stderr.write(`Prefix hash: ${getPrefixHash(zones.staticBlock, zones.stateLayer)}\n`);
+    printZoneBreakdown(zones);
+
+    if (budget.status === "blocked") {
+      process.stderr.write(`Error: ${budget.message} Run \`relay gc run\` to compact context.\n`);
+      process.exit(1);
+    }
+
+    if (budget.status === "requires_confirmation") {
+      process.stderr.write(`Warning: ${budget.message} (${budget.tokens.toLocaleString()} tokens)\n`);
+      process.stderr.write(`Tip: run \`relay gc run\` to compact context before proceeding.\n`);
+      const ok = await confirm("Proceed anyway?");
+      if (!ok) {
+        process.stderr.write("Aborted.\n");
+        process.exit(0);
+      }
+    } else if (budget.status === "warning") {
+      process.stderr.write(`Warning: ${budget.message} (${budget.tokens.toLocaleString()} tokens)\n`);
+    }
+
+    let provider;
+    try { provider = createShellProvider(name, cfg); }
+    catch (err) { process.stderr.write(`${(err as Error).message}\n`); process.exit(1); }
+
+    if (options.dryRun) {
+      process.stderr.write(`[dry-run] ${provider.commandLine} < <relay-payload>\n`);
+      console.log("---BEGIN RELAY PAYLOAD---");
+      console.log(payload);
+      console.log("---END RELAY PAYLOAD---");
+      return;
+    }
+
+    process.exit(await provider.sendPrompt(payload));
+  });
 
 const tokens = program.command("tokens").description("Estimate and inspect local token usage.");
 tokens.command("estimate").argument("[text...]", "Text to estimate.").action((text: string[] = []) => {

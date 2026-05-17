@@ -34,7 +34,9 @@ Prints cache-relevant prefix diagnostics, including prefix hash, static/state to
 
 ## `relay cache warm`
 
-Reserved for future provider cache warming. The current MVP emits deterministic payloads and cache diagnostics only.
+Sends a stable prefix-shaped payload to a configured provider to warm provider-side prompt caching.
+
+Use `--provider <name>` to choose a configured provider command. Use `--dry-run` to print the resolved command and warmup payload without executing the provider.
 
 ## `relay tokens estimate [text...]`
 

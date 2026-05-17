@@ -23,6 +23,7 @@ import {
   inspectCacheDiagnostics,
   inspectZoneTokens,
   listTrackedFiles,
+  runRelayDoctor,
   serializeSemanticState
 } from "@relay/core";
 import type { RelayConfig } from "@relay/core";
@@ -40,10 +41,15 @@ function readOptional(path: string, fallback = ""): string {
 }
 
 function readRelayConfig(): RelayConfig {
+  const configPath = join(relayDir, "config.json");
+  const configText = readOptional(configPath, "");
+  if (!configText) return DEFAULT_RELAY_CONFIG;
+
   try {
-    return RelayConfigSchema.parse(JSON.parse(readOptional(join(relayDir, "config.json"), "{}")));
-  } catch {
-    return DEFAULT_RELAY_CONFIG;
+    return RelayConfigSchema.parse(JSON.parse(configText));
+  } catch (error) {
+    process.stderr.write(`Error: .relay/config.json is invalid: ${(error as Error).message}\n`);
+    process.exit(1);
   }
 }
 
@@ -160,10 +166,14 @@ program.command("init").description("Initialize Relay in the current repository.
 const session = program.command("session").description("Manage Relay sessions.");
 session.command("start").description("Start a git-anchored Relay session.").action(() => {
   ensureRelayDir();
+  const trackedPaths = listTrackedFiles();
   const staticBlock = buildStaticBlock({});
-  const stateLayer = buildStateLayer({ semanticStateJson: serializeSemanticState(createEmptySemanticState()) });
+  const stateLayer = buildStateLayer({
+    semanticStateJson: serializeSemanticState(createEmptySemanticState()),
+    fileIndex: trackedPaths.slice(0, 200).join("\n")
+  });
   const prefixHash = getPrefixHash(staticBlock, stateLayer);
-  const snapshot = createSessionSnapshot(["src", "tests", "package.json"], {
+  const snapshot = createSessionSnapshot(trackedPaths, {
     prefixHash,
     staticBlockHash: getPrefixHash(staticBlock, ""),
     stateLayerHash: getPrefixHash(stateLayer, "")
@@ -277,6 +287,14 @@ program.command("diff").description("Show git diff since current session base SH
   const sessionText = readOptional(join(relayDir, "session.json"), "{}");
   const sessionData = parseSessionJson(sessionText);
   console.log(getGitDiffSince((sessionData.base_git_sha as string | undefined) ?? "HEAD"));
+});
+
+program.command("doctor").description("Check whether the current workspace is ready for Relay dogfooding.").action(() => {
+  const report = runRelayDoctor(process.cwd());
+  console.log(JSON.stringify(report, null, 2));
+  if (report.status === "error") {
+    process.exit(1);
+  }
 });
 
 const cache = program.command("cache").description("Inspect deterministic prompt-cache metadata.");

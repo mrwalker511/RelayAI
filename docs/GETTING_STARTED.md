@@ -66,14 +66,24 @@ Relay records:
 relay ask "Fix the failing auth middleware test"
 ```
 
-The MVP prints the assembled payload instead of sending it automatically. This is intentional for early development because it makes prompt structure inspectable.
+Without a provider, Relay prints the assembled payload. With `--provider <name>`, Relay sends the payload to the configured provider command. Use `--dry-run` to inspect the resolved provider command and payload without executing it.
+
+## Check Workspace Readiness
+
+```bash
+relay doctor
+```
+
+`relay doctor` prints JSON diagnostics for git, `.relay` runtime files, config validity, session metadata, token budget ordering, and provider/GC command availability. Warnings do not fail the command; blocking errors do.
 
 ## Inspect Token Usage
 
 ```bash
 relay tokens estimate "hello world"
+relay tokens inspect
 relay cache inspect
 relay cache fingerprint
+relay context inspect
 ```
 
 ## Recommended Development Flow
@@ -86,10 +96,8 @@ relay cache fingerprint
 
 ## First Implementation Targets
 
-Start with:
+The original MVP targets are implemented. The next development phase is dogfood readiness:
 
-1. Durable config loading from `.relay/config.json`.
-2. Real `relay context inspect` output.
-3. Interactive token-budget prompts.
-4. Real Context GC compaction.
-5. Generic shell provider adapter.
+1. Run `relay doctor` before using Relay on a repository.
+2. Keep provider and GC commands explicit in `.relay/config.json`.
+3. Use `relay context inspect`, `relay tokens inspect`, and `relay cache inspect` when context or cache behavior looks surprising.

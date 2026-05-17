@@ -89,6 +89,6 @@ relay-cli/
 
 ## Status
 
-This repository is an MVP-ready project skeleton intended to be built with any capable coding assistant.
+This repository has implemented the MVP command surface described in `docs/MVP_ROADMAP.md`.
 
-The scaffold includes complete TypeScript module boundaries, command stubs, markdown documentation, configuration examples, and implementation notes.
+The current phase is dogfood readiness: runtime diagnostics, stricter local config validation, and documentation that matches the live CLI.

@@ -14,11 +14,19 @@ Prints current session metadata.
 
 ## `relay ask <prompt>`
 
-Builds a deterministic three-zone prompt payload and prints it.
+Builds a deterministic three-zone prompt payload.
+
+Without a provider, Relay prints the assembled payload for inspection.
 
 Use `--provider <name>` to route the payload to a configured provider command. Relay writes the assembled payload to the provider process on stdin and propagates the provider exit code.
 
 Use `--dry-run` with a configured provider to print the resolved command and payload without executing the provider.
+
+## `relay doctor`
+
+Checks whether the current workspace is ready for Relay dogfooding. The command prints JSON diagnostics and exits nonzero only when a blocking error is present.
+
+Doctor checks include git availability, `.relay` initialization, config and session validity, semantic state validity, token budget ordering, and provider/GC command availability.
 
 ## `relay diff`
 
@@ -47,6 +55,14 @@ Estimates token count for provided text.
 ## `relay tokens budget`
 
 Prints default token budget configuration.
+
+## `relay tokens inspect`
+
+Prints zone-by-zone token counts for the current session context and reports the configured budget status.
+
+## `relay context inspect`
+
+Prints context-construction diagnostics, including session metadata, prefix hash comparison, zone token counts, semantic state validity, and git diff presence.
 
 ## `relay gc status`
 

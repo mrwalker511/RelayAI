@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -12,6 +12,16 @@ const canSpawnNode = !spawnSync(process.execPath, ["--version"], { encoding: "ut
 
 function tempWorkspace(): string {
   return mkdtempSync(join(tmpdir(), "relay-cli-test-"));
+}
+
+function tempGitWorkspace(): string {
+  const cwd = tempWorkspace();
+  spawnSync("git", ["init"], { cwd, encoding: "utf8" });
+  mkdirSync(join(cwd, "src"));
+  writeFileSync(join(cwd, "src", "app.ts"), "export const app = true;\n");
+  writeFileSync(join(cwd, "package.json"), "{}\n");
+  spawnSync("git", ["add", "src/app.ts", "package.json"], { cwd, encoding: "utf8" });
+  return cwd;
 }
 
 function runRelay(args: string[], cwd = tempWorkspace()) {
@@ -365,4 +375,50 @@ test("relay gc status uses configured GC settings", { skip: canSpawnNode ? false
   assert.equal(gc.historyTokenLimit, 1234);
   assert.equal(gc.targetSummaryTokens, 321);
   assert.deepEqual(gc.command, ["example-gc"]);
+});
+
+test("relay doctor reports warnings before Relay init without failing", { skip: canSpawnNode ? false : "nested Node execution is unavailable in this sandbox" }, () => {
+  const result = runRelay(["doctor"], tempGitWorkspace()).result;
+  const report = JSON.parse(result.stdout);
+
+  assert.equal(result.status, 0);
+  assert.equal(report.status, "warning");
+  assert.equal(report.checks.find((check: { id: string }) => check.id === "relay_workspace").status, "warning");
+});
+
+test("relay doctor reports initialized workspace diagnostics", { skip: canSpawnNode ? false : "nested Node execution is unavailable in this sandbox" }, () => {
+  const cwd = tempGitWorkspace();
+  assert.equal(runRelay(["init"], cwd).result.status, 0);
+
+  const result = runRelay(["doctor"], cwd).result;
+  const report = JSON.parse(result.stdout);
+
+  assert.equal(result.status, 0);
+  assert.equal(report.status, "warning");
+  assert.equal(report.checks.find((check: { id: string }) => check.id === "config").status, "ok");
+  assert.equal(report.checks.find((check: { id: string }) => check.id === "provider_command").status, "warning");
+});
+
+test("relay doctor exits nonzero on corrupted config", { skip: canSpawnNode ? false : "nested Node execution is unavailable in this sandbox" }, () => {
+  const cwd = tempGitWorkspace();
+  assert.equal(runRelay(["init"], cwd).result.status, 0);
+  writeFileSync(join(cwd, ".relay", "config.json"), "{");
+
+  const result = runRelay(["doctor"], cwd).result;
+  const report = JSON.parse(result.stdout);
+
+  assert.notEqual(result.status, 0);
+  assert.equal(report.status, "error");
+  assert.equal(report.checks.find((check: { id: string }) => check.id === "config").status, "error");
+});
+
+test("relay session start writes real git tracked paths", { skip: canSpawnNode ? false : "nested Node execution is unavailable in this sandbox" }, () => {
+  const cwd = tempGitWorkspace();
+  assert.equal(runRelay(["init"], cwd).result.status, 0);
+
+  const result = runRelay(["session", "start"], cwd).result;
+  const session = JSON.parse(readFileSync(join(cwd, ".relay", "session.json"), "utf8"));
+
+  assert.equal(result.status, 0);
+  assert.deepEqual(session.tracked_paths, ["package.json", "src/app.ts"]);
 });

@@ -51,6 +51,8 @@ Provider command override example:
 }
 ```
 
+Relay surfaces invalid `.relay/config.json` files as errors instead of silently falling back to defaults. Use `relay doctor` to validate config shape, token budget ordering, and provider/GC command availability.
+
 ## Cache Stability Rules
 
 Avoid adding these to static or state zones unless absolutely necessary:

@@ -1,5 +1,7 @@
 # MVP Roadmap
 
+Status: MVPs 1-5 are implemented. The current development phase is dogfood readiness: make the implemented runtime safer to use on real repositories through `relay doctor`, stricter invalid-config reporting, and docs that match the live CLI.
+
 ## MVP 1: Inspectable Context Builder
 
 Goal: Make Relay useful without provider integration.

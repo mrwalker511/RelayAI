@@ -40,10 +40,10 @@ pnpm build
 Try the CLI from this checkout:
 
 ```bash
-pnpm --filter @relay/cli relay --help
-pnpm --filter @relay/cli relay init
-pnpm --filter @relay/cli relay session start
-pnpm --filter @relay/cli relay ask "Summarize this repository"
+node packages/cli/dist/index.js --help
+node packages/cli/dist/index.js init
+node packages/cli/dist/index.js session start
+node packages/cli/dist/index.js ask "Summarize this repository"
 ```
 
 For a complete walkthrough, including using Relay from another repository, see [`docs/USER_INSTALLATION_GUIDE.md`](docs/USER_INSTALLATION_GUIDE.md).
@@ -84,8 +84,7 @@ relay-cli/
 │   ├── core/       # Context engine, token guardrails, git delta logic
 │   └── cli/        # Terminal interface
 ├── docs/           # Product, architecture, and implementation docs
-├── examples/       # Example config and semantic state files
-└── .github/        # CI workflow
+└── examples/       # Example config and semantic state files
 ```
 
 ## Development
@@ -111,9 +110,9 @@ pnpm pack:check
 
 ## Status
 
-This repository has implemented the MVP command surface described in `docs/MVP_ROADMAP.md`.
+This repository has implemented the MVP command surface described in `docs/MVP_ROADMAP.md`, including doctor diagnostics, MCP context tools, cache diagnostics, provider dry runs, token inspection, and package dry-run checks.
 
-The current phase is dogfood readiness: runtime diagnostics, stricter local config validation, and documentation that matches the live CLI.
+The current phase is dogfood hardening: keep runtime diagnostics, package validation, and documentation aligned with the live CLI before publishing or broader use.
 
 ## Package Readiness
 

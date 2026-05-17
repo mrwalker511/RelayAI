@@ -32,7 +32,7 @@ relay init
 During local development from this scaffold, use:
 
 ```bash
-pnpm --filter @relay/cli relay init
+pnpm dev init
 ```
 
 This creates:
@@ -91,12 +91,12 @@ relay context inspect
 1. Open this repository in your editor.
 2. Run `pnpm install`.
 3. Run `pnpm build`.
-4. Ask your coding assistant to implement one feature at a time from `docs/MVP_ROADMAP.md`.
-5. Keep generated changes small and inspect `relay diff` frequently.
+4. Use `pnpm dev <command>` while changing the CLI, or `node packages/cli/dist/index.js <command>` after building.
+5. Run `pnpm run ci` before treating package artifacts as ready.
 
 ## First Implementation Targets
 
-The original MVP targets are implemented. The next development phase is dogfood readiness:
+The original MVP targets are implemented. The current development phase is dogfood hardening:
 
 1. Run `relay doctor` before using Relay on a repository.
 2. Keep provider and GC commands explicit in `.relay/config.json`.

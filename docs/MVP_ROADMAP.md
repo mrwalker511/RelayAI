@@ -1,6 +1,6 @@
 # MVP Roadmap
 
-Status: MVPs 1-5 are implemented. The current development phase is dogfood readiness: make the implemented runtime safer to use on real repositories through `relay doctor`, stricter invalid-config reporting, and docs that match the live CLI.
+Status: MVPs 1-5 are implemented. Dogfood hardening is also underway: the live CLI includes `relay doctor`, strict invalid-config reporting, MCP context tools, and package dry-run checks.
 
 ## MVP 1: Inspectable Context Builder
 
@@ -50,7 +50,7 @@ Deliverables:
 - `relay gc run`
 - `relay gc preview`
 - `relay gc restore`
-- snapshot old compacted summaries
+- snapshot previous semantic state before compaction
 - preserve errors, decisions, code changes, and next actions
 
 Acceptance criteria:
@@ -70,7 +70,7 @@ Deliverables:
 
 Acceptance criteria:
 
-- User can run `relay ask --provider local-llm "..."`.
+- User can run `relay ask "..." --provider local-llm`.
 - Relay shows token estimate before provider execution.
 
 ## MVP 5: Cache Diagnostics
@@ -87,5 +87,5 @@ Deliverables:
 
 Acceptance criteria:
 
-- Relay explains what changed between two prefix hashes.
-- Relay identifies dynamic content accidentally placed in prefix zones.
+- Relay reports changed static/state prefix zones when session zone hashes are available.
+- Relay reports volatile content patterns accidentally placed in prefix zones.

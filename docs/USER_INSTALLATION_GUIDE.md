@@ -32,7 +32,7 @@ pnpm build
 From the Relay checkout, confirm the CLI works:
 
 ```bash
-pnpm --filter @relay/cli relay --help
+node packages/cli/dist/index.js --help
 ```
 
 To use Relay from other repositories, define a shell alias that points to the built CLI entrypoint while preserving your current working directory:
@@ -176,6 +176,7 @@ Recommended habits:
 - Use `relay context inspect` when prompt contents or cache behavior look surprising.
 - Use `relay tokens inspect` before sending a large prompt.
 - Keep `.relay/` out of git.
+- Run `pnpm run ci` in the Relay checkout before preparing package artifacts or publishing changes.
 
 ## Cache and Token Tools
 

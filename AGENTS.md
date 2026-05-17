@@ -26,7 +26,7 @@ Tests run against compiled output via Node's built-in test runner. Always build 
 cd packages/core && pnpm build && node --test dist/path/to/file.test.js
 ```
 
-There is no ESLint. `pnpm typecheck` (strict TypeScript) is the lint step. CI runs `pnpm build` then `pnpm typecheck`.
+There is no ESLint. `pnpm typecheck` (strict TypeScript) is the lint step. The full local CI command is `pnpm run ci`, which runs build, typecheck, tests, and package dry-run checks.
 
 ## Architecture
 

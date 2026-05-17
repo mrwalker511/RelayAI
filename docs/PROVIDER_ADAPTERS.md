@@ -37,7 +37,7 @@ export interface ProviderAdapter {
 Expected usage:
 
 ```bash
-relay ask --provider local-llm "Fix the failing test"
+relay ask "Fix the failing test" --provider local-llm
 ```
 
 ## No Automated Model Switching

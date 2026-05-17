@@ -89,6 +89,15 @@ function buildZonesForAsk(prompt: string, baseRef: string, semanticState: string
   };
 }
 
+function parseSessionJson(sessionText: string): Record<string, unknown> {
+  try {
+    return JSON.parse(sessionText);
+  } catch {
+    process.stderr.write("Error: .relay/session.json is corrupted. Delete it and run `relay session start`.\n");
+    process.exit(1);
+  }
+}
+
 program
   .name("relay")
   .description("Local-first context and prompt-cache optimizer for coding CLIs.")
@@ -140,13 +149,7 @@ program.command("ask")
     const semanticState = readOptional(join(relayDir, "memory", "semantic-state.json"), serializeSemanticState(createEmptySemanticState()));
     const files = listTrackedFiles().slice(0, 200).join("\n");
     const sessionText = readOptional(join(relayDir, "session.json"), "{}");
-    let sessionData: Record<string, unknown>;
-    try {
-      sessionData = JSON.parse(sessionText);
-    } catch {
-      process.stderr.write("Error: .relay/session.json is corrupted. Delete it and run `relay session start`.\n");
-      process.exit(1);
-    }
+    const sessionData = parseSessionJson(sessionText);
     const baseRef = (sessionData.base_git_sha as string | undefined) ?? "HEAD";
 
     const zones = buildZonesForAsk(prompt, baseRef, semanticState, files);
@@ -199,13 +202,7 @@ program.command("ask")
 
 program.command("diff").description("Show git diff since current session base SHA.").action(() => {
   const sessionText = readOptional(join(relayDir, "session.json"), "{}");
-  let sessionData: Record<string, unknown>;
-  try {
-    sessionData = JSON.parse(sessionText);
-  } catch {
-    process.stderr.write("Error: .relay/session.json is corrupted. Delete it and run `relay session start`.\n");
-    process.exit(1);
-  }
+  const sessionData = parseSessionJson(sessionText);
   console.log(getGitDiffSince((sessionData.base_git_sha as string | undefined) ?? "HEAD"));
 });
 
@@ -248,13 +245,7 @@ tokens.command("inspect").description("Show zone-by-zone token breakdown for the
   const semanticState = readOptional(join(relayDir, "memory", "semantic-state.json"), serializeSemanticState(createEmptySemanticState()));
   const files = listTrackedFiles().slice(0, 200).join("\n");
   const sessionText = readOptional(join(relayDir, "session.json"), "{}");
-  let sessionData: Record<string, unknown>;
-  try {
-    sessionData = JSON.parse(sessionText);
-  } catch {
-    process.stderr.write("Error: .relay/session.json is corrupted. Delete it and run `relay session start`.\n");
-    process.exit(1);
-  }
+  const sessionData = parseSessionJson(sessionText);
   const baseRef = (sessionData.base_git_sha as string | undefined) ?? "HEAD";
   const zones = buildZonesForAsk("(inspect)", baseRef, semanticState, files);
   const report = inspectZoneTokens(zones);
@@ -371,8 +362,73 @@ gc.command("restore").description("Roll back to the previous semantic state snap
   console.log("Restored semantic state from snapshot.");
 });
 
-program.command("context").description("Inspect context construction state.").action(() => {
-  console.log("Use `relay ask <prompt>` to print the assembled three-zone payload.");
+const context = program.command("context").description("Inspect context construction state.");
+context.command("inspect").description("Print current context construction diagnostics.").action(() => {
+  ensureRelayDir();
+  const cfg = readRelayConfig();
+  const statePath = join(relayDir, "memory", "semantic-state.json");
+  const sessionPath = join(relayDir, "session.json");
+  const semanticStateExists = existsSync(statePath);
+  const semanticState = readOptional(statePath, serializeSemanticState(createEmptySemanticState()));
+  let semanticStateValidJson = true;
+  try {
+    JSON.parse(semanticState);
+  } catch {
+    semanticStateValidJson = false;
+  }
+
+  const sessionExists = existsSync(sessionPath);
+  const sessionData = sessionExists ? parseSessionJson(readFileSync(sessionPath, "utf8")) : {};
+  const baseRef = (sessionData.base_git_sha as string | undefined) ?? "HEAD";
+  const files = listTrackedFiles().slice(0, 200).join("\n");
+  const gitDiff = getGitDiffSince(baseRef);
+  const zones = {
+    staticBlock: buildStaticBlock({}),
+    stateLayer: buildStateLayer({ semanticStateJson: semanticState, fileIndex: files }),
+    dynamicInput: buildDynamicInput({ prompt: "(inspect)", gitDiff })
+  };
+  const zoneTokens = inspectZoneTokens(zones);
+  const currentPrefixHash = getPrefixHash(zones.staticBlock, zones.stateLayer);
+  const savedPrefixHash = sessionData.prefix_hash as string | undefined;
+  const budget = checkTokenBudget(buildPromptPayload(zones), cfg.tokens);
+
+  console.log(JSON.stringify({
+    session: {
+      exists: sessionExists,
+      session_id: sessionData.session_id ?? null,
+      base_git_sha: sessionData.base_git_sha ?? null,
+      prefix_hash: savedPrefixHash ?? null,
+      created_at: sessionData.created_at ?? null,
+      tracked_path_count: Array.isArray(sessionData.tracked_paths) ? sessionData.tracked_paths.length : 0
+    },
+    prefix: {
+      current_hash: currentPrefixHash,
+      session_hash: savedPrefixHash ?? null,
+      matches_session: savedPrefixHash ? currentPrefixHash === savedPrefixHash : null
+    },
+    zones: {
+      static_block: zoneTokens.staticBlock,
+      state_layer: zoneTokens.stateLayer,
+      dynamic_input: zoneTokens.dynamicInput,
+      total: zoneTokens.total
+    },
+    budget: {
+      warning_limit: cfg.tokens.warningLimit,
+      confirmation_threshold: cfg.tokens.requireConfirmationAbove,
+      hard_limit: cfg.tokens.hardLimit,
+      status: budget.status
+    },
+    state: {
+      semantic_state_path: statePath,
+      exists: semanticStateExists,
+      valid_json: semanticStateValidJson
+    },
+    git: {
+      base_ref: baseRef,
+      diff_present: gitDiff.trim().length > 0,
+      diff_tokens: estimateTokens(gitDiff).tokens
+    }
+  }, null, 2));
 });
 
 program.parse();

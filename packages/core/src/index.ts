@@ -13,6 +13,7 @@ export * from "./memory/semantic-state.js";
 export * from "./memory/gc.js";
 export * from "./providers/provider.js";
 export * from "./providers/shell-provider.js";
+export * from "./providers/anthropic-provider.js";
 export * from "./tokens/tokenizer.js";
 export * from "./tokens/budget.js";
 export * from "./tokens/anomaly-detector.js";

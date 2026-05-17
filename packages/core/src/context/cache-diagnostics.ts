@@ -4,6 +4,8 @@ import { inspectZoneTokens } from "../tokens/budget.js";
 
 export interface CacheDiagnosticsInput extends PromptZones {
   sessionPrefixHash?: string;
+  sessionStaticBlockHash?: string;
+  sessionStateLayerHash?: string;
   session?: Record<string, unknown>;
 }
 
@@ -18,6 +20,15 @@ export interface CacheDiagnosticsReport {
     current_hash: string;
     session_hash: string | null;
     matches_session: boolean | null;
+    current_zone_hashes: {
+      static_block: string;
+      state_layer: string;
+    };
+    session_zone_hashes: {
+      static_block: string | null;
+      state_layer: string | null;
+    };
+    changed_zones: Array<"static_block" | "state_layer">;
     drift_reasons: string[];
   };
   zones: {
@@ -60,11 +71,26 @@ function findVolatilePrefixContent(zone: "static_block" | "state_layer", text: s
   });
 }
 
-function buildDriftReasons(matchesSession: boolean | null, findings: PrefixVolatilityFinding[]): string[] {
+function getZoneHash(zoneText: string): string {
+  return getPrefixHash(zoneText, "");
+}
+
+function buildDriftReasons(
+  matchesSession: boolean | null,
+  changedZones: Array<"static_block" | "state_layer">,
+  hasSessionZoneHashes: boolean,
+  findings: PrefixVolatilityFinding[]
+): string[] {
   const reasons: string[] = [];
 
   if (matchesSession === false) {
-    reasons.push("static_or_state_prefix_changed");
+    if (hasSessionZoneHashes && changedZones.length > 0) {
+      for (const zone of changedZones) {
+        reasons.push(`${zone}_prefix_changed`);
+      }
+    } else {
+      reasons.push("static_or_state_prefix_changed");
+    }
   }
 
   const affectedZones = new Set(findings.map((finding) => finding.zone));
@@ -79,6 +105,22 @@ export function inspectCacheDiagnostics(input: CacheDiagnosticsInput): CacheDiag
   const currentHash = getPrefixHash(input.staticBlock, input.stateLayer);
   const sessionHash = input.sessionPrefixHash ?? null;
   const matchesSession = sessionHash ? currentHash === sessionHash : null;
+  const currentZoneHashes = {
+    static_block: getZoneHash(input.staticBlock),
+    state_layer: getZoneHash(input.stateLayer)
+  };
+  const sessionZoneHashes = {
+    static_block: input.sessionStaticBlockHash ?? null,
+    state_layer: input.sessionStateLayerHash ?? null
+  };
+  const hasSessionZoneHashes = Boolean(sessionZoneHashes.static_block && sessionZoneHashes.state_layer);
+  const changedZones: Array<"static_block" | "state_layer"> = [];
+  if (sessionZoneHashes.static_block && currentZoneHashes.static_block !== sessionZoneHashes.static_block) {
+    changedZones.push("static_block");
+  }
+  if (sessionZoneHashes.state_layer && currentZoneHashes.state_layer !== sessionZoneHashes.state_layer) {
+    changedZones.push("state_layer");
+  }
   const zoneTokens = inspectZoneTokens(input);
   const findings = [
     ...findVolatilePrefixContent("static_block", input.staticBlock),
@@ -90,7 +132,10 @@ export function inspectCacheDiagnostics(input: CacheDiagnosticsInput): CacheDiag
       current_hash: currentHash,
       session_hash: sessionHash,
       matches_session: matchesSession,
-      drift_reasons: buildDriftReasons(matchesSession, findings)
+      current_zone_hashes: currentZoneHashes,
+      session_zone_hashes: sessionZoneHashes,
+      changed_zones: changedZones,
+      drift_reasons: buildDriftReasons(matchesSession, changedZones, hasSessionZoneHashes, findings)
     },
     zones: {
       static_block: zoneTokens.staticBlock,

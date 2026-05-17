@@ -163,7 +163,11 @@ session.command("start").description("Start a git-anchored Relay session.").acti
   const staticBlock = buildStaticBlock({});
   const stateLayer = buildStateLayer({ semanticStateJson: serializeSemanticState(createEmptySemanticState()) });
   const prefixHash = getPrefixHash(staticBlock, stateLayer);
-  const snapshot = createSessionSnapshot(["src", "tests", "package.json"], prefixHash);
+  const snapshot = createSessionSnapshot(["src", "tests", "package.json"], {
+    prefixHash,
+    staticBlockHash: getPrefixHash(staticBlock, ""),
+    stateLayerHash: getPrefixHash(stateLayer, "")
+  });
   writeFileSync(join(relayDir, "session.json"), JSON.stringify(snapshot, null, 2));
   console.log(`Started Relay session ${snapshot.session_id}.`);
   console.log(`Base git SHA: ${snapshot.base_git_sha}`);
@@ -303,6 +307,8 @@ cache.command("inspect")
     const stateLayer = buildStateLayer({ semanticStateJson: semanticState, fileIndex: files });
     const dynamicInput = buildDynamicInput({ prompt: "(cache inspect)", gitDiff: getGitDiffSince(baseRef) });
     const savedPrefixHash = sessionData.prefix_hash as string | undefined;
+    const savedStaticBlockHash = sessionData.static_block_hash as string | undefined;
+    const savedStateLayerHash = sessionData.state_layer_hash as string | undefined;
     const report: ReturnType<typeof inspectCacheDiagnostics> & {
       cost?: ReturnType<typeof estimateZoneAwareInputCost>;
     } = inspectCacheDiagnostics({
@@ -310,11 +316,15 @@ cache.command("inspect")
       stateLayer,
       dynamicInput,
       sessionPrefixHash: savedPrefixHash,
+      sessionStaticBlockHash: savedStaticBlockHash,
+      sessionStateLayerHash: savedStateLayerHash,
       session: {
         exists: sessionExists,
         session_id: sessionData.session_id ?? null,
         base_git_sha: sessionData.base_git_sha ?? null,
         prefix_hash: savedPrefixHash ?? null,
+        static_block_hash: savedStaticBlockHash ?? null,
+        state_layer_hash: savedStateLayerHash ?? null,
         created_at: sessionData.created_at ?? null,
         tracked_path_count: Array.isArray(sessionData.tracked_paths) ? sessionData.tracked_paths.length : 0
       }

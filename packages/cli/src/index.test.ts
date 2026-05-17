@@ -137,6 +137,21 @@ test("relay context inspect reports session prefix comparison when a session exi
   assert.equal(typeof report.prefix.matches_session, "boolean");
 });
 
+test("relay session start writes per-zone prefix hashes", { skip: canSpawnNode ? false : "nested Node execution is unavailable in this sandbox" }, () => {
+  const cwd = tempWorkspace();
+  assert.equal(runRelay(["init"], cwd).result.status, 0);
+
+  const result = runRelay(["session", "start"], cwd).result;
+  const session = JSON.parse(readFileSync(join(cwd, ".relay", "session.json"), "utf8"));
+
+  assert.equal(result.status, 0);
+  assert.equal(typeof session.prefix_hash, "string");
+  assert.equal(typeof session.static_block_hash, "string");
+  assert.equal(typeof session.state_layer_hash, "string");
+  assert.match(session.static_block_hash, /^[a-f0-9]{64}$/);
+  assert.match(session.state_layer_hash, /^[a-f0-9]{64}$/);
+});
+
 test("relay context inspect uses configured token budget limits", { skip: canSpawnNode ? false : "nested Node execution is unavailable in this sandbox" }, () => {
   const cwd = tempWorkspace();
   assert.equal(runRelay(["init"], cwd).result.status, 0);
@@ -199,6 +214,14 @@ test("relay cache inspect reports session hash comparison after session start", 
   assert.equal(result.status, 0);
   assert.equal(report.session.exists, true);
   assert.equal(typeof report.prefix.session_hash, "string");
+  assert.equal(typeof report.prefix.current_zone_hashes.static_block, "string");
+  assert.equal(typeof report.prefix.current_zone_hashes.state_layer, "string");
+  assert.equal(typeof report.prefix.session_zone_hashes.static_block, "string");
+  assert.equal(typeof report.prefix.session_zone_hashes.state_layer, "string");
+  assert.deepEqual(report.prefix.changed_zones, ["state_layer"]);
+  assert.deepEqual(report.prefix.drift_reasons, ["state_layer_prefix_changed"]);
+  assert.equal(typeof report.session.static_block_hash, "string");
+  assert.equal(typeof report.session.state_layer_hash, "string");
   assert.equal(typeof report.prefix.matches_session, "boolean");
 });
 

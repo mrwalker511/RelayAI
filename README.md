@@ -92,3 +92,19 @@ relay-cli/
 This repository has implemented the MVP command surface described in `docs/MVP_ROADMAP.md`.
 
 The current phase is dogfood readiness: runtime diagnostics, stricter local config validation, and documentation that matches the live CLI.
+
+## Release Readiness
+
+Before preparing local package artifacts, run the full validation path:
+
+```bash
+pnpm run ci
+```
+
+For package-only validation, run:
+
+```bash
+pnpm pack:check
+```
+
+`pnpm pack:check` removes generated `dist` output, rebuilds both workspaces, and runs `npm pack --dry-run` for `@relay/core` and `@relay/cli` with npm cache data under `/tmp`. Package dry runs should include package metadata plus runtime `dist/**/*.js` and `dist/**/*.d.ts` files only. They should not include `src/**`, source maps, compiled `*.test.*` files, or stale generated files from prior builds.

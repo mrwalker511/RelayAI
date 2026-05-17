@@ -1,10 +1,17 @@
 {
   "name": "@relay/cli",
   "version": "0.1.0",
+  "private": true,
   "type": "module",
   "bin": {
     "relay": "dist/index.js"
   },
+  "files": [
+    "dist/**/*.js",
+    "dist/**/*.d.ts",
+    "!dist/**/*.test.js",
+    "!dist/**/*.test.d.ts"
+  ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "dev": "tsx src/index.ts",

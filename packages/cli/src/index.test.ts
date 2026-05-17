@@ -5,6 +5,9 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
+import { PassThrough } from "node:stream";
+import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { createRelayMcpServer } from "./mcp-server.js";
 
 const distDir = dirname(fileURLToPath(import.meta.url));
 const relayBin = join(distDir, "index.js");
@@ -32,6 +35,61 @@ function runRelay(args: string[], cwd = tempWorkspace()) {
       encoding: "utf8",
     }),
   };
+}
+
+async function withMcpServer<T>(cwd: string, fn: (request: (method: string, params?: unknown) => Promise<Record<string, unknown>>) => Promise<T>): Promise<T> {
+  const input = new PassThrough();
+  const output = new PassThrough();
+  const server = createRelayMcpServer(cwd);
+  const responses: Record<number, Record<string, unknown>> = {};
+  const waiters = new Map<number, (message: Record<string, unknown>) => void>();
+  let nextId = 1;
+
+  output.on("data", (chunk: Buffer) => {
+    for (const line of chunk.toString("utf8").split("\n").filter(Boolean)) {
+      const message = JSON.parse(line) as Record<string, unknown>;
+      const id = message.id as number | undefined;
+      if (id === undefined) continue;
+      const waiter = waiters.get(id);
+      if (waiter) {
+        waiters.delete(id);
+        waiter(message);
+      } else {
+        responses[id] = message;
+      }
+    }
+  });
+
+  await server.connect(new StdioServerTransport(input, output));
+
+  const request = async (method: string, params?: unknown): Promise<Record<string, unknown>> => {
+    const id = nextId++;
+    input.write(`${JSON.stringify({ jsonrpc: "2.0", id, method, params })}\n`);
+    if (responses[id]) return responses[id];
+    return await new Promise((resolve) => waiters.set(id, resolve));
+  };
+
+  await request("initialize", {
+    protocolVersion: "2025-11-25",
+    capabilities: {},
+    clientInfo: { name: "relay-test-client", version: "0.1.0" }
+  });
+  input.write(`${JSON.stringify({ jsonrpc: "2.0", method: "notifications/initialized" })}\n`);
+
+  try {
+    return await fn(request);
+  } finally {
+    await server.close();
+  }
+}
+
+function parseToolJson(response: Record<string, unknown>): Record<string, unknown> {
+  assert.ok("result" in response);
+  const result = response.result as { content: Array<{ type: string; text?: string }> };
+  const content = result.content;
+  const first = content[0];
+  assert.equal(first.type, "text");
+  return JSON.parse(first.text ?? "{}");
 }
 
 test("relay init writes provider-neutral default config and memory files", { skip: canSpawnNode ? false : "nested Node execution is unavailable in this sandbox" }, () => {
@@ -410,6 +468,82 @@ test("relay doctor exits nonzero on corrupted config", { skip: canSpawnNode ? fa
   assert.notEqual(result.status, 0);
   assert.equal(report.status, "error");
   assert.equal(report.checks.find((check: { id: string }) => check.id === "config").status, "error");
+});
+
+test("relay mcp lists read-only context tools", { skip: canSpawnNode ? false : "nested Node execution is unavailable in this sandbox" }, async () => {
+  const cwd = tempWorkspace();
+  assert.equal(runRelay(["init"], cwd).result.status, 0);
+
+  await withMcpServer(cwd, async (request) => {
+    const response = await request("tools/list", {});
+    const result = response.result as { tools: Array<{ name: string; annotations?: { readOnlyHint?: boolean } }> };
+    const names = result.tools.map((tool) => tool.name).sort();
+
+    assert.deepEqual(names, [
+      "get_git_delta",
+      "get_project_context",
+      "get_prompt_payload",
+      "get_semantic_state",
+      "get_token_budget",
+      "inspect_context_health"
+    ]);
+    assert.ok(result.tools.every((tool) => tool.annotations?.readOnlyHint === true));
+  });
+});
+
+test("relay mcp get_prompt_payload returns Relay zones", { skip: canSpawnNode ? false : "nested Node execution is unavailable in this sandbox" }, async () => {
+  const cwd = tempWorkspace();
+  assert.equal(runRelay(["init"], cwd).result.status, 0);
+
+  await withMcpServer(cwd, async (request) => {
+    const result = parseToolJson(await request("tools/call", {
+      name: "get_prompt_payload",
+      arguments: { prompt: "summarize this repo" }
+    }));
+
+    assert.equal(result.blocked, false);
+    assert.equal((result.budget as { status: string }).status, "ok");
+    assert.match(result.payload as string, /<STATIC_BLOCK>/);
+    assert.match(result.payload as string, /<STATE_LAYER>/);
+    assert.match(result.payload as string, /<DYNAMIC_INPUT>/);
+    assert.match(result.payload as string, /summarize this repo/);
+  });
+});
+
+test("relay mcp get_git_delta reports truncation", { skip: canSpawnNode ? false : "nested Node execution is unavailable in this sandbox" }, async () => {
+  const cwd = tempGitWorkspace();
+  assert.equal(runRelay(["init"], cwd).result.status, 0);
+  assert.equal(runRelay(["session", "start"], cwd).result.status, 0);
+  writeFileSync(join(cwd, "src", "app.ts"), "export const app = false;\nexport const changed = true;\n");
+
+  await withMcpServer(cwd, async (request) => {
+    const result = parseToolJson(await request("tools/call", {
+      name: "get_git_delta",
+      arguments: { max_chars: 20 }
+    }));
+
+    assert.equal(result.base_ref, "HEAD");
+    assert.equal(result.truncated, true);
+    assert.equal(result.returned_chars, 20);
+    assert.match(result.diff as string, /diff/);
+  });
+});
+
+test("relay mcp inspect_context_health reports corrupted session without crashing", { skip: canSpawnNode ? false : "nested Node execution is unavailable in this sandbox" }, async () => {
+  const cwd = tempWorkspace();
+  assert.equal(runRelay(["init"], cwd).result.status, 0);
+  writeFileSync(join(cwd, ".relay", "session.json"), "{");
+
+  await withMcpServer(cwd, async (request) => {
+    const result = parseToolJson(await request("tools/call", {
+      name: "inspect_context_health",
+      arguments: {}
+    }));
+    const findings = result.findings as Array<{ id: string; status: string; message: string }>;
+
+    assert.equal(result.status, "error");
+    assert.equal(findings.find((finding) => finding.id === "session")?.status, "error");
+  });
 });
 
 test("relay session start writes real git tracked paths", { skip: canSpawnNode ? false : "nested Node execution is unavailable in this sandbox" }, () => {

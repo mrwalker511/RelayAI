@@ -3,6 +3,7 @@ import { Command, InvalidArgumentError } from "commander";
 import { appendFileSync, mkdirSync, writeFileSync, readFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { createInterface } from "node:readline";
+import { runMcpServer } from "./mcp-server.js";
 import {
   DEFAULT_RELAY_CONFIG,
   RelayConfigSchema,
@@ -295,6 +296,10 @@ program.command("doctor").description("Check whether the current workspace is re
   if (report.status === "error") {
     process.exit(1);
   }
+});
+
+program.command("mcp").description("Run Relay as a read-only MCP context server over stdio.").action(async () => {
+  await runMcpServer();
 });
 
 const cache = program.command("cache").description("Inspect deterministic prompt-cache metadata.");
@@ -612,4 +617,4 @@ context.command("inspect").description("Print current context construction diagn
   }, null, 2));
 });
 
-program.parse();
+await program.parseAsync();

@@ -28,6 +28,14 @@ Checks whether the current workspace is ready for Relay dogfooding. The command 
 
 Doctor checks include git availability, `.relay` initialization, config and session validity, semantic state validity, token budget ordering, and provider/GC command availability.
 
+## `relay mcp`
+
+Runs Relay as a read-only MCP context server over stdio.
+
+Configure an MCP-compatible coding agent to launch this command, then keep using that agent normally. Relay exposes context, diff, semantic memory, token budget, and prompt payload tools without mutating `.relay` state.
+
+See [`docs/MCP.md`](MCP.md) for setup and tool details.
+
 ## `relay diff`
 
 Prints the git diff since the current session base SHA.

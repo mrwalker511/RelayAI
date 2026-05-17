@@ -19,3 +19,4 @@ export * from "./tokens/budget.js";
 export * from "./tokens/anomaly-detector.js";
 export * from "./tokens/cost-estimator.js";
 export * from "./doctor.js";
+export * from "./workspace-context.js";

@@ -56,6 +56,7 @@ relay session start                  # anchor context to the current git SHA
 relay ask "Review the active diff"   # print a Relay payload
 relay ask "Review the active diff" --provider default
 relay diff                           # inspect the session delta
+relay mcp                            # expose Relay context to MCP-compatible agents
 relay context inspect                # inspect prompt-construction state
 relay tokens inspect                 # inspect token usage by zone
 relay cache inspect                  # inspect cache-relevant prefix metadata
@@ -70,6 +71,7 @@ relay gc run                         # compact session history
 | [`docs/USER_INSTALLATION_GUIDE.md`](docs/USER_INSTALLATION_GUIDE.md) | Polished setup, provider configuration, daily workflow, and troubleshooting |
 | [`docs/GETTING_STARTED.md`](docs/GETTING_STARTED.md) | Short local development quick start |
 | [`docs/COMMANDS.md`](docs/COMMANDS.md) | CLI command reference |
+| [`docs/MCP.md`](docs/MCP.md) | MCP setup and tool contract for agent integrations |
 | [`docs/CONFIGURATION.md`](docs/CONFIGURATION.md) | `.relay/config.json` reference |
 | [`docs/PROVIDER_ADAPTERS.md`](docs/PROVIDER_ADAPTERS.md) | Provider command behavior |
 | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Context construction architecture |

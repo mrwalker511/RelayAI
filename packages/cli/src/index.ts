@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { Command } from "commander";
-import { mkdirSync, writeFileSync, readFileSync, existsSync } from "node:fs";
+import { appendFileSync, mkdirSync, writeFileSync, readFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { createInterface } from "node:readline";
 import {
@@ -98,6 +98,33 @@ function parseSessionJson(sessionText: string): Record<string, unknown> {
   }
 }
 
+function appendAskHistory(entry: {
+  prompt: string;
+  budgetTokens: number;
+  budgetStatus: string;
+  baseRef: string;
+  route: string;
+  provider?: string;
+  providerExitCode?: number;
+}): void {
+  const rawPath = join(relayDir, "memory", "session.raw.md");
+  const lines = [
+    "",
+    `## Ask - ${new Date().toISOString()}`,
+    "",
+    `- route: ${entry.route}`,
+    `- provider: ${entry.provider ?? "none"}`,
+    `- base_ref: ${entry.baseRef}`,
+    `- budget_status: ${entry.budgetStatus}`,
+    `- budget_tokens: ${entry.budgetTokens}`,
+  ];
+  if (entry.providerExitCode !== undefined) {
+    lines.push(`- provider_exit_code: ${entry.providerExitCode}`);
+  }
+  lines.push("", "### Prompt", "", entry.prompt, "");
+  appendFileSync(rawPath, `${lines.join("\n")}\n`);
+}
+
 program
   .name("relay")
   .description("Local-first context and prompt-cache optimizer for coding CLIs.")
@@ -180,6 +207,14 @@ program.command("ask")
       let provider;
       try { provider = createShellProvider(name, cfg); }
       catch (err) { process.stderr.write(`${(err as Error).message}\n`); process.exit(1); }
+      appendAskHistory({
+        prompt,
+        budgetTokens: budget.tokens,
+        budgetStatus: budget.status,
+        baseRef,
+        route: "dry-run",
+        provider: name
+      });
       process.stderr.write(`[dry-run] ${provider.commandLine} < <relay-payload>\n`);
       console.log("---BEGIN RELAY PAYLOAD---");
       console.log(payload);
@@ -192,9 +227,25 @@ program.command("ask")
       try { provider = createShellProvider(options.provider, cfg); }
       catch (err) { process.stderr.write(`${(err as Error).message}\n`); process.exit(1); }
       const exitCode = await provider.sendPrompt(payload);
+      appendAskHistory({
+        prompt,
+        budgetTokens: budget.tokens,
+        budgetStatus: budget.status,
+        baseRef,
+        route: "provider",
+        provider: options.provider,
+        providerExitCode: exitCode
+      });
       process.exit(exitCode);
     }
 
+    appendAskHistory({
+      prompt,
+      budgetTokens: budget.tokens,
+      budgetStatus: budget.status,
+      baseRef,
+      route: "stdout"
+    });
     console.log("---BEGIN RELAY PAYLOAD---");
     console.log(payload);
     console.log("---END RELAY PAYLOAD---");

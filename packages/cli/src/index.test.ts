@@ -59,6 +59,41 @@ test("relay ask --provider reports missing provider config clearly", { skip: can
   assert.match(result.stderr, /Unknown provider 'missing'/);
 });
 
+test("relay ask appends prompt activity to raw session history", { skip: canSpawnNode ? false : "nested Node execution is unavailable in this sandbox" }, () => {
+  const cwd = tempWorkspace();
+  assert.equal(runRelay(["init"], cwd).result.status, 0);
+
+  const result = runRelay(["ask", "capture this context"], cwd).result;
+  const rawHistory = readFileSync(join(cwd, ".relay", "memory", "session.raw.md"), "utf8");
+
+  assert.equal(result.status, 0);
+  assert.match(rawHistory, /## Ask - /);
+  assert.match(rawHistory, /- route: stdout/);
+  assert.match(rawHistory, /- provider: none/);
+  assert.match(rawHistory, /- budget_status: ok/);
+  assert.match(rawHistory, /### Prompt\n\ncapture this context/);
+});
+
+test("relay ask --provider records provider route and exit code in raw session history", { skip: canSpawnNode ? false : "nested Node execution is unavailable in this sandbox" }, () => {
+  const cwd = tempWorkspace();
+  assert.equal(runRelay(["init"], cwd).result.status, 0);
+  const configPath = join(cwd, ".relay", "config.json");
+  const config = JSON.parse(readFileSync(configPath, "utf8"));
+  config.provider.commands = {
+    test: [process.execPath, "-e", "process.stdin.resume(); process.stdin.on('end', () => process.exit(0));"]
+  };
+  writeFileSync(configPath, JSON.stringify(config, null, 2));
+
+  const result = runRelay(["ask", "--provider", "test", "send through provider"], cwd).result;
+  const rawHistory = readFileSync(join(cwd, ".relay", "memory", "session.raw.md"), "utf8");
+
+  assert.equal(result.status, 0);
+  assert.match(rawHistory, /- route: provider/);
+  assert.match(rawHistory, /- provider: test/);
+  assert.match(rawHistory, /- provider_exit_code: 0/);
+  assert.match(rawHistory, /### Prompt\n\nsend through provider/);
+});
+
 test("relay gc preview reports missing GC command before calling a provider", { skip: canSpawnNode ? false : "nested Node execution is unavailable in this sandbox" }, () => {
   const cwd = tempWorkspace();
   assert.equal(runRelay(["init"], cwd).result.status, 0);

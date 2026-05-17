@@ -131,3 +131,62 @@ test("relay context inspect reports corrupted session files clearly", { skip: ca
   assert.notEqual(result.status, 0);
   assert.match(result.stderr, /session\.json is corrupted/);
 });
+
+test("relay tokens budget uses configured token limits", { skip: canSpawnNode ? false : "nested Node execution is unavailable in this sandbox" }, () => {
+  const cwd = tempWorkspace();
+  assert.equal(runRelay(["init"], cwd).result.status, 0);
+  const configPath = join(cwd, ".relay", "config.json");
+  const config = JSON.parse(readFileSync(configPath, "utf8"));
+  config.tokens.warningLimit = 111;
+  config.tokens.requireConfirmationAbove = 222;
+  config.tokens.hardLimit = 333;
+  writeFileSync(configPath, JSON.stringify(config, null, 2));
+
+  const result = runRelay(["tokens", "budget"], cwd).result;
+  const budget = JSON.parse(result.stdout);
+
+  assert.equal(result.status, 0);
+  assert.equal(budget.warningLimit, 111);
+  assert.equal(budget.requireConfirmationAbove, 222);
+  assert.equal(budget.hardLimit, 333);
+});
+
+test("relay tokens inspect uses configured token limits", { skip: canSpawnNode ? false : "nested Node execution is unavailable in this sandbox" }, () => {
+  const cwd = tempWorkspace();
+  assert.equal(runRelay(["init"], cwd).result.status, 0);
+  const configPath = join(cwd, ".relay", "config.json");
+  const config = JSON.parse(readFileSync(configPath, "utf8"));
+  config.tokens.warningLimit = 111;
+  config.tokens.requireConfirmationAbove = 222;
+  config.tokens.hardLimit = 333;
+  writeFileSync(configPath, JSON.stringify(config, null, 2));
+
+  const result = runRelay(["tokens", "inspect"], cwd).result;
+  const report = JSON.parse(result.stdout);
+
+  assert.equal(result.status, 0);
+  assert.equal(report.budget.warning_limit, 111);
+  assert.equal(report.budget.confirmation_threshold, 222);
+  assert.equal(report.budget.hard_limit, 333);
+});
+
+test("relay gc status uses configured GC settings", { skip: canSpawnNode ? false : "nested Node execution is unavailable in this sandbox" }, () => {
+  const cwd = tempWorkspace();
+  assert.equal(runRelay(["init"], cwd).result.status, 0);
+  const configPath = join(cwd, ".relay", "config.json");
+  const config = JSON.parse(readFileSync(configPath, "utf8"));
+  config.gc.enabled = false;
+  config.gc.historyTokenLimit = 1234;
+  config.gc.targetSummaryTokens = 321;
+  config.gc.command = ["example-gc"];
+  writeFileSync(configPath, JSON.stringify(config, null, 2));
+
+  const result = runRelay(["gc", "status"], cwd).result;
+  const gc = JSON.parse(result.stdout);
+
+  assert.equal(result.status, 0);
+  assert.equal(gc.enabled, false);
+  assert.equal(gc.historyTokenLimit, 1234);
+  assert.equal(gc.targetSummaryTokens, 321);
+  assert.deepEqual(gc.command, ["example-gc"]);
+});

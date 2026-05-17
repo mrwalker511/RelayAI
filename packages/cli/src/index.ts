@@ -237,8 +237,8 @@ const tokens = program.command("tokens").description("Estimate and inspect local
 tokens.command("estimate").argument("[text...]", "Text to estimate.").action((text: string[] = []) => {
   console.log(estimateTokens(text.join(" ")));
 });
-tokens.command("budget").description("Show current default token budget.").action(() => {
-  console.log(JSON.stringify(DEFAULT_RELAY_CONFIG.tokens, null, 2));
+tokens.command("budget").description("Show current token budget.").action(() => {
+  console.log(JSON.stringify(readRelayConfig().tokens, null, 2));
 });
 tokens.command("inspect").description("Show zone-by-zone token breakdown for the current session state.").action(() => {
   ensureRelayDir();
@@ -249,7 +249,7 @@ tokens.command("inspect").description("Show zone-by-zone token breakdown for the
   const baseRef = (sessionData.base_git_sha as string | undefined) ?? "HEAD";
   const zones = buildZonesForAsk("(inspect)", baseRef, semanticState, files);
   const report = inspectZoneTokens(zones);
-  const cfg = DEFAULT_RELAY_CONFIG.tokens;
+  const cfg = readRelayConfig().tokens;
   console.log(JSON.stringify({
     zones: {
       static_block: report.staticBlock,
@@ -268,7 +268,7 @@ tokens.command("inspect").description("Show zone-by-zone token breakdown for the
 
 const gc = program.command("gc").description("Manage token garbage collection.");
 gc.command("status").description("Show GC configuration.").action(() => {
-  console.log(JSON.stringify(DEFAULT_RELAY_CONFIG.gc, null, 2));
+  console.log(JSON.stringify(readRelayConfig().gc, null, 2));
 });
 
 gc.command("run").description("Compact session history into semantic state using the configured GC command.").action(async () => {

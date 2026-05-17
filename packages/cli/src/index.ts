@@ -19,6 +19,7 @@ import {
   estimateTokens,
   getGitDiffSince,
   getPrefixHash,
+  inspectCacheDiagnostics,
   inspectZoneTokens,
   listTrackedFiles,
   serializeSemanticState
@@ -265,20 +266,31 @@ cache.command("fingerprint").description("Print current static/state prefix hash
   console.log(getPrefixHash(staticBlock, stateLayer));
 });
 cache.command("inspect").description("Inspect cache-relevant prefix details.").action(() => {
+  ensureRelayDir();
   const semanticState = readOptional(join(relayDir, "memory", "semantic-state.json"), serializeSemanticState(createEmptySemanticState()));
+  const sessionPath = join(relayDir, "session.json");
+  const sessionExists = existsSync(sessionPath);
+  const sessionData = sessionExists ? parseSessionJson(readFileSync(sessionPath, "utf8")) : {};
+  const baseRef = (sessionData.base_git_sha as string | undefined) ?? "HEAD";
+  const files = listTrackedFiles().slice(0, 200).join("\n");
   const staticBlock = buildStaticBlock({});
-  const stateLayer = buildStateLayer({ semanticStateJson: semanticState });
-  const staticTokens = estimateTokens(staticBlock).tokens;
-  const stateTokens = estimateTokens(stateLayer).tokens;
-  console.log(JSON.stringify({
-    prefixHash: getPrefixHash(staticBlock, stateLayer),
-    tokens: {
-      static_block: staticTokens,
-      state_layer: stateTokens,
-      prefix_total: staticTokens + stateTokens
-    },
-    prefixInputs: ["static_block", "state_layer"]
-  }, null, 2));
+  const stateLayer = buildStateLayer({ semanticStateJson: semanticState, fileIndex: files });
+  const dynamicInput = buildDynamicInput({ prompt: "(cache inspect)", gitDiff: getGitDiffSince(baseRef) });
+  const savedPrefixHash = sessionData.prefix_hash as string | undefined;
+  console.log(JSON.stringify(inspectCacheDiagnostics({
+    staticBlock,
+    stateLayer,
+    dynamicInput,
+    sessionPrefixHash: savedPrefixHash,
+    session: {
+      exists: sessionExists,
+      session_id: sessionData.session_id ?? null,
+      base_git_sha: sessionData.base_git_sha ?? null,
+      prefix_hash: savedPrefixHash ?? null,
+      created_at: sessionData.created_at ?? null,
+      tracked_path_count: Array.isArray(sessionData.tracked_paths) ? sessionData.tracked_paths.length : 0
+    }
+  }), null, 2));
 });
 cache.command("warm").description("Placeholder command for provider cache warming.").action(() => {
   console.log("Cache warming is planned. Current MVP emits deterministic payloads for external provider reuse.");

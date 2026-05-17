@@ -167,6 +167,51 @@ test("relay context inspect reports corrupted session files clearly", { skip: ca
   assert.match(result.stderr, /session\.json is corrupted/);
 });
 
+test("relay cache inspect returns expanded prefix diagnostics", { skip: canSpawnNode ? false : "nested Node execution is unavailable in this sandbox" }, () => {
+  const cwd = tempWorkspace();
+  assert.equal(runRelay(["init"], cwd).result.status, 0);
+
+  const result = runRelay(["cache", "inspect"], cwd).result;
+  const report = JSON.parse(result.stdout);
+
+  assert.equal(result.status, 0);
+  assert.equal(typeof report.prefix.current_hash, "string");
+  assert.equal(report.prefix.session_hash, null);
+  assert.equal(report.prefix.matches_session, null);
+  assert.deepEqual(report.prefix.drift_reasons, []);
+  assert.equal(typeof report.zones.static_block, "number");
+  assert.equal(typeof report.zones.state_layer, "number");
+  assert.equal(typeof report.zones.dynamic_input, "number");
+  assert.equal(typeof report.zones.total, "number");
+  assert.deepEqual(report.findings.dynamic_content_in_prefix, []);
+  assert.equal(report.session.exists, false);
+});
+
+test("relay cache inspect reports session hash comparison after session start", { skip: canSpawnNode ? false : "nested Node execution is unavailable in this sandbox" }, () => {
+  const cwd = tempWorkspace();
+  assert.equal(runRelay(["init"], cwd).result.status, 0);
+  assert.equal(runRelay(["session", "start"], cwd).result.status, 0);
+
+  const result = runRelay(["cache", "inspect"], cwd).result;
+  const report = JSON.parse(result.stdout);
+
+  assert.equal(result.status, 0);
+  assert.equal(report.session.exists, true);
+  assert.equal(typeof report.prefix.session_hash, "string");
+  assert.equal(typeof report.prefix.matches_session, "boolean");
+});
+
+test("relay cache inspect reports corrupted session files clearly", { skip: canSpawnNode ? false : "nested Node execution is unavailable in this sandbox" }, () => {
+  const cwd = tempWorkspace();
+  assert.equal(runRelay(["init"], cwd).result.status, 0);
+  writeFileSync(join(cwd, ".relay", "session.json"), "{");
+
+  const result = runRelay(["cache", "inspect"], cwd).result;
+
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /session\.json is corrupted/);
+});
+
 test("relay tokens budget uses configured token limits", { skip: canSpawnNode ? false : "nested Node execution is unavailable in this sandbox" }, () => {
   const cwd = tempWorkspace();
   assert.equal(runRelay(["init"], cwd).result.status, 0);

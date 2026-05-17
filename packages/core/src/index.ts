@@ -1,6 +1,7 @@
 export * from "./config/relay-config.js";
 export * from "./context/payload-builder.js";
 export * from "./context/prefix-hash.js";
+export * from "./context/cache-diagnostics.js";
 export * from "./context/zones.js";
 export * from "./context/static-block.js";
 export * from "./context/state-layer.js";

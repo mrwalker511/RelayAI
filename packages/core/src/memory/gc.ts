@@ -1,5 +1,4 @@
 import { spawn } from "node:child_process";
-import Anthropic from "@anthropic-ai/sdk";
 import type { SemanticState } from "./semantic-state.js";
 
 export interface CompactionResult {
@@ -7,6 +6,10 @@ export interface CompactionResult {
   compactedMarkdown: string;
   originalApproxTokens: number;
   compactedApproxTokens: number;
+}
+
+export interface CompactionOptions {
+  command: string[];
 }
 
 interface RawExtracted {
@@ -19,59 +22,11 @@ interface RawExtracted {
   code_changes: string[];
 }
 
-const SEMANTIC_STATE_JSON_SCHEMA = {
-  type: "object",
-  properties: {
-    active_target: { anyOf: [{ type: "string" }, { type: "null" }] },
-    current_goal: { anyOf: [{ type: "string" }, { type: "null" }] },
-    runtime_errors: { type: "array", items: { type: "string" } },
-    verified_hypotheses: { type: "array", items: { type: "string" } },
-    rejected_hypotheses: { type: "array", items: { type: "string" } },
-    next_actions: { type: "array", items: { type: "string" } },
-    code_changes: { type: "array", items: { type: "string" } },
-  },
-  required: ["active_target", "current_goal", "runtime_errors", "verified_hypotheses", "rejected_hypotheses", "next_actions", "code_changes"],
-  additionalProperties: false,
-} as const;
-
-// Stable system prompt — cached prefix so repeated GC runs skip re-processing it
+// Stable system prompt used for local GC compaction.
 const GC_SYSTEM_PROMPT =
   "Extract structured session state from coding session history. " +
   "Merge with the existing state: preserve verified_hypotheses and code_changes unless clearly superseded. " +
   "Use null for unknown string fields, empty arrays for unknown array fields.";
-
-async function compactViaApi(rawHistory: string, existingState: SemanticState): Promise<RawExtracted> {
-  const client = new Anthropic(); // reads ANTHROPIC_API_KEY from env
-  const response = await client.messages.create({
-    model: "claude-haiku-4-5",
-    max_tokens: 1024,
-    system: [
-      {
-        type: "text",
-        text: GC_SYSTEM_PROMPT,
-        cache_control: { type: "ephemeral" },
-      },
-    ],
-    messages: [
-      {
-        role: "user",
-        content:
-          `Existing state:\n${JSON.stringify(existingState, null, 2)}\n\n` +
-          `Session history to compact:\n${rawHistory}`,
-      },
-    ],
-    output_config: {
-      format: {
-        type: "json_schema",
-        schema: SEMANTIC_STATE_JSON_SCHEMA,
-      },
-    },
-  });
-
-  const textBlock = response.content.find(b => b.type === "text");
-  if (!textBlock || textBlock.type !== "text") throw new Error("GC API returned no text content");
-  return JSON.parse(textBlock.text) as RawExtracted;
-}
 
 async function shellCapture(command: string, args: string[], stdin: string): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -85,7 +40,7 @@ async function shellCapture(command: string, args: string[], stdin: string): Pro
     });
     child.on("error", (err: NodeJS.ErrnoException) => {
       if (err.code === "ENOENT")
-        reject(new Error(`'${command}' not found in PATH — ensure the Claude CLI is installed and authenticated.`));
+        reject(new Error(`'${command}' not found in PATH; ensure the configured GC command is installed and authenticated.`));
       else reject(err);
     });
     child.stdin.write(stdin);
@@ -93,14 +48,16 @@ async function shellCapture(command: string, args: string[], stdin: string): Pro
   });
 }
 
-async function compactViaCli(rawHistory: string, existingState: SemanticState): Promise<RawExtracted> {
+async function compactViaCli(rawHistory: string, existingState: SemanticState, commandTemplate: string[]): Promise<RawExtracted> {
+  if (commandTemplate.length === 0) throw new Error("GC command is empty.");
+  const [command, ...args] = commandTemplate;
   const prompt =
-    `Extract structured session state from this coding session history. Return ONLY valid JSON — no markdown fences, no explanation.\n\n` +
+    `${GC_SYSTEM_PROMPT} Return ONLY valid JSON; no markdown fences, no explanation.\n\n` +
     `Schema: { "active_target": string|null, "current_goal": string|null, "runtime_errors": string[], ` +
     `"verified_hypotheses": string[], "rejected_hypotheses": string[], "next_actions": string[], "code_changes": string[] }\n\n` +
     `Existing state:\n${JSON.stringify(existingState, null, 2)}\n\nSession history:\n${rawHistory}`;
 
-  const raw = await shellCapture("claude", ["--print"], prompt);
+  const raw = await shellCapture(command, args, prompt);
   const jsonMatch = raw.match(/\{[\s\S]*\}/);
   if (!jsonMatch) throw new Error(`GC model returned no valid JSON.\nRaw output:\n${raw.slice(0, 500)}`);
   try {
@@ -122,13 +79,8 @@ function buildSemanticState(parsed: RawExtracted): SemanticState {
   };
 }
 
-export async function compactHistoryToState(rawHistory: string, existingState: SemanticState): Promise<CompactionResult> {
-  // Use the Anthropic API directly when a key is available (structured outputs + prompt caching).
-  // Fall back to the Claude CLI for users who rely on `claude auth` rather than a raw API key.
-  const parsed = process.env.ANTHROPIC_API_KEY
-    ? await compactViaApi(rawHistory, existingState)
-    : await compactViaCli(rawHistory, existingState);
-
+export async function compactHistoryToState(rawHistory: string, existingState: SemanticState, options: CompactionOptions): Promise<CompactionResult> {
+  const parsed = await compactViaCli(rawHistory, existingState, options.command);
   const semanticState = buildSemanticState(parsed);
 
   const lines = [

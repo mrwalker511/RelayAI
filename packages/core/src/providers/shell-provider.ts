@@ -2,11 +2,7 @@ import { spawn } from "node:child_process";
 import type { RelayConfig } from "../config/relay-config.js";
 import type { ProviderAdapter } from "./provider.js";
 
-const PROVIDER_DEFAULTS: Record<string, string[]> = {
-  codex:   ["codex"],
-  claude:  ["claude", "--print"],
-  copilot: ["gh", "copilot", "suggest", "-t", "shell"],
-};
+const PROVIDER_DEFAULTS: Record<string, string[]> = {};
 
 export class ShellProvider implements ProviderAdapter {
   constructor(

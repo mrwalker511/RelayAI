@@ -1,6 +1,6 @@
 # Architecture
 
-Relay is a local-first context engine for existing coding assistants.
+Relay is a local-first, model-agnostic context engine for coding agents and model CLIs.
 
 ## System Overview
 
@@ -18,10 +18,7 @@ relay CLI
    ├── Token Budget Guardrails
    └── Provider Adapter
           │
-          ├── Codex CLI
-          ├── Claude Code
-          ├── GitHub Copilot CLI
-          └── Raw API Provider
+          └── Configured shell provider
 ```
 
 ## Core Package

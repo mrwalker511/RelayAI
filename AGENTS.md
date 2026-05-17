@@ -1,6 +1,6 @@
-# CLAUDE.md
+# AGENTS.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance to coding agents when working with code in this repository.
 
 ## Commands
 
@@ -30,7 +30,7 @@ There is no ESLint. `pnpm typecheck` (strict TypeScript) is the lint step. CI ru
 
 ## Architecture
 
-Relay is a deterministic context construction engine that wraps existing coding assistants (Claude Code, Codex, Copilot) without replacing them. Every outbound prompt is assembled through three stable zones to maximize provider prompt-cache hit rates.
+Relay is a deterministic context construction engine for model- and LLM-agnostic coding workflows. Every outbound prompt is assembled through three stable zones to maximize prompt-cache hit rates where the selected provider supports them.
 
 ### Three-zone prompt construction (`packages/core/src/context/`)
 
@@ -48,11 +48,11 @@ When a session starts (`relay session start`), `snapshot.ts` records the current
 
 ### Token garbage collection (`packages/core/src/memory/gc.ts`)
 
-Raw session history accumulates in `.relay/memory/session.raw.md`. `compactHistoryToState()` shells out to the Claude CLI with a schema-constrained JSON extraction prompt. The result collapses verbose history (often 10k+ tokens) into a `SemanticState` struct (~500 tokens) written to `.relay/memory/semantic-state.json`. This compacted state replaces raw history in the next prompt's `STATE_LAYER`. The `SemanticState` schema tracks: `active_target`, `current_goal`, `runtime_errors`, `verified_hypotheses`, `rejected_hypotheses`, `next_actions`, `code_changes`.
+Raw session history accumulates in `.relay/memory/session.raw.md`. `compactHistoryToState()` shells out to the configured GC command with a schema-constrained JSON extraction prompt. The result collapses verbose history (often 10k+ tokens) into a `SemanticState` struct (~500 tokens) written to `.relay/memory/semantic-state.json`. This compacted state replaces raw history in the next prompt's `STATE_LAYER`. The `SemanticState` schema tracks: `active_target`, `current_goal`, `runtime_errors`, `verified_hypotheses`, `rejected_hypotheses`, `next_actions`, `code_changes`.
 
 ### Provider adapters (`packages/core/src/providers/`)
 
-The `ProviderAdapter` interface requires only `name` and `sendPrompt(payload: string): Promise<number>`. `ShellProvider` implements this by spawning the configured CLI command with the payload. Default commands are: `claude --print`, `codex`, `gh copilot suggest -t shell`. New providers only need to implement this interface; Relay handles all context construction upstream.
+The `ProviderAdapter` interface requires only `name` and `sendPrompt(payload: string): Promise<number>`. `ShellProvider` implements this by spawning the configured CLI command with the payload. Relay handles all context construction upstream and leaves model execution to the configured provider.
 
 ### Token budgeting (`packages/core/src/tokens/`)
 

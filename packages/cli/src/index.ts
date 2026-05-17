@@ -122,7 +122,7 @@ session.command("status").description("Show current Relay session metadata.").ac
 program.command("ask")
   .argument("<prompt>", "Prompt to route through Relay context construction.")
   .description("Build a cache-optimized prompt payload.")
-  .option("--provider <name>", "Route the payload through this provider (e.g. claude, codex, copilot)")
+  .option("--provider <name>", "Route the payload through a configured provider")
   .option("--dry-run", "Print the resolved command and payload without executing")
   .action(async (prompt: string, options: { provider?: string; dryRun?: boolean }) => {
     ensureRelayDir();
@@ -270,8 +270,9 @@ gc.command("status").description("Show GC configuration.").action(() => {
   console.log(JSON.stringify(DEFAULT_RELAY_CONFIG.gc, null, 2));
 });
 
-gc.command("run").description("Compact session history into semantic state (uses local claude CLI).").action(async () => {
+gc.command("run").description("Compact session history into semantic state using the configured GC command.").action(async () => {
   ensureRelayDir();
+  const cfg = readRelayConfig();
   const rawPath = join(relayDir, "memory", "session.raw.md");
   const statePath = join(relayDir, "memory", "semantic-state.json");
   const snapshotPath = join(relayDir, "memory", "semantic-state.snapshot.json");
@@ -293,10 +294,15 @@ gc.command("run").description("Compact session history into semantic state (uses
   }
 
   writeFileSync(snapshotPath, existingJson);
-  process.stderr.write("Compacting session history via claude --print...\n");
+  const gcCommand = cfg.gc.command ?? cfg.provider.commands?.[cfg.provider.default];
+  if (!gcCommand || gcCommand.length === 0) {
+    process.stderr.write("Error: configure gc.command or provider.commands for the default provider before running `relay gc run`.\n");
+    process.exit(1);
+  }
+  process.stderr.write(`Compacting session history via ${gcCommand.join(" ")}...\n`);
 
   try {
-    const result = await compactHistoryToState(rawHistory, existingState);
+    const result = await compactHistoryToState(rawHistory, existingState, { command: gcCommand });
     writeFileSync(statePath, serializeSemanticState(result.semanticState));
     writeFileSync(rawPath, "# Raw Session History\n");
     console.log(`Compacted: ${result.originalApproxTokens.toLocaleString()} → ${result.compactedApproxTokens.toLocaleString()} tokens.`);
@@ -326,9 +332,15 @@ gc.command("preview").description("Preview compacted state without writing anyth
     process.exit(1);
   }
   process.stderr.write("Previewing compaction (no changes will be written)...\n");
+  const cfg = readRelayConfig();
+  const gcCommand = cfg.gc.command ?? cfg.provider.commands?.[cfg.provider.default];
+  if (!gcCommand || gcCommand.length === 0) {
+    process.stderr.write("Error: configure gc.command or provider.commands for the default provider before running `relay gc preview`.\n");
+    process.exit(1);
+  }
 
   try {
-    const result = await compactHistoryToState(rawHistory, existingState);
+    const result = await compactHistoryToState(rawHistory, existingState, { command: gcCommand });
     console.log(`Tokens: ${result.originalApproxTokens.toLocaleString()} → ${result.compactedApproxTokens.toLocaleString()}`);
     console.log("\nNew semantic state:");
     console.log(serializeSemanticState(result.semanticState));

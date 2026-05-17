@@ -11,7 +11,7 @@ Relay stores local configuration in:
 ```json
 {
   "provider": {
-    "default": "codex"
+    "default": "default"
   },
   "gc": {
     "enabled": true,
@@ -22,8 +22,8 @@ Relay stores local configuration in:
     "preserveCodeChanges": true
   },
   "tokens": {
-    "provider": "openai",
-    "model": "gpt-4.1",
+    "provider": "generic",
+    "model": "default",
     "hardLimit": 100000,
     "warningLimit": 50000,
     "requireConfirmationAbove": 75000
@@ -33,21 +33,20 @@ Relay stores local configuration in:
 
 ## Provider Strategy
 
-Relay should not automatically switch providers. The user should choose a provider explicitly or rely on the configured default.
+Relay is model-agnostic. Provider commands are configured as shell command templates, and Relay passes the assembled payload on stdin.
 
-Future provider config example:
+Provider command override example:
 
 ```json
 {
-  "providers": {
-    "codex": {
-      "command": "codex",
-      "args": ["-"]
-    },
-    "claude": {
-      "command": "claude",
-      "args": []
+  "provider": {
+    "default": "local-llm",
+    "commands": {
+      "local-llm": ["your-llm-cli"]
     }
+  },
+  "gc": {
+    "command": ["your-llm-cli"]
   }
 }
 ```

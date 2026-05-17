@@ -1,16 +1,16 @@
 # Relay CLI
 
-Relay is a local-first context and prompt-cache optimizer for software engineers using existing coding assistants such as OpenAI Codex CLI, Claude Code, and GitHub Copilot CLI.
+Relay is a local-first, model- and LLM-agnostic context optimizer for software engineers using coding agents or model CLIs.
 
-Relay does **not** replace those tools. It wraps them with a deterministic context-management layer that reduces repeated prompt submission, preserves useful project state across sessions, and helps maximize provider-level prompt caching.
+Relay does **not** replace your model or coding agent. It wraps configured provider commands with a deterministic context-management layer that reduces repeated prompt submission, preserves useful project state across sessions, and helps maximize prompt caching where supported.
 
 ## Core Goals
 
 - Reduce token costs and repeated context submission.
 - Preserve useful project and session context across coding sessions.
 - Make it easy to resume work without re-explaining the project.
-- Work across multiple coding assistants from one consistent interface.
-- Maximize provider prompt-cache hit rates through deterministic prompt construction.
+- Provide a consistent context layer across model and coding-agent CLIs.
+- Maximize prompt-cache hit rates through deterministic prompt construction.
 
 ## Key Features
 
@@ -89,6 +89,6 @@ relay-cli/
 
 ## Status
 
-This repository is an MVP-ready project skeleton intended to be built with Codex or another coding assistant.
+This repository is an MVP-ready project skeleton intended to be built with any capable coding assistant.
 
 The scaffold includes complete TypeScript module boundaries, command stubs, markdown documentation, configuration examples, and implementation notes.

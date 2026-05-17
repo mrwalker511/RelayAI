@@ -2,11 +2,12 @@ import { z } from "zod";
 
 export const RelayConfigSchema = z.object({
   provider: z.object({
-    default: z.enum(["codex", "claude", "copilot", "raw-openai", "raw-anthropic"]).default("codex"),
+    default: z.string().default("default"),
     commands: z.record(z.string(), z.array(z.string())).optional()
-  }).default({ default: "codex" }),
+  }).default({ default: "default" }),
   gc: z.object({
     enabled: z.boolean().default(true),
+    command: z.array(z.string()).optional(),
     historyTokenLimit: z.number().int().positive().default(12000),
     targetSummaryTokens: z.number().int().positive().default(500),
     preserveErrors: z.boolean().default(true),
@@ -14,8 +15,8 @@ export const RelayConfigSchema = z.object({
     preserveCodeChanges: z.boolean().default(true)
   }).default({}),
   tokens: z.object({
-    provider: z.string().default("openai"),
-    model: z.string().default("gpt-4.1"),
+    provider: z.string().default("generic"),
+    model: z.string().default("default"),
     hardLimit: z.number().int().positive().default(100000),
     warningLimit: z.number().int().positive().default(50000),
     requireConfirmationAbove: z.number().int().positive().default(75000)

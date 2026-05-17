@@ -1,10 +1,10 @@
 # Provider Adapters
 
-Relay should integrate with existing coding assistants without replacing them.
+Relay integrates with model and coding-agent CLIs without replacing them.
 
 ## Design Principle
 
-Provider adapters should be small wrappers around external commands or raw APIs.
+Provider adapters should be small wrappers around configured shell commands.
 
 Relay owns:
 
@@ -30,30 +30,14 @@ export interface ProviderAdapter {
 }
 ```
 
-## Initial Providers
+## Initial Provider
 
-### Codex CLI
-
-Expected usage:
-
-```bash
-relay ask --provider codex "Fix the failing test"
-```
-
-### Claude Code
+### Shell Provider
 
 Expected usage:
 
 ```bash
-relay ask --provider claude "Refactor this module"
-```
-
-### GitHub Copilot CLI
-
-Expected usage:
-
-```bash
-relay ask --provider copilot "Explain this error"
+relay ask --provider local-llm "Fix the failing test"
 ```
 
 ## No Automated Model Switching

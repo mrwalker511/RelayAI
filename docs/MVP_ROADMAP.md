@@ -58,19 +58,17 @@ Acceptance criteria:
 
 ## MVP 4: Provider Wrappers
 
-Goal: Route Relay payloads into existing coding assistants.
+Goal: Route Relay payloads into configured model and coding-agent CLIs.
 
 Deliverables:
 
-- Codex CLI adapter
-- Claude Code adapter
-- Copilot CLI adapter
+- generic shell provider adapter
 - provider command templates in config
 - dry-run mode
 
 Acceptance criteria:
 
-- User can run `relay ask --provider codex "..."`.
+- User can run `relay ask --provider local-llm "..."`.
 - Relay shows token estimate before provider execution.
 
 ## MVP 5: Cache Diagnostics

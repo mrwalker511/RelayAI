@@ -1,14 +1,13 @@
 {
   "provider": {
-    "default": "claude",
+    "default": "local-llm",
     "commands": {
-      "claude":  ["claude", "--print"],
-      "codex":   ["codex"],
-      "copilot": ["gh", "copilot", "suggest", "-t", "shell"]
+      "local-llm": ["your-llm-cli"]
     }
   },
   "gc": {
     "enabled": true,
+    "command": ["your-llm-cli"],
     "historyTokenLimit": 12000,
     "targetSummaryTokens": 500,
     "preserveErrors": true,
@@ -16,8 +15,8 @@
     "preserveCodeChanges": true
   },
   "tokens": {
-    "provider": "openai",
-    "model": "gpt-4.1",
+    "provider": "generic",
+    "model": "default",
     "hardLimit": 100000,
     "warningLimit": 50000,
     "requireConfirmationAbove": 75000

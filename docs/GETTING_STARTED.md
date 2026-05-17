@@ -7,7 +7,7 @@ This guide walks through installing, building, and running Relay locally.
 - Node.js 20+
 - pnpm 9+
 - git
-- An existing coding CLI such as Codex CLI, Claude Code, or GitHub Copilot CLI
+- A local or remote LLM command-line tool for provider execution
 
 ## Install Dependencies
 
@@ -76,12 +76,12 @@ relay cache inspect
 relay cache fingerprint
 ```
 
-## Recommended Development Flow with Codex
+## Recommended Development Flow
 
 1. Open this repository in your editor.
 2. Run `pnpm install`.
 3. Run `pnpm build`.
-4. Ask Codex to implement one feature at a time from `docs/MVP_ROADMAP.md`.
+4. Ask your coding assistant to implement one feature at a time from `docs/MVP_ROADMAP.md`.
 5. Keep generated changes small and inspect `relay diff` frequently.
 
 ## First Implementation Targets
@@ -92,4 +92,4 @@ Start with:
 2. Real `relay context inspect` output.
 3. Interactive token-budget prompts.
 4. Real Context GC compaction.
-5. Provider adapters for Codex CLI and Claude Code.
+5. Generic shell provider adapter.

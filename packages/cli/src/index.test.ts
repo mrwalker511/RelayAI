@@ -185,6 +185,7 @@ test("relay cache inspect returns expanded prefix diagnostics", { skip: canSpawn
   assert.equal(typeof report.zones.total, "number");
   assert.deepEqual(report.findings.dynamic_content_in_prefix, []);
   assert.equal(report.session.exists, false);
+  assert.equal(report.cost, undefined);
 });
 
 test("relay cache inspect reports session hash comparison after session start", { skip: canSpawnNode ? false : "nested Node execution is unavailable in this sandbox" }, () => {
@@ -210,6 +211,44 @@ test("relay cache inspect reports corrupted session files clearly", { skip: canS
 
   assert.notEqual(result.status, 0);
   assert.match(result.stderr, /session\.json is corrupted/);
+});
+
+test("relay cache inspect reports cache-aware cost when pricing flags are provided", { skip: canSpawnNode ? false : "nested Node execution is unavailable in this sandbox" }, () => {
+  const cwd = tempWorkspace();
+  assert.equal(runRelay(["init"], cwd).result.status, 0);
+
+  const result = runRelay([
+    "cache",
+    "inspect",
+    "--input-cost-per-million",
+    "10",
+    "--cached-input-cost-per-million",
+    "1",
+    "--expected-cache-hit-rate",
+    "0.5"
+  ], cwd).result;
+  const report = JSON.parse(result.stdout);
+
+  assert.equal(result.status, 0);
+  assert.equal(report.cost.inputCostPerMillion, 10);
+  assert.equal(report.cost.cachedInputCostPerMillion, 1);
+  assert.equal(report.cost.expectedCacheHitRate, 0.5);
+  assert.equal(report.cost.cacheEligibleTokens, report.zones.static_block + report.zones.state_layer);
+  assert.equal(report.cost.dynamicTokens, report.zones.dynamic_input);
+  assert.equal(report.cost.totalTokens, report.zones.total);
+  assert.equal(typeof report.cost.uncachedCost, "number");
+  assert.equal(typeof report.cost.cacheAdjustedCost, "number");
+  assert.equal(typeof report.cost.estimatedSavings, "number");
+});
+
+test("relay cache inspect rejects invalid cost flags clearly", { skip: canSpawnNode ? false : "nested Node execution is unavailable in this sandbox" }, () => {
+  const cwd = tempWorkspace();
+  assert.equal(runRelay(["init"], cwd).result.status, 0);
+
+  const result = runRelay(["cache", "inspect", "--expected-cache-hit-rate", "1.5"], cwd).result;
+
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /must be between 0 and 1/);
 });
 
 test("relay cache warm --dry-run prints provider command and stable warmup payload", { skip: canSpawnNode ? false : "nested Node execution is unavailable in this sandbox" }, () => {

@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { Command } from "commander";
+import { Command, InvalidArgumentError } from "commander";
 import { appendFileSync, mkdirSync, writeFileSync, readFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { createInterface } from "node:readline";
@@ -17,6 +17,7 @@ import {
   createShellProvider,
   detectPromptLoop,
   estimateTokens,
+  estimateZoneAwareInputCost,
   getGitDiffSince,
   getPrefixHash,
   inspectCacheDiagnostics,
@@ -44,6 +45,22 @@ function readRelayConfig(): RelayConfig {
   } catch {
     return DEFAULT_RELAY_CONFIG;
   }
+}
+
+function parseNonNegativeNumber(value: string): number {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed < 0) {
+    throw new InvalidArgumentError("must be a non-negative number");
+  }
+  return parsed;
+}
+
+function parseCacheHitRate(value: string): number {
+  const parsed = parseNonNegativeNumber(value);
+  if (parsed > 1) {
+    throw new InvalidArgumentError("must be between 0 and 1");
+  }
+  return parsed;
 }
 
 function confirm(question: string): Promise<boolean> {
@@ -265,33 +282,57 @@ cache.command("fingerprint").description("Print current static/state prefix hash
   const stateLayer = buildStateLayer({ semanticStateJson: semanticState });
   console.log(getPrefixHash(staticBlock, stateLayer));
 });
-cache.command("inspect").description("Inspect cache-relevant prefix details.").action(() => {
-  ensureRelayDir();
-  const semanticState = readOptional(join(relayDir, "memory", "semantic-state.json"), serializeSemanticState(createEmptySemanticState()));
-  const sessionPath = join(relayDir, "session.json");
-  const sessionExists = existsSync(sessionPath);
-  const sessionData = sessionExists ? parseSessionJson(readFileSync(sessionPath, "utf8")) : {};
-  const baseRef = (sessionData.base_git_sha as string | undefined) ?? "HEAD";
-  const files = listTrackedFiles().slice(0, 200).join("\n");
-  const staticBlock = buildStaticBlock({});
-  const stateLayer = buildStateLayer({ semanticStateJson: semanticState, fileIndex: files });
-  const dynamicInput = buildDynamicInput({ prompt: "(cache inspect)", gitDiff: getGitDiffSince(baseRef) });
-  const savedPrefixHash = sessionData.prefix_hash as string | undefined;
-  console.log(JSON.stringify(inspectCacheDiagnostics({
-    staticBlock,
-    stateLayer,
-    dynamicInput,
-    sessionPrefixHash: savedPrefixHash,
-    session: {
-      exists: sessionExists,
-      session_id: sessionData.session_id ?? null,
-      base_git_sha: sessionData.base_git_sha ?? null,
-      prefix_hash: savedPrefixHash ?? null,
-      created_at: sessionData.created_at ?? null,
-      tracked_path_count: Array.isArray(sessionData.tracked_paths) ? sessionData.tracked_paths.length : 0
+cache.command("inspect")
+  .description("Inspect cache-relevant prefix details.")
+  .option("--input-cost-per-million <number>", "Input token cost per million tokens", parseNonNegativeNumber)
+  .option("--cached-input-cost-per-million <number>", "Cached input token cost per million tokens", parseNonNegativeNumber)
+  .option("--expected-cache-hit-rate <number>", "Expected prefix cache hit rate from 0 to 1", parseCacheHitRate)
+  .action((options: {
+    inputCostPerMillion?: number;
+    cachedInputCostPerMillion?: number;
+    expectedCacheHitRate?: number;
+  }) => {
+    ensureRelayDir();
+    const semanticState = readOptional(join(relayDir, "memory", "semantic-state.json"), serializeSemanticState(createEmptySemanticState()));
+    const sessionPath = join(relayDir, "session.json");
+    const sessionExists = existsSync(sessionPath);
+    const sessionData = sessionExists ? parseSessionJson(readFileSync(sessionPath, "utf8")) : {};
+    const baseRef = (sessionData.base_git_sha as string | undefined) ?? "HEAD";
+    const files = listTrackedFiles().slice(0, 200).join("\n");
+    const staticBlock = buildStaticBlock({});
+    const stateLayer = buildStateLayer({ semanticStateJson: semanticState, fileIndex: files });
+    const dynamicInput = buildDynamicInput({ prompt: "(cache inspect)", gitDiff: getGitDiffSince(baseRef) });
+    const savedPrefixHash = sessionData.prefix_hash as string | undefined;
+    const report: ReturnType<typeof inspectCacheDiagnostics> & {
+      cost?: ReturnType<typeof estimateZoneAwareInputCost>;
+    } = inspectCacheDiagnostics({
+      staticBlock,
+      stateLayer,
+      dynamicInput,
+      sessionPrefixHash: savedPrefixHash,
+      session: {
+        exists: sessionExists,
+        session_id: sessionData.session_id ?? null,
+        base_git_sha: sessionData.base_git_sha ?? null,
+        prefix_hash: savedPrefixHash ?? null,
+        created_at: sessionData.created_at ?? null,
+        tracked_path_count: Array.isArray(sessionData.tracked_paths) ? sessionData.tracked_paths.length : 0
+      }
+    });
+
+    if (options.inputCostPerMillion !== undefined) {
+      report.cost = estimateZoneAwareInputCost({
+        staticBlockTokens: report.zones.static_block,
+        stateLayerTokens: report.zones.state_layer,
+        dynamicInputTokens: report.zones.dynamic_input,
+        inputCostPerMillion: options.inputCostPerMillion,
+        cachedInputCostPerMillion: options.cachedInputCostPerMillion,
+        expectedCacheHitRate: options.expectedCacheHitRate
+      });
     }
-  }), null, 2));
-});
+
+    console.log(JSON.stringify(report, null, 2));
+  });
 cache.command("warm")
   .description("Send a stable prefix-shaped payload to a configured provider.")
   .option("--provider <name>", "Route the warmup payload through a configured provider")

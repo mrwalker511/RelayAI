@@ -32,6 +32,8 @@ Prints the hash of the static block plus state layer.
 
 Prints cache-relevant prefix diagnostics, including prefix hash, static/state token counts, and the inputs that affect the prefix.
 
+Use `--input-cost-per-million <number>`, `--cached-input-cost-per-million <number>`, and `--expected-cache-hit-rate <number>` to include cache-aware cost estimates. Relay only reports cost estimates from explicit inputs and does not infer provider pricing.
+
 ## `relay cache warm`
 
 Sends a stable prefix-shaped payload to a configured provider to warm provider-side prompt caching.

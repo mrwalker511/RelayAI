@@ -1,6 +1,6 @@
 # Getting Started
 
-This guide walks through installing, building, and running Relay locally.
+This guide walks through installing, building, and running Relay locally. For a fuller user-facing installation and operations guide, see [`USER_INSTALLATION_GUIDE.md`](USER_INSTALLATION_GUIDE.md).
 
 ## Prerequisites
 

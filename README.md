@@ -60,6 +60,8 @@ pnpm --filter @relay/cli relay ask "Summarize this repository"
 
 For detailed setup instructions, see [`docs/GETTING_STARTED.md`](docs/GETTING_STARTED.md).
 
+For a polished installation and usage walkthrough, see [`docs/USER_INSTALLATION_GUIDE.md`](docs/USER_INSTALLATION_GUIDE.md).
+
 ## Example CLI Commands
 
 ```bash

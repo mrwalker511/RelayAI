@@ -33,7 +33,10 @@ async function shellCapture(command: string, args: string[], stdin: string): Pro
     const child = spawn(command, args, { stdio: ["pipe", "pipe", "inherit"] });
     const chunks: Buffer[] = [];
     child.stdout.on("data", (chunk: Buffer) => chunks.push(chunk));
-    child.on("exit", (code, signal) => {
+    child.stdin.on("error", (err: NodeJS.ErrnoException) => {
+      if (err.code !== "EPIPE") reject(err);
+    });
+    child.on("close", (code, signal) => {
       if (code === 0) resolve(Buffer.concat(chunks).toString("utf8").trim());
       else if (signal) reject(new Error(`'${command}' was killed by signal ${signal}`));
       else reject(new Error(`'${command}' exited with code ${code}`));

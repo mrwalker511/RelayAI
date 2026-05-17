@@ -16,7 +16,9 @@ Prints current session metadata.
 
 Builds a deterministic three-zone prompt payload and prints it.
 
-Future behavior: route the payload to a configured provider.
+Use `--provider <name>` to route the payload to a configured provider command. Relay writes the assembled payload to the provider process on stdin and propagates the provider exit code.
+
+Use `--dry-run` with a configured provider to print the resolved command and payload without executing the provider.
 
 ## `relay diff`
 
@@ -28,11 +30,11 @@ Prints the hash of the static block plus state layer.
 
 ## `relay cache inspect`
 
-Prints cache-relevant diagnostics.
+Prints cache-relevant prefix diagnostics, including prefix hash, static/state token counts, and the inputs that affect the prefix.
 
 ## `relay cache warm`
 
-Placeholder for future provider cache warming.
+Reserved for future provider cache warming. The current MVP emits deterministic payloads and cache diagnostics only.
 
 ## `relay tokens estimate [text...]`
 
@@ -48,12 +50,12 @@ Prints token garbage collection configuration.
 
 ## `relay gc run`
 
-Placeholder for context compaction.
+Compacts raw session history into semantic state by sending a schema-constrained prompt to `gc.command`, or to the configured default provider command when `gc.command` is omitted.
 
 ## `relay gc preview`
 
-Prints current semantic state.
+Previews the compacted semantic state without writing changes.
 
 ## `relay gc restore`
 
-Placeholder for restoring a prior compacted state.
+Restores the semantic state snapshot written before the last `relay gc run`.

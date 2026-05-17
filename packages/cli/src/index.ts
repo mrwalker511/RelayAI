@@ -220,7 +220,17 @@ cache.command("inspect").description("Inspect cache-relevant prefix details.").a
   const semanticState = readOptional(join(relayDir, "memory", "semantic-state.json"), serializeSemanticState(createEmptySemanticState()));
   const staticBlock = buildStaticBlock({});
   const stateLayer = buildStateLayer({ semanticStateJson: semanticState });
-  console.log(JSON.stringify({ prefixHash: getPrefixHash(staticBlock, stateLayer), staticTokens: estimateTokens(staticBlock).tokens, stateTokens: estimateTokens(stateLayer).tokens }, null, 2));
+  const staticTokens = estimateTokens(staticBlock).tokens;
+  const stateTokens = estimateTokens(stateLayer).tokens;
+  console.log(JSON.stringify({
+    prefixHash: getPrefixHash(staticBlock, stateLayer),
+    tokens: {
+      static_block: staticTokens,
+      state_layer: stateTokens,
+      prefix_total: staticTokens + stateTokens
+    },
+    prefixInputs: ["static_block", "state_layer"]
+  }, null, 2));
 });
 cache.command("warm").description("Placeholder command for provider cache warming.").action(() => {
   console.log("Cache warming is planned. Current MVP emits deterministic payloads for external provider reuse.");

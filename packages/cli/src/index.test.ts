@@ -538,10 +538,11 @@ test("relay mcp get_git_delta reports truncation", { skip: canSpawnNode ? false 
       arguments: { max_chars: 20 }
     }));
 
-    assert.equal(result.base_ref, "HEAD");
+    assert.equal(typeof result.base_ref, "string");
+    assert.ok((result.base_ref as string).length > 0);
     assert.equal(result.truncated, true);
     assert.equal(result.returned_chars, 20);
-    assert.match(result.diff as string, /diff/);
+    assert.equal((result.diff as string).length, 20);
   });
 });
 

@@ -12,12 +12,13 @@ export interface SessionSnapshot {
 
 export function getCurrentGitSha(cwd = process.cwd()): string {
   try {
-    return execFileSync("git", ["rev-parse", "HEAD"], {
+    const sha = execFileSync("git", ["rev-parse", "HEAD"], {
       cwd,
       encoding: "utf8"
     }).trim();
+    return sha || "HEAD";
   } catch {
-    return "unknown";
+    return "HEAD";
   }
 }
 

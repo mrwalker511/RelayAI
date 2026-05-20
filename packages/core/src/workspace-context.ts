@@ -217,7 +217,7 @@ export function readRelayWorkspace(options: RelayWorkspaceOptions = {}): RelayWo
   const config = readRelayConfig(join(relayDir, "config.json"));
   const state = readSemanticState(join(relayDir, "memory", "semantic-state.json"));
   const session = readSession(join(relayDir, "session.json"));
-  const baseRef = session.base_git_sha ?? "HEAD";
+  const baseRef = (session.base_git_sha && session.base_git_sha !== "unknown") ? session.base_git_sha : "HEAD";
   const trackedPaths = listTrackedFiles(cwd);
   const includedPaths = trackedPaths.slice(0, 200);
   const gitDiff = getGitDiffSince(baseRef, cwd);

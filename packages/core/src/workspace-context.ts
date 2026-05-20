@@ -222,7 +222,11 @@ export function readRelayWorkspace(options: RelayWorkspaceOptions = {}): RelayWo
   const includedPaths = trackedPaths.slice(0, 200);
   const gitDiff = getGitDiffSince(baseRef, cwd);
   const zones = {
-    staticBlock: buildStaticBlock({}),
+    staticBlock: buildStaticBlock({
+      projectRules: readOptional(join(relayDir, "memory", "project-rules.md")) || undefined,
+      architectureNotes: readOptional(join(relayDir, "memory", "architecture-notes.md")) || undefined,
+      sourceSnapshot: readOptional(join(relayDir, "memory", "source-snapshot.md")) || undefined,
+    }),
     stateLayer: buildStateLayer({ semanticStateJson: state.json, fileIndex: includedPaths.join("\n") }),
     dynamicInput: buildDynamicInput({ prompt, gitDiff })
   };

@@ -27,7 +27,7 @@ import {
   runRelayDoctor,
   serializeSemanticState
 } from "@relay/core";
-import type { RelayConfig } from "@relay/core";
+import type { RelayConfig, StaticBlockInput } from "@relay/core";
 
 const program = new Command();
 const relayDir = join(process.cwd(), ".relay");
@@ -95,6 +95,14 @@ function writeCallLog(timestamps: number[]): void {
   writeFileSync(callLogPath, JSON.stringify(pruned));
 }
 
+function readStaticBlockInput(dir: string): StaticBlockInput {
+  return {
+    projectRules: readOptional(join(dir, "memory", "project-rules.md")) || undefined,
+    architectureNotes: readOptional(join(dir, "memory", "architecture-notes.md")) || undefined,
+    sourceSnapshot: readOptional(join(dir, "memory", "source-snapshot.md")) || undefined,
+  };
+}
+
 function printZoneBreakdown(zones: ReturnType<typeof buildZonesForAsk>): void {
   const report = inspectZoneTokens(zones);
   process.stderr.write(
@@ -106,9 +114,15 @@ function printZoneBreakdown(zones: ReturnType<typeof buildZonesForAsk>): void {
   );
 }
 
-function buildZonesForAsk(prompt: string, baseRef: string, semanticState: string, files: string) {
+function buildZonesForAsk(
+  prompt: string,
+  baseRef: string,
+  semanticState: string,
+  files: string,
+  staticBlockInput: StaticBlockInput = {}
+) {
   return {
-    staticBlock: buildStaticBlock({}),
+    staticBlock: buildStaticBlock(staticBlockInput),
     stateLayer: buildStateLayer({ semanticStateJson: semanticState, fileIndex: files }),
     dynamicInput: buildDynamicInput({ prompt, gitDiff: getGitDiffSince(baseRef) })
   };
@@ -161,6 +175,15 @@ program.command("init").description("Initialize Relay in the current repository.
   writeFileSync(join(relayDir, "memory", "semantic-state.json"), serializeSemanticState(createEmptySemanticState()));
   writeFileSync(join(relayDir, "memory", "session.raw.md"), "# Raw Session History\n");
   writeFileSync(join(relayDir, "memory", "session.compacted.md"), "# Compacted Session History\n");
+  if (!existsSync(join(relayDir, "memory", "project-rules.md"))) {
+    writeFileSync(join(relayDir, "memory", "project-rules.md"), "# Project Rules\n\nAdd project-specific coding conventions and rules here.\n");
+  }
+  if (!existsSync(join(relayDir, "memory", "architecture-notes.md"))) {
+    writeFileSync(join(relayDir, "memory", "architecture-notes.md"), "# Architecture Notes\n\nDocument stable architectural decisions and patterns here.\n");
+  }
+  if (!existsSync(join(relayDir, "memory", "source-snapshot.md"))) {
+    writeFileSync(join(relayDir, "memory", "source-snapshot.md"), "# Source Snapshot\n\nPaste stable key source files here to maximize prompt-cache prefix size.\n");
+  }
   console.log("Initialized .relay workspace.");
 });
 
@@ -168,7 +191,7 @@ const session = program.command("session").description("Manage Relay sessions.")
 session.command("start").description("Start a git-anchored Relay session.").action(() => {
   ensureRelayDir();
   const trackedPaths = listTrackedFiles();
-  const staticBlock = buildStaticBlock({});
+  const staticBlock = buildStaticBlock(readStaticBlockInput(relayDir));
   const stateLayer = buildStateLayer({
     semanticStateJson: serializeSemanticState(createEmptySemanticState()),
     fileIndex: trackedPaths.slice(0, 200).join("\n")
@@ -212,7 +235,7 @@ program.command("ask")
     const sessionData = parseSessionJson(sessionText);
     const baseRef = (sessionData.base_git_sha as string | undefined) ?? "HEAD";
 
-    const zones = buildZonesForAsk(prompt, baseRef, semanticState, files);
+    const zones = buildZonesForAsk(prompt, baseRef, semanticState, files, readStaticBlockInput(relayDir));
     const payload = buildPromptPayload(zones);
     const budget = checkTokenBudget(payload, cfg.tokens);
 
@@ -305,7 +328,7 @@ program.command("mcp").description("Run Relay as a read-only MCP context server 
 const cache = program.command("cache").description("Inspect deterministic prompt-cache metadata.");
 cache.command("fingerprint").description("Print current static/state prefix hash.").action(() => {
   const semanticState = readOptional(join(relayDir, "memory", "semantic-state.json"), serializeSemanticState(createEmptySemanticState()));
-  const staticBlock = buildStaticBlock({});
+  const staticBlock = buildStaticBlock(readStaticBlockInput(relayDir));
   const stateLayer = buildStateLayer({ semanticStateJson: semanticState });
   console.log(getPrefixHash(staticBlock, stateLayer));
 });
@@ -326,7 +349,7 @@ cache.command("inspect")
     const sessionData = sessionExists ? parseSessionJson(readFileSync(sessionPath, "utf8")) : {};
     const baseRef = (sessionData.base_git_sha as string | undefined) ?? "HEAD";
     const files = listTrackedFiles().slice(0, 200).join("\n");
-    const staticBlock = buildStaticBlock({});
+    const staticBlock = buildStaticBlock(readStaticBlockInput(relayDir));
     const stateLayer = buildStateLayer({ semanticStateJson: semanticState, fileIndex: files });
     const dynamicInput = buildDynamicInput({ prompt: "(cache inspect)", gitDiff: getGitDiffSince(baseRef) });
     const savedPrefixHash = sessionData.prefix_hash as string | undefined;
@@ -376,7 +399,7 @@ cache.command("warm")
     const semanticState = readOptional(join(relayDir, "memory", "semantic-state.json"), serializeSemanticState(createEmptySemanticState()));
     const files = listTrackedFiles().slice(0, 200).join("\n");
     const zones = {
-      staticBlock: buildStaticBlock({}),
+      staticBlock: buildStaticBlock(readStaticBlockInput(relayDir)),
       stateLayer: buildStateLayer({ semanticStateJson: semanticState, fileIndex: files }),
       dynamicInput: buildDynamicInput({ prompt: "(cache warm)", gitDiff: "" })
     };

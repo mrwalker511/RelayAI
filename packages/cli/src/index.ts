@@ -592,7 +592,7 @@ context.command("inspect").description("Print current context construction diagn
   const files = listTrackedFiles().slice(0, 200).join("\n");
   const gitDiff = getGitDiffSince(baseRef);
   const zones = {
-    staticBlock: buildStaticBlock({}),
+    staticBlock: buildStaticBlock(readStaticBlockInput(relayDir)),
     stateLayer: buildStateLayer({ semanticStateJson: semanticState, fileIndex: files }),
     dynamicInput: buildDynamicInput({ prompt: "(inspect)", gitDiff })
   };

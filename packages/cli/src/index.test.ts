@@ -218,7 +218,7 @@ test("relay context inspect reports session prefix comparison when a session exi
   assert.equal(result.status, 0);
   assert.equal(report.session.exists, true);
   assert.equal(typeof report.session.prefix_hash, "string");
-  assert.equal(typeof report.prefix.matches_session, "boolean");
+  assert.equal(report.prefix.matches_session, true);
 });
 
 test("relay session start writes per-zone prefix hashes", { skip: canSpawnNode ? false : "nested Node execution is unavailable in this sandbox" }, () => {

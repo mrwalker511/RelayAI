@@ -217,12 +217,16 @@ export function readRelayWorkspace(options: RelayWorkspaceOptions = {}): RelayWo
   const config = readRelayConfig(join(relayDir, "config.json"));
   const state = readSemanticState(join(relayDir, "memory", "semantic-state.json"));
   const session = readSession(join(relayDir, "session.json"));
-  const baseRef = session.base_git_sha ?? "HEAD";
+  const baseRef = (session.base_git_sha && session.base_git_sha !== "unknown") ? session.base_git_sha : "HEAD";
   const trackedPaths = listTrackedFiles(cwd);
   const includedPaths = trackedPaths.slice(0, 200);
   const gitDiff = getGitDiffSince(baseRef, cwd);
   const zones = {
-    staticBlock: buildStaticBlock({}),
+    staticBlock: buildStaticBlock({
+      projectRules: readOptional(join(relayDir, "memory", "project-rules.md")) || undefined,
+      architectureNotes: readOptional(join(relayDir, "memory", "architecture-notes.md")) || undefined,
+      sourceSnapshot: readOptional(join(relayDir, "memory", "source-snapshot.md")) || undefined,
+    }),
     stateLayer: buildStateLayer({ semanticStateJson: state.json, fileIndex: includedPaths.join("\n") }),
     dynamicInput: buildDynamicInput({ prompt, gitDiff })
   };

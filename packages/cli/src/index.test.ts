@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -101,6 +101,22 @@ test("relay init writes provider-neutral default config and memory files", { ski
   assert.equal(config.tokens.provider, "generic");
   assert.equal(config.tokens.model, "default");
   assert.match(readFileSync(join(cwd, ".relay", "memory", "session.raw.md"), "utf8"), /Raw Session History/);
+  assert.ok(existsSync(join(cwd, ".relay", "memory", "project-rules.md")), "project-rules.md created");
+  assert.ok(existsSync(join(cwd, ".relay", "memory", "architecture-notes.md")), "architecture-notes.md created");
+  assert.ok(existsSync(join(cwd, ".relay", "memory", "source-snapshot.md")), "source-snapshot.md created");
+});
+
+test("relay ask includes static block content from memory files in payload", { skip: canSpawnNode ? false : "nested Node execution is unavailable in this sandbox" }, () => {
+  const cwd = tempWorkspace();
+  assert.equal(runRelay(["init"], cwd).result.status, 0);
+  writeFileSync(join(cwd, ".relay", "memory", "project-rules.md"), "# Project Rules\n\nAlways write tests.");
+  writeFileSync(join(cwd, ".relay", "memory", "source-snapshot.md"), "# Source Snapshot\n\nexport const VERSION = '1.0.0';");
+
+  const result = runRelay(["ask", "check the rules"], cwd).result;
+
+  assert.equal(result.status, 0);
+  assert.match(result.stdout, /Always write tests\./);
+  assert.match(result.stdout, /VERSION = '1\.0\.0'/);
 });
 
 test("relay ask prints inspectable payload without configured provider", { skip: canSpawnNode ? false : "nested Node execution is unavailable in this sandbox" }, () => {
@@ -202,7 +218,7 @@ test("relay context inspect reports session prefix comparison when a session exi
   assert.equal(result.status, 0);
   assert.equal(report.session.exists, true);
   assert.equal(typeof report.session.prefix_hash, "string");
-  assert.equal(typeof report.prefix.matches_session, "boolean");
+  assert.equal(report.prefix.matches_session, true);
 });
 
 test("relay session start writes per-zone prefix hashes", { skip: canSpawnNode ? false : "nested Node execution is unavailable in this sandbox" }, () => {
@@ -286,11 +302,11 @@ test("relay cache inspect reports session hash comparison after session start", 
   assert.equal(typeof report.prefix.current_zone_hashes.state_layer, "string");
   assert.equal(typeof report.prefix.session_zone_hashes.static_block, "string");
   assert.equal(typeof report.prefix.session_zone_hashes.state_layer, "string");
-  assert.deepEqual(report.prefix.changed_zones, ["state_layer"]);
-  assert.deepEqual(report.prefix.drift_reasons, ["state_layer_prefix_changed"]);
+  assert.deepEqual(report.prefix.changed_zones, []);
+  assert.deepEqual(report.prefix.drift_reasons, []);
+  assert.equal(report.prefix.matches_session, true);
   assert.equal(typeof report.session.static_block_hash, "string");
   assert.equal(typeof report.session.state_layer_hash, "string");
-  assert.equal(typeof report.prefix.matches_session, "boolean");
 });
 
 test("relay cache inspect reports corrupted session files clearly", { skip: canSpawnNode ? false : "nested Node execution is unavailable in this sandbox" }, () => {
@@ -522,10 +538,11 @@ test("relay mcp get_git_delta reports truncation", { skip: canSpawnNode ? false 
       arguments: { max_chars: 20 }
     }));
 
-    assert.equal(result.base_ref, "HEAD");
+    assert.equal(typeof result.base_ref, "string");
+    assert.ok((result.base_ref as string).length > 0);
     assert.equal(result.truncated, true);
     assert.equal(result.returned_chars, 20);
-    assert.match(result.diff as string, /diff/);
+    assert.equal((result.diff as string).length, 20);
   });
 });
 

@@ -13,6 +13,7 @@ function tempGitWorkspace(): string {
   execFileSync("git", ["init"], { cwd, stdio: "ignore" });
   execFileSync("git", ["config", "user.email", "relay@example.test"], { cwd, stdio: "ignore" });
   execFileSync("git", ["config", "user.name", "Relay Test"], { cwd, stdio: "ignore" });
+  execFileSync("git", ["config", "commit.gpgsign", "false"], { cwd, stdio: "ignore" });
   writeFileSync(join(cwd, "README.md"), "# Test\n");
   execFileSync("git", ["add", "README.md"], { cwd, stdio: "ignore" });
   execFileSync("git", ["commit", "-m", "init"], { cwd, stdio: "ignore" });

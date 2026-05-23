@@ -20,6 +20,7 @@ const baseConfig: RelayConfig = {
     warningLimit: 50000,
     requireConfirmationAbove: 75000,
   },
+  files: { maxIndex: 200 },
 };
 
 test("createShellProvider resolves a configured provider command", () => {
@@ -37,6 +38,16 @@ test("createShellProvider resolves a configured provider command", () => {
   assert.equal(provider.commandLine, "llm --model dev");
 });
 
-test("createShellProvider rejects unknown providers without built-in defaults", () => {
+test("createShellProvider rejects unknown providers not in built-in defaults or config", () => {
   assert.throws(() => createShellProvider("missing", baseConfig), /Unknown provider 'missing'/);
+});
+
+test("createShellProvider resolves claude from built-in defaults", () => {
+  const provider = createShellProvider("claude", baseConfig);
+  assert.equal(provider.name, "claude");
+  assert.equal(provider.commandLine, "claude");
+});
+
+test("createShellProvider error message lists built-in provider names", () => {
+  assert.throws(() => createShellProvider("missing", baseConfig), /Built-in providers: claude, openai/);
 });

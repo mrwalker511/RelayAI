@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { DEFAULT_RELAY_CONFIG, RelayConfigSchema } from "./config/relay-config.js";
 import type { RelayConfig } from "./config/relay-config.js";
@@ -14,6 +14,7 @@ import { createEmptySemanticState, serializeSemanticState } from "./memory/seman
 import type { SemanticState } from "./memory/semantic-state.js";
 import { checkTokenBudget, inspectZoneTokens } from "./tokens/budget.js";
 import { estimateTokens } from "./tokens/tokenizer.js";
+import { readOptional } from "./utils/fs.js";
 
 export interface RelayWorkspaceOptions {
   cwd?: string;
@@ -94,10 +95,6 @@ export interface RelayWorkspaceSnapshot {
     confirmation_threshold: number;
     hard_limit: number;
   };
-}
-
-function readOptional(path: string, fallback = ""): string {
-  return existsSync(path) ? readFileSync(path, "utf8") : fallback;
 }
 
 function parseJsonObject(text: string): { valid: boolean; data: Record<string, unknown>; error: string | null } {
@@ -219,7 +216,7 @@ export function readRelayWorkspace(options: RelayWorkspaceOptions = {}): RelayWo
   const session = readSession(join(relayDir, "session.json"));
   const baseRef = (session.base_git_sha && session.base_git_sha !== "unknown") ? session.base_git_sha : "HEAD";
   const trackedPaths = listTrackedFiles(cwd);
-  const includedPaths = trackedPaths.slice(0, 200);
+  const includedPaths = trackedPaths.slice(0, config.value.files.maxIndex);
   const gitDiff = getGitDiffSince(baseRef, cwd);
   const zones = {
     staticBlock: buildStaticBlock({

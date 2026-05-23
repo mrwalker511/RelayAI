@@ -1,4 +1,5 @@
 export * from "./config/relay-config.js";
+export * from "./utils/fs.js";
 export * from "./context/payload-builder.js";
 export * from "./context/prefix-hash.js";
 export * from "./context/cache-diagnostics.js";

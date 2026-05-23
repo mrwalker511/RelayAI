@@ -1,4 +1,5 @@
 import { spawn } from "node:child_process";
+import { estimateTokens } from "../tokens/tokenizer.js";
 import type { SemanticState } from "./semantic-state.js";
 
 export interface CompactionResult {
@@ -100,7 +101,7 @@ export async function compactHistoryToState(rawHistory: string, existingState: S
   return {
     semanticState,
     compactedMarkdown,
-    originalApproxTokens: Math.ceil(rawHistory.length / 4),
-    compactedApproxTokens: Math.ceil(compactedMarkdown.length / 4),
+    originalApproxTokens: estimateTokens(rawHistory).tokens,
+    compactedApproxTokens: estimateTokens(compactedMarkdown).tokens,
   };
 }

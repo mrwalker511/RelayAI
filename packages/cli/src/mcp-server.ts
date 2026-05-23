@@ -39,7 +39,8 @@ function publicBudget(snapshot: ReturnType<typeof readRelayWorkspace>) {
   };
 }
 
-export function createRelayMcpServer(cwd = process.cwd()): McpServer {
+export function createRelayMcpServer(cwd?: string): McpServer {
+  const resolveCwd = () => cwd ?? process.cwd();
   const server = new McpServer({
     name: "relay",
     version: "0.1.0"
@@ -61,7 +62,7 @@ export function createRelayMcpServer(cwd = process.cwd()): McpServer {
       }
     },
     async ({ prompt }) => {
-      const snapshot = readRelayWorkspace({ cwd, prompt });
+      const snapshot = readRelayWorkspace({ cwd: resolveCwd(), prompt });
       const base = {
         blocked: snapshot.budget.status === "blocked",
         budget: publicBudget(snapshot),
@@ -200,7 +201,7 @@ export function createRelayMcpServer(cwd = process.cwd()): McpServer {
       }
     },
     async ({ prompt }) => {
-      const snapshot = readRelayWorkspace({ cwd, prompt });
+      const snapshot = readRelayWorkspace({ cwd: resolveCwd(), prompt });
       return jsonContent({
         zones: snapshot.zone_tokens,
         budget: publicBudget(snapshot)

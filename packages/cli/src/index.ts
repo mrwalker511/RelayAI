@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { Command, InvalidArgumentError } from "commander";
-import { appendFileSync, mkdirSync, writeFileSync, readFileSync, existsSync } from "node:fs";
+import { appendFileSync, mkdirSync, unlinkSync, writeFileSync, readFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { createInterface } from "node:readline";
 import { runMcpServer } from "./mcp-server.js";
@@ -24,6 +24,7 @@ import {
   inspectCacheDiagnostics,
   inspectZoneTokens,
   listTrackedFiles,
+  readOptional,
   runRelayDoctor,
   serializeSemanticState
 } from "@relay/core";
@@ -35,10 +36,6 @@ const callLogPath = join(relayDir, "calls.json");
 
 function ensureRelayDir(): void {
   mkdirSync(join(relayDir, "memory"), { recursive: true });
-}
-
-function readOptional(path: string, fallback = ""): string {
-  return existsSync(path) ? readFileSync(path, "utf8") : fallback;
 }
 
 function readRelayConfig(): RelayConfig {
@@ -103,17 +100,6 @@ function readStaticBlockInput(dir: string): StaticBlockInput {
   };
 }
 
-function printZoneBreakdown(zones: ReturnType<typeof buildZonesForAsk>): void {
-  const report = inspectZoneTokens(zones);
-  process.stderr.write(
-    `Token breakdown:\n` +
-    `  static_block  ${report.staticBlock.toLocaleString()}\n` +
-    `  state_layer   ${report.stateLayer.toLocaleString()}\n` +
-    `  dynamic_input ${report.dynamicInput.toLocaleString()}\n` +
-    `  total         ${report.total.toLocaleString()}\n`
-  );
-}
-
 function buildZonesForAsk(
   prompt: string,
   baseRef: string,
@@ -126,6 +112,17 @@ function buildZonesForAsk(
     stateLayer: buildStateLayer({ semanticStateJson: semanticState, fileIndex: files }),
     dynamicInput: buildDynamicInput({ prompt, gitDiff: getGitDiffSince(baseRef) })
   };
+}
+
+function printZoneBreakdown(zones: ReturnType<typeof buildZonesForAsk>): void {
+  const report = inspectZoneTokens(zones);
+  process.stderr.write(
+    `Token breakdown:\n` +
+    `  static_block  ${report.staticBlock.toLocaleString()}\n` +
+    `  state_layer   ${report.stateLayer.toLocaleString()}\n` +
+    `  dynamic_input ${report.dynamicInput.toLocaleString()}\n` +
+    `  total         ${report.total.toLocaleString()}\n`
+  );
 }
 
 function parseSessionJson(sessionText: string): Record<string, unknown> {
@@ -144,6 +141,7 @@ function appendAskHistory(entry: {
   baseRef: string;
   route: string;
   provider?: string;
+  model?: string;
   providerExitCode?: number;
 }): void {
   const rawPath = join(relayDir, "memory", "session.raw.md");
@@ -153,6 +151,7 @@ function appendAskHistory(entry: {
     "",
     `- route: ${entry.route}`,
     `- provider: ${entry.provider ?? "none"}`,
+    `- model: ${entry.model ?? "default"}`,
     `- base_ref: ${entry.baseRef}`,
     `- budget_status: ${entry.budgetStatus}`,
     `- budget_tokens: ${entry.budgetTokens}`,
@@ -184,17 +183,24 @@ program.command("init").description("Initialize Relay in the current repository.
   if (!existsSync(join(relayDir, "memory", "source-snapshot.md"))) {
     writeFileSync(join(relayDir, "memory", "source-snapshot.md"), "# Source Snapshot\n\nPaste stable key source files here to maximize prompt-cache prefix size.\n");
   }
+  const gitignorePath = join(process.cwd(), ".gitignore");
+  const gitignoreContent = existsSync(gitignorePath) ? readFileSync(gitignorePath, "utf8") : "";
+  if (!gitignoreContent.split("\n").some(line => line.trim() === ".relay")) {
+    appendFileSync(gitignorePath, gitignoreContent.endsWith("\n") || gitignoreContent === "" ? ".relay\n" : "\n.relay\n");
+    console.log("Added .relay to .gitignore.");
+  }
   console.log("Initialized .relay workspace.");
 });
 
 const session = program.command("session").description("Manage Relay sessions.");
 session.command("start").description("Start a git-anchored Relay session.").action(() => {
   ensureRelayDir();
+  const cfg = readRelayConfig();
   const trackedPaths = listTrackedFiles();
   const staticBlock = buildStaticBlock(readStaticBlockInput(relayDir));
   const stateLayer = buildStateLayer({
     semanticStateJson: serializeSemanticState(createEmptySemanticState()),
-    fileIndex: trackedPaths.slice(0, 200).join("\n")
+    fileIndex: trackedPaths.slice(0, cfg.files.maxIndex).join("\n")
   });
   const prefixHash = getPrefixHash(staticBlock, stateLayer);
   const snapshot = createSessionSnapshot(trackedPaths, {
@@ -210,13 +216,31 @@ session.command("start").description("Start a git-anchored Relay session.").acti
 session.command("status").description("Show current Relay session metadata.").action(() => {
   console.log(readOptional(join(relayDir, "session.json"), "No active session found."));
 });
+session.command("end")
+  .description("End the current Relay session, removing session metadata.")
+  .option("--reset-memory", "Also reset raw history and semantic state to empty defaults")
+  .action((options: { resetMemory?: boolean }) => {
+    const sessionPath = join(relayDir, "session.json");
+    if (!existsSync(sessionPath)) {
+      process.stderr.write("No active session found.\n");
+      process.exit(1);
+    }
+    unlinkSync(sessionPath);
+    console.log("Relay session ended.");
+    if (options.resetMemory) {
+      writeFileSync(join(relayDir, "memory", "session.raw.md"), "# Raw Session History\n");
+      writeFileSync(join(relayDir, "memory", "semantic-state.json"), serializeSemanticState(createEmptySemanticState()));
+      console.log("Memory files reset to defaults.");
+    }
+  });
 
 program.command("ask")
   .argument("<prompt>", "Prompt to route through Relay context construction.")
   .description("Build a cache-optimized prompt payload.")
   .option("--provider <name>", "Route the payload through a configured provider")
+  .option("--model <model>", "Model name for token cost estimation (e.g. claude-opus-4-7)")
   .option("--dry-run", "Print the resolved command and payload without executing")
-  .action(async (prompt: string, options: { provider?: string; dryRun?: boolean }) => {
+  .action(async (prompt: string, options: { provider?: string; model?: string; dryRun?: boolean }) => {
     ensureRelayDir();
 
     // Anomaly detection — include current call before checking threshold
@@ -230,7 +254,7 @@ program.command("ask")
 
     const cfg = readRelayConfig();
     const semanticState = readOptional(join(relayDir, "memory", "semantic-state.json"), serializeSemanticState(createEmptySemanticState()));
-    const files = listTrackedFiles().slice(0, 200).join("\n");
+    const files = listTrackedFiles().slice(0, cfg.files.maxIndex).join("\n");
     const sessionText = readOptional(join(relayDir, "session.json"), "{}");
     const sessionData = parseSessionJson(sessionText);
     const baseRef = (sessionData.base_git_sha as string | undefined) ?? "HEAD";
@@ -269,7 +293,8 @@ program.command("ask")
         budgetStatus: budget.status,
         baseRef,
         route: "dry-run",
-        provider: name
+        provider: name,
+        model: options.model
       });
       process.stderr.write(`[dry-run] ${provider.commandLine} < <relay-payload>\n`);
       console.log("---BEGIN RELAY PAYLOAD---");
@@ -290,6 +315,7 @@ program.command("ask")
         baseRef,
         route: "provider",
         provider: options.provider,
+        model: options.model,
         providerExitCode: exitCode
       });
       process.exit(exitCode);
@@ -300,7 +326,8 @@ program.command("ask")
       budgetTokens: budget.tokens,
       budgetStatus: budget.status,
       baseRef,
-      route: "stdout"
+      route: "stdout",
+      model: options.model
     });
     console.log("---BEGIN RELAY PAYLOAD---");
     console.log(payload);
@@ -348,7 +375,7 @@ cache.command("inspect")
     const sessionExists = existsSync(sessionPath);
     const sessionData = sessionExists ? parseSessionJson(readFileSync(sessionPath, "utf8")) : {};
     const baseRef = (sessionData.base_git_sha as string | undefined) ?? "HEAD";
-    const files = listTrackedFiles().slice(0, 200).join("\n");
+    const files = listTrackedFiles().slice(0, readRelayConfig().files.maxIndex).join("\n");
     const staticBlock = buildStaticBlock(readStaticBlockInput(relayDir));
     const stateLayer = buildStateLayer({ semanticStateJson: semanticState, fileIndex: files });
     const dynamicInput = buildDynamicInput({ prompt: "(cache inspect)", gitDiff: getGitDiffSince(baseRef) });
@@ -397,7 +424,7 @@ cache.command("warm")
     ensureRelayDir();
     const cfg = readRelayConfig();
     const semanticState = readOptional(join(relayDir, "memory", "semantic-state.json"), serializeSemanticState(createEmptySemanticState()));
-    const files = listTrackedFiles().slice(0, 200).join("\n");
+    const files = listTrackedFiles().slice(0, cfg.files.maxIndex).join("\n");
     const zones = {
       staticBlock: buildStaticBlock(readStaticBlockInput(relayDir)),
       stateLayer: buildStateLayer({ semanticStateJson: semanticState, fileIndex: files }),
@@ -451,14 +478,14 @@ tokens.command("budget").description("Show current token budget.").action(() => 
 });
 tokens.command("inspect").description("Show zone-by-zone token breakdown for the current session state.").action(() => {
   ensureRelayDir();
+  const cfg = readRelayConfig();
   const semanticState = readOptional(join(relayDir, "memory", "semantic-state.json"), serializeSemanticState(createEmptySemanticState()));
-  const files = listTrackedFiles().slice(0, 200).join("\n");
+  const files = listTrackedFiles().slice(0, cfg.files.maxIndex).join("\n");
   const sessionText = readOptional(join(relayDir, "session.json"), "{}");
   const sessionData = parseSessionJson(sessionText);
   const baseRef = (sessionData.base_git_sha as string | undefined) ?? "HEAD";
   const zones = buildZonesForAsk("(inspect)", baseRef, semanticState, files);
   const report = inspectZoneTokens(zones);
-  const cfg = readRelayConfig().tokens;
   console.log(JSON.stringify({
     zones: {
       static_block: report.staticBlock,
@@ -467,10 +494,10 @@ tokens.command("inspect").description("Show zone-by-zone token breakdown for the
       total: report.total
     },
     budget: {
-      warning_limit: cfg.warningLimit,
-      confirmation_threshold: cfg.requireConfirmationAbove,
-      hard_limit: cfg.hardLimit,
-      status: checkTokenBudget(buildPromptPayload(zones), cfg).status
+      warning_limit: cfg.tokens.warningLimit,
+      confirmation_threshold: cfg.tokens.requireConfirmationAbove,
+      hard_limit: cfg.tokens.hardLimit,
+      status: checkTokenBudget(buildPromptPayload(zones), cfg.tokens).status
     }
   }, null, 2));
 });
@@ -514,6 +541,7 @@ gc.command("run").description("Compact session history into semantic state using
   try {
     const result = await compactHistoryToState(rawHistory, existingState, { command: gcCommand });
     writeFileSync(statePath, serializeSemanticState(result.semanticState));
+    writeFileSync(join(relayDir, "memory", "session.compacted.md"), result.compactedMarkdown);
     writeFileSync(rawPath, "# Raw Session History\n");
     console.log(`Compacted: ${result.originalApproxTokens.toLocaleString()} → ${result.compactedApproxTokens.toLocaleString()} tokens.`);
     console.log("Snapshot saved to semantic-state.snapshot.json. Run `relay gc restore` to roll back.");
@@ -589,7 +617,7 @@ context.command("inspect").description("Print current context construction diagn
   const sessionExists = existsSync(sessionPath);
   const sessionData = sessionExists ? parseSessionJson(readFileSync(sessionPath, "utf8")) : {};
   const baseRef = (sessionData.base_git_sha as string | undefined) ?? "HEAD";
-  const files = listTrackedFiles().slice(0, 200).join("\n");
+  const files = listTrackedFiles().slice(0, cfg.files.maxIndex).join("\n");
   const gitDiff = getGitDiffSince(baseRef);
   const zones = {
     staticBlock: buildStaticBlock(readStaticBlockInput(relayDir)),

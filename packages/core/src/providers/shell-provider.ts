@@ -2,7 +2,12 @@ import { spawn } from "node:child_process";
 import type { RelayConfig } from "../config/relay-config.js";
 import type { ProviderAdapter } from "./provider.js";
 
-const PROVIDER_DEFAULTS: Record<string, string[]> = {};
+const PROVIDER_DEFAULTS: Record<string, string[]> = {
+  claude: ["claude"],
+  openai: ["sgpt"],
+  aider: ["aider", "--no-git"],
+  llm: ["llm"],
+};
 
 export class ShellProvider implements ProviderAdapter {
   constructor(
@@ -32,9 +37,13 @@ export class ShellProvider implements ProviderAdapter {
 
 export function createShellProvider(name: string, config: RelayConfig): ShellProvider {
   const template = config.provider.commands?.[name] ?? PROVIDER_DEFAULTS[name];
-  if (!template || template.length === 0) throw new Error(
-    `Unknown provider '${name}'. Add it to provider.commands in .relay/config.json.`
-  );
+  if (!template || template.length === 0) {
+    const known = Object.keys(PROVIDER_DEFAULTS);
+    throw new Error(
+      `Unknown provider '${name}'. Built-in providers: ${known.join(", ")}. ` +
+      `To add a custom provider, set provider.commands["${name}"] in .relay/config.json.`
+    );
+  }
   const [command, ...args] = template;
   return new ShellProvider(name, command, args);
 }

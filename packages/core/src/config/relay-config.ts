@@ -20,6 +20,9 @@ export const RelayConfigSchema = z.object({
     hardLimit: z.number().int().positive().default(100000),
     warningLimit: z.number().int().positive().default(50000),
     requireConfirmationAbove: z.number().int().positive().default(75000)
+  }).default({}),
+  files: z.object({
+    maxIndex: z.number().int().positive().default(200)
   }).default({})
 });
 

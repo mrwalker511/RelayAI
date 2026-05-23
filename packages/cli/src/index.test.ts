@@ -573,3 +573,161 @@ test("relay session start writes real git tracked paths", { skip: canSpawnNode ?
   assert.equal(result.status, 0);
   assert.deepEqual(session.tracked_paths, ["package.json", "src/app.ts"]);
 });
+
+test("relay session end removes session.json", { skip: canSpawnNode ? false : "nested Node execution is unavailable in this sandbox" }, () => {
+  const cwd = tempGitWorkspace();
+  assert.equal(runRelay(["init"], cwd).result.status, 0);
+  assert.equal(runRelay(["session", "start"], cwd).result.status, 0);
+  assert.ok(existsSync(join(cwd, ".relay", "session.json")));
+
+  const result = runRelay(["session", "end"], cwd).result;
+
+  assert.equal(result.status, 0);
+  assert.ok(!existsSync(join(cwd, ".relay", "session.json")));
+  assert.match(result.stdout, /session ended/i);
+});
+
+test("relay session end reports error when no session is active", { skip: canSpawnNode ? false : "nested Node execution is unavailable in this sandbox" }, () => {
+  const cwd = tempWorkspace();
+  assert.equal(runRelay(["init"], cwd).result.status, 0);
+
+  const result = runRelay(["session", "end"], cwd).result;
+
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /No active session/);
+});
+
+test("relay session end --reset-memory resets raw history and semantic state", { skip: canSpawnNode ? false : "nested Node execution is unavailable in this sandbox" }, () => {
+  const cwd = tempGitWorkspace();
+  assert.equal(runRelay(["init"], cwd).result.status, 0);
+  assert.equal(runRelay(["session", "start"], cwd).result.status, 0);
+  writeFileSync(join(cwd, ".relay", "memory", "session.raw.md"), "# Raw Session History\nsome history");
+
+  const result = runRelay(["session", "end", "--reset-memory"], cwd).result;
+
+  assert.equal(result.status, 0);
+  const raw = readFileSync(join(cwd, ".relay", "memory", "session.raw.md"), "utf8");
+  assert.equal(raw.trim(), "# Raw Session History");
+});
+
+test("relay init creates .gitignore with .relay entry when none exists", { skip: canSpawnNode ? false : "nested Node execution is unavailable in this sandbox" }, () => {
+  const { cwd, result } = runRelay(["init"]);
+
+  assert.equal(result.status, 0);
+  const gitignore = readFileSync(join(cwd, ".gitignore"), "utf8");
+  assert.match(gitignore, /^\.relay$/m);
+});
+
+test("relay init appends .relay to existing .gitignore without duplicating", { skip: canSpawnNode ? false : "nested Node execution is unavailable in this sandbox" }, () => {
+  const cwd = tempWorkspace();
+  writeFileSync(join(cwd, ".gitignore"), "node_modules\ndist\n");
+  runRelay(["init"], cwd);
+  runRelay(["init"], cwd);
+
+  const gitignore = readFileSync(join(cwd, ".gitignore"), "utf8");
+  const relayLines = gitignore.split("\n").filter(l => l.trim() === ".relay");
+  assert.equal(relayLines.length, 1, ".relay should appear exactly once");
+  assert.match(gitignore, /node_modules/);
+});
+
+test("relay init does not modify .gitignore that already contains .relay", { skip: canSpawnNode ? false : "nested Node execution is unavailable in this sandbox" }, () => {
+  const cwd = tempWorkspace();
+  const original = "node_modules\n.relay\ndist\n";
+  writeFileSync(join(cwd, ".gitignore"), original);
+  runRelay(["init"], cwd);
+
+  const gitignore = readFileSync(join(cwd, ".gitignore"), "utf8");
+  assert.equal(gitignore, original);
+});
+
+test("relay ask --model flag is accepted and does not change exit code", { skip: canSpawnNode ? false : "nested Node execution is unavailable in this sandbox" }, () => {
+  const cwd = tempWorkspace();
+  assert.equal(runRelay(["init"], cwd).result.status, 0);
+
+  const result = runRelay(["ask", "--model", "claude-opus-4-7", "hello"], cwd).result;
+
+  assert.equal(result.status, 0);
+  assert.match(result.stdout, /---BEGIN RELAY PAYLOAD---/);
+});
+
+test("relay ask --model is recorded in raw session history", { skip: canSpawnNode ? false : "nested Node execution is unavailable in this sandbox" }, () => {
+  const cwd = tempWorkspace();
+  assert.equal(runRelay(["init"], cwd).result.status, 0);
+
+  runRelay(["ask", "--model", "claude-opus-4-7", "model test"], cwd);
+  const raw = readFileSync(join(cwd, ".relay", "memory", "session.raw.md"), "utf8");
+
+  assert.match(raw, /- model: claude-opus-4-7/);
+});
+
+test("relay gc run writes compactedMarkdown to session.compacted.md", { skip: canSpawnNode ? false : "nested Node execution is unavailable in this sandbox" }, async () => {
+  const cwd = tempWorkspace();
+  assert.equal(runRelay(["init"], cwd).result.status, 0);
+
+  const json = JSON.stringify({
+    active_target: null,
+    current_goal: "write compact tests",
+    runtime_errors: [],
+    verified_hypotheses: [],
+    rejected_hypotheses: [],
+    next_actions: ["add more tests"],
+    code_changes: []
+  });
+  const configPath = join(cwd, ".relay", "config.json");
+  const config = JSON.parse(readFileSync(configPath, "utf8"));
+  config.gc = {
+    ...config.gc,
+    command: [process.execPath, "-e", `process.stdin.resume(); process.stdin.on('end', () => { process.stdout.write(${JSON.stringify(json)}); });`]
+  };
+  writeFileSync(configPath, JSON.stringify(config, null, 2));
+  writeFileSync(join(cwd, ".relay", "memory", "session.raw.md"), "# Raw Session History\nSome history here.");
+
+  const result = runRelay(["gc", "run"], cwd).result;
+
+  assert.equal(result.status, 0);
+  const compacted = readFileSync(join(cwd, ".relay", "memory", "session.compacted.md"), "utf8");
+  assert.match(compacted, /write compact tests/);
+  assert.match(compacted, /# Compacted Session/);
+});
+
+test("relay mcp get_project_context returns workspace cwd", { skip: canSpawnNode ? false : "nested Node execution is unavailable in this sandbox" }, async () => {
+  const cwd = tempWorkspace();
+  assert.equal(runRelay(["init"], cwd).result.status, 0);
+
+  await withMcpServer(cwd, async (request) => {
+    const result = parseToolJson(await request("tools/call", {
+      name: "get_project_context",
+      arguments: {}
+    }));
+    assert.equal(result.cwd, cwd);
+  });
+});
+
+test("relay mcp get_token_budget returns zone token counts", { skip: canSpawnNode ? false : "nested Node execution is unavailable in this sandbox" }, async () => {
+  const cwd = tempWorkspace();
+  assert.equal(runRelay(["init"], cwd).result.status, 0);
+
+  await withMcpServer(cwd, async (request) => {
+    const result = parseToolJson(await request("tools/call", {
+      name: "get_token_budget",
+      arguments: { prompt: "test prompt" }
+    }));
+    assert.equal(typeof (result.zones as { total: number }).total, "number");
+    assert.equal((result.budget as { status: string }).status, "ok");
+  });
+});
+
+test("relay mcp get_semantic_state reports state path and valid json", { skip: canSpawnNode ? false : "nested Node execution is unavailable in this sandbox" }, async () => {
+  const cwd = tempWorkspace();
+  assert.equal(runRelay(["init"], cwd).result.status, 0);
+
+  await withMcpServer(cwd, async (request) => {
+    const result = parseToolJson(await request("tools/call", {
+      name: "get_semantic_state",
+      arguments: {}
+    }));
+    assert.equal(result.exists, true);
+    assert.equal(result.valid_json, true);
+    assert.ok((result.semantic_state_path as string).endsWith("semantic-state.json"));
+  });
+});

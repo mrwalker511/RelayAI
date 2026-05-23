@@ -59,3 +59,63 @@ test("summarizeContextHealth reports corrupted session", () => {
   assert.equal(health.status, "error");
   assert.equal(health.findings.find((finding) => finding.id === "session")?.status, "error");
 });
+
+test("readRelayWorkspace respects files.maxIndex config for included_paths", () => {
+  const cwd = tempGitWorkspace();
+  mkdirSync(join(cwd, ".relay", "memory"), { recursive: true });
+  writeFileSync(join(cwd, ".relay", "config.json"), JSON.stringify({ files: { maxIndex: 1 } }));
+
+  const snapshot = readRelayWorkspace({ cwd });
+
+  assert.ok(snapshot.files.included_path_count <= 1);
+  assert.ok(snapshot.files.tracked_path_count >= snapshot.files.included_path_count);
+});
+
+test("readRelayWorkspace reads semantic state from memory directory", () => {
+  const cwd = tempGitWorkspace();
+  mkdirSync(join(cwd, ".relay", "memory"), { recursive: true });
+  writeFileSync(join(cwd, ".relay", "memory", "semantic-state.json"), JSON.stringify({
+    active_target: "src/app.ts",
+    current_goal: "verify file reading",
+    runtime_errors: [],
+    verified_hypotheses: [],
+    rejected_hypotheses: [],
+    next_actions: [],
+    code_changes: []
+  }));
+
+  const snapshot = readRelayWorkspace({ cwd });
+
+  assert.equal(snapshot.state.exists, true);
+  assert.equal(snapshot.state.valid_json, true);
+  assert.equal(snapshot.state.parsed?.current_goal, "verify file reading");
+  assert.equal(snapshot.state.parsed?.active_target, "src/app.ts");
+});
+
+test("readRelayWorkspace zone_tokens.total is a positive number for a prompt", () => {
+  const snapshot = readRelayWorkspace({ cwd: tempWorkspace(), prompt: "hello" });
+
+  assert.ok(snapshot.zone_tokens.total > 0);
+  assert.ok(snapshot.zone_tokens.static_block >= 0);
+  assert.ok(snapshot.zone_tokens.dynamic_input > 0);
+});
+
+test("readRelayWorkspace returns zones with non-empty dynamicInput for a prompt", () => {
+  const snapshot = readRelayWorkspace({ cwd: tempWorkspace(), prompt: "test prompt" });
+
+  assert.ok(typeof snapshot.zones.staticBlock === "string");
+  assert.ok(typeof snapshot.zones.stateLayer === "string");
+  assert.ok(typeof snapshot.zones.dynamicInput === "string");
+  assert.ok(snapshot.zones.dynamicInput.includes("test prompt"));
+});
+
+test("summarizeContextHealth returns ok for a valid initialized workspace", () => {
+  const cwd = tempGitWorkspace();
+  mkdirSync(join(cwd, ".relay", "memory"), { recursive: true });
+  writeFileSync(join(cwd, ".relay", "config.json"), JSON.stringify({}));
+
+  const health = summarizeContextHealth(readRelayWorkspace({ cwd }));
+
+  assert.equal(health.findings.find(f => f.id === "config")?.status, "ok");
+  assert.equal(health.findings.find(f => f.id === "token_budget")?.status, "ok");
+});

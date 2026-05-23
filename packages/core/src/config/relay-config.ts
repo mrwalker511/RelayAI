@@ -59,7 +59,7 @@ export const KNOWN_CONTEXT_WINDOWS: Record<string, Record<string, number>> = {
     "gpt-4.1": 128000,
     "o3": 200000,
     "o4-mini": 200000,
-    "claude-3.5-sonnet": 200000,
+    "claude-3-5-sonnet": 200000,
     "claude-sonnet-4": 200000,
     default: 128000
   },

@@ -28,6 +28,7 @@ import {
   inspectZoneTokens,
   listTrackedFiles,
   readOptional,
+  resolveTokenBudget,
   runRelayDoctor,
   serializeSemanticState
 } from "@relay/core";
@@ -280,7 +281,8 @@ program.command("ask")
     const diffOverride = options.staged ? getStagedDiff() : undefined;
     const zones = buildZonesForAsk(prompt, baseRef, semanticState, files, readStaticBlockInput(relayDir), diffOverride, options.diffMode, options.includeTimestamp);
     const payload = buildPromptPayload(zones);
-    const budget = checkTokenBudget(payload, cfg.tokens);
+    const resolvedTokens = resolveTokenBudget(cfg);
+    const budget = checkTokenBudget(payload, resolvedTokens);
 
     printZoneBreakdown(zones);
 
@@ -457,7 +459,8 @@ cache.command("warm")
       dynamicInput: buildDynamicInput({ prompt: "(cache warm)", gitDiff: "" })
     };
     const payload = buildPromptPayload(zones);
-    const budget = checkTokenBudget(payload, cfg.tokens);
+    const resolvedTokens = resolveTokenBudget(cfg);
+    const budget = checkTokenBudget(payload, resolvedTokens);
     const name = options.provider ?? cfg.provider.default;
 
     process.stderr.write(`Prefix hash: ${getPrefixHash(zones.staticBlock, zones.stateLayer)}\n`);
@@ -512,6 +515,7 @@ tokens.command("inspect").description("Show zone-by-zone token breakdown for the
   const baseRef = (sessionData.base_git_sha as string | undefined) ?? "HEAD";
   const zones = buildZonesForAsk("(inspect)", baseRef, semanticState, files);
   const report = inspectZoneTokens(zones);
+  const resolvedTokens = resolveTokenBudget(cfg);
   console.log(JSON.stringify({
     zones: {
       static_block: report.staticBlock,
@@ -520,10 +524,10 @@ tokens.command("inspect").description("Show zone-by-zone token breakdown for the
       total: report.total
     },
     budget: {
-      warning_limit: cfg.tokens.warningLimit,
-      confirmation_threshold: cfg.tokens.requireConfirmationAbove,
-      hard_limit: cfg.tokens.hardLimit,
-      status: checkTokenBudget(buildPromptPayload(zones), cfg.tokens).status
+      warning_limit: resolvedTokens.warningLimit,
+      confirmation_threshold: resolvedTokens.requireConfirmationAbove,
+      hard_limit: resolvedTokens.hardLimit,
+      status: checkTokenBudget(buildPromptPayload(zones), resolvedTokens).status
     }
   }, null, 2));
 });
@@ -604,10 +608,17 @@ gc.command("preview").description("Preview compacted state without writing anyth
   }
   process.stderr.write("Previewing compaction (no changes will be written)...\n");
   const cfg = readRelayConfig();
-  const gcCommand = cfg.gc.command ?? cfg.provider.commands?.[cfg.provider.default];
-  if (!gcCommand || gcCommand.length === 0) {
-    process.stderr.write("Error: configure gc.command or provider.commands for the default provider before running `relay gc preview`.\n");
-    process.exit(1);
+  let gcCommand: string[];
+  if (cfg.gc.command && cfg.gc.command.length > 0) {
+    gcCommand = cfg.gc.command;
+  } else {
+    try {
+      const gcProvider = createShellProviderForTask("gc", cfg);
+      gcCommand = gcProvider.commandTemplate;
+    } catch {
+      process.stderr.write("Error: configure gc.command or provider.commands for the default provider before running `relay gc preview`.\n");
+      process.exit(1);
+    }
   }
 
   try {
@@ -660,7 +671,8 @@ context.command("inspect").description("Print current context construction diagn
   const zoneTokens = inspectZoneTokens(zones);
   const currentPrefixHash = getPrefixHash(zones.staticBlock, zones.stateLayer);
   const savedPrefixHash = sessionData.prefix_hash as string | undefined;
-  const budget = checkTokenBudget(buildPromptPayload(zones), cfg.tokens);
+  const resolvedTokens = resolveTokenBudget(cfg);
+  const budget = checkTokenBudget(buildPromptPayload(zones), resolvedTokens);
 
   console.log(JSON.stringify({
     session: {
@@ -683,9 +695,9 @@ context.command("inspect").description("Print current context construction diagn
       total: zoneTokens.total
     },
     budget: {
-      warning_limit: cfg.tokens.warningLimit,
-      confirmation_threshold: cfg.tokens.requireConfirmationAbove,
-      hard_limit: cfg.tokens.hardLimit,
+      warning_limit: resolvedTokens.warningLimit,
+      confirmation_threshold: resolvedTokens.requireConfirmationAbove,
+      hard_limit: resolvedTokens.hardLimit,
       status: budget.status
     },
     state: {

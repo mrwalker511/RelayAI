@@ -44,6 +44,9 @@ export class ShellProvider implements ProviderAdapter {
   async sendPrompt(payload: string): Promise<number> {
     return new Promise((resolve, reject) => {
       const child = spawn(this.command, this.args, { stdio: ["pipe", "inherit", "inherit"] });
+      child.stdin.on("error", (err: NodeJS.ErrnoException) => {
+        if (err.code !== "EPIPE") reject(err);
+      });
       child.stdin.write(payload);
       child.stdin.end();
       child.on("exit", (code) => resolve(code ?? 0));

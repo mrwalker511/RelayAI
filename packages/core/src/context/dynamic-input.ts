@@ -17,8 +17,9 @@ export function buildDynamicInput(input: DynamicInputInput): string {
   const mode = input.diffMode ?? "auto";
 
   let renderedDiff = rawDiff;
-  if (mode === "summarized" || (mode === "auto" && estimateTokens(rawDiff).tokens > threshold)) {
-    renderedDiff = `[diff summarized — ${estimateTokens(rawDiff).tokens.toLocaleString()} tokens]\n` + summarizeDiff(rawDiff);
+  const diffTokens = estimateTokens(rawDiff).tokens;
+  if (mode === "summarized" || (mode === "auto" && diffTokens > threshold)) {
+    renderedDiff = `[diff summarized — ${diffTokens.toLocaleString()} tokens]\n` + summarizeDiff(rawDiff);
   }
 
   return [

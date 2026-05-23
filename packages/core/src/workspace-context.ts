@@ -1,6 +1,6 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
-import { DEFAULT_RELAY_CONFIG, RelayConfigSchema } from "./config/relay-config.js";
+import { DEFAULT_RELAY_CONFIG, RelayConfigSchema, resolveTokenBudget } from "./config/relay-config.js";
 import type { RelayConfig } from "./config/relay-config.js";
 import { buildDynamicInput } from "./context/dynamic-input.js";
 import { buildPromptPayload } from "./context/payload-builder.js";
@@ -9,8 +9,8 @@ import { buildStateLayer } from "./context/state-layer.js";
 import { buildStaticBlock } from "./context/static-block.js";
 import type { PromptZones } from "./context/zones.js";
 import { getGitDiffSince } from "./git/diff.js";
-import { listTrackedFiles } from "./git/tracked-files.js";
-import { createEmptySemanticState, serializeSemanticState } from "./memory/semantic-state.js";
+import { buildPrioritizedFileIndex, listTrackedFiles } from "./git/tracked-files.js";
+import { createEmptySemanticState, serializeSemanticState, trimSemanticState } from "./memory/semantic-state.js";
 import type { SemanticState } from "./memory/semantic-state.js";
 import { checkTokenBudget, inspectZoneTokens } from "./tokens/budget.js";
 import { estimateTokens } from "./tokens/tokenizer.js";
@@ -216,7 +216,15 @@ export function readRelayWorkspace(options: RelayWorkspaceOptions = {}): RelayWo
   const session = readSession(join(relayDir, "session.json"));
   const baseRef = (session.base_git_sha && session.base_git_sha !== "unknown") ? session.base_git_sha : "HEAD";
   const trackedPaths = listTrackedFiles(cwd);
-  const includedPaths = trackedPaths.slice(0, config.value.files.maxIndex);
+  const stateFiles = [
+    ...(state.parsed?.code_changes ?? []),
+    ...(state.parsed?.next_actions ?? []),
+  ].join(" ").match(/[\w./\\-]+\.[a-z]+/g) ?? [];
+  const includedPaths = buildPrioritizedFileIndex(cwd, {
+    limit: config.value.files.maxIndex,
+    priorityPaths: stateFiles,
+  });
+  const trimmedState = state.parsed ? trimSemanticState(state.parsed, { cwd }) : createEmptySemanticState();
   const gitDiff = getGitDiffSince(baseRef, cwd);
   const zones = {
     staticBlock: buildStaticBlock({
@@ -224,12 +232,13 @@ export function readRelayWorkspace(options: RelayWorkspaceOptions = {}): RelayWo
       architectureNotes: readOptional(join(relayDir, "memory", "architecture-notes.md")) || undefined,
       sourceSnapshot: readOptional(join(relayDir, "memory", "source-snapshot.md")) || undefined,
     }),
-    stateLayer: buildStateLayer({ semanticStateJson: state.json, fileIndex: includedPaths.join("\n") }),
+    stateLayer: buildStateLayer({ semanticStateJson: serializeSemanticState(trimmedState), fileIndex: includedPaths.join("\n") }),
     dynamicInput: buildDynamicInput({ prompt, gitDiff })
   };
   const payload = buildPromptPayload(zones);
   const zoneTokens = inspectZoneTokens(zones);
-  const budget = checkTokenBudget(payload, config.value.tokens);
+  const resolvedTokens = resolveTokenBudget(config.value);
+  const budget = checkTokenBudget(payload, resolvedTokens);
 
   return {
     cwd,

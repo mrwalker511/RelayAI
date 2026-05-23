@@ -9,6 +9,17 @@ function jsonContent(value: unknown) {
   };
 }
 
+function zonedContent(snapshot: ReturnType<typeof readRelayWorkspace>) {
+  type TextContentWithCache = { type: "text"; text: string; cache_control?: { type: string } };
+  return {
+    content: [
+      { type: "text", text: snapshot.zones.staticBlock, cache_control: { type: "ephemeral" } } as TextContentWithCache,
+      { type: "text", text: snapshot.zones.stateLayer, cache_control: { type: "ephemeral" } } as TextContentWithCache,
+      { type: "text", text: snapshot.zones.dynamicInput } as TextContentWithCache,
+    ],
+  };
+}
+
 function clampMaxChars(value: number | undefined): number {
   if (value === undefined) return 120000;
   if (!Number.isFinite(value) || value < 0) return 120000;
@@ -76,9 +87,9 @@ export function createRelayMcpServer(cwd?: string): McpServer {
         }
       };
 
-      return jsonContent(snapshot.budget.status === "blocked"
-        ? { ...base, message: snapshot.budget.message }
-        : { ...base, payload: snapshot.payload });
+      return snapshot.budget.status === "blocked"
+        ? jsonContent({ ...base, message: snapshot.budget.message })
+        : zonedContent(snapshot);
     }
   );
 

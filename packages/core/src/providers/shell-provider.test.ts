@@ -5,6 +5,7 @@ import type { RelayConfig } from "../config/relay-config.js";
 
 const baseConfig: RelayConfig = {
   provider: { default: "default" },
+  routing: {},
   gc: {
     enabled: true,
     historyTokenLimit: 12000,

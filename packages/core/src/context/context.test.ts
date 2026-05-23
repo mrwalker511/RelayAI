@@ -32,9 +32,21 @@ test("dynamic input contains volatile content outside the prefix zones", () => {
     prompt: "fix the test",
     gitDiff: "diff --git a/a b/a",
     timestampIso: "2026-05-17T00:00:00.000Z",
+    includeTimestamp: true,
   });
 
   assert.match(dynamic, /## Timestamp\n2026-05-17T00:00:00\.000Z/);
   assert.match(dynamic, /## User Prompt\nfix the test/);
   assert.match(dynamic, /## Git Diff\ndiff --git a\/a b\/a/);
+});
+
+test("dynamic input omits timestamp by default", () => {
+  const dynamic = buildDynamicInput({
+    prompt: "fix the test",
+    gitDiff: "diff --git a/a b/a",
+    timestampIso: "2026-05-17T00:00:00.000Z",
+  });
+
+  assert.doesNotMatch(dynamic, /## Timestamp/);
+  assert.match(dynamic, /## User Prompt\nfix the test/);
 });

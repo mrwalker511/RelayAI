@@ -1,0 +1,912 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RelayAI — Test Results Tracker</title>
+  <style>
+    :root {
+      --bg: #0f1117;
+      --surface: #181c27;
+      --surface2: #1e2333;
+      --border: #2a3045;
+      --accent: #4f8ef7;
+      --accent2: #7c5cbf;
+      --green: #22c55e;
+      --red: #ef4444;
+      --yellow: #f59e0b;
+      --text: #e2e8f0;
+      --muted: #8892a4;
+      --radius: 10px;
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg); color: var(--text); min-height: 100vh; }
+
+    /* ── Layout ── */
+    .app { display: flex; flex-direction: column; min-height: 100vh; }
+    header {
+      background: linear-gradient(135deg, #1a1f35 0%, #0f1117 100%);
+      border-bottom: 1px solid var(--border);
+      padding: 20px 40px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .logo { display: flex; align-items: center; gap: 12px; }
+    .logo-icon {
+      width: 38px; height: 38px; border-radius: 9px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px; font-weight: 800; color: #fff;
+    }
+    .logo-text h1 { font-size: 18px; font-weight: 700; letter-spacing: -0.3px; }
+    .logo-text p { font-size: 12px; color: var(--muted); margin-top: 1px; }
+    .header-meta { font-size: 12px; color: var(--muted); text-align: right; }
+    .header-meta span { color: var(--accent); font-weight: 600; }
+
+    nav {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 0 40px;
+      display: flex; gap: 4px;
+    }
+    .tab {
+      padding: 14px 18px; font-size: 13px; font-weight: 500;
+      cursor: pointer; border-bottom: 2px solid transparent;
+      color: var(--muted); transition: all 0.15s; white-space: nowrap;
+    }
+    .tab:hover { color: var(--text); }
+    .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+    .content { padding: 36px 40px; flex: 1; max-width: 1280px; width: 100%; margin: 0 auto; }
+    .panel { display: none; }
+    .panel.active { display: block; }
+
+    /* ── Cards ── */
+    .card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 24px; margin-bottom: 24px;
+    }
+    .card-title {
+      font-size: 14px; font-weight: 600; color: var(--muted);
+      text-transform: uppercase; letter-spacing: 0.7px; margin-bottom: 18px;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .card-title::before {
+      content: ''; display: block; width: 3px; height: 14px;
+      border-radius: 2px; background: var(--accent);
+    }
+
+    /* ── Form elements ── */
+    .field-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 14px; margin-bottom: 14px; }
+    .field { display: flex; flex-direction: column; gap: 6px; }
+    label { font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
+    input[type="text"], input[type="number"], select, textarea {
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 6px; padding: 9px 12px; color: var(--text);
+      font-size: 13px; outline: none; transition: border-color 0.15s;
+      font-family: inherit;
+    }
+    input:focus, select:focus, textarea:focus { border-color: var(--accent); }
+    textarea { resize: vertical; min-height: 80px; }
+    select option { background: var(--surface2); }
+
+    /* ── Star rating ── */
+    .stars { display: flex; gap: 4px; }
+    .stars input { display: none; }
+    .stars label {
+      font-size: 22px; cursor: pointer; color: var(--border);
+      text-transform: none; letter-spacing: 0; transition: color 0.1s;
+    }
+    .stars label:hover, .stars label:hover ~ label { color: var(--border); }
+    .stars input:checked ~ label { color: var(--border); }
+    .stars label:hover, .stars input:checked + label,
+    .stars input:checked ~ label:first-of-type { color: #f59e0b; }
+    /* Forward fill trick */
+    .stars { flex-direction: row-reverse; }
+    .stars label:hover, .stars label:hover ~ label,
+    .stars input:checked ~ label { color: #f59e0b; }
+
+    /* ── Badge / pill ── */
+    .badge {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600;
+    }
+    .badge.green { background: rgba(34,197,94,0.15); color: var(--green); }
+    .badge.red { background: rgba(239,68,68,0.15); color: var(--red); }
+    .badge.yellow { background: rgba(245,158,11,0.15); color: var(--yellow); }
+    .badge.blue { background: rgba(79,142,247,0.15); color: var(--accent); }
+
+    /* ── Toggle / checkbox ── */
+    .toggle-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+    .toggle {
+      position: relative; width: 38px; height: 22px;
+      display: inline-block;
+    }
+    .toggle input { display: none; }
+    .toggle-slider {
+      position: absolute; inset: 0; border-radius: 11px;
+      background: var(--border); cursor: pointer; transition: background 0.2s;
+    }
+    .toggle-slider::before {
+      content: ''; position: absolute;
+      width: 16px; height: 16px; border-radius: 50%;
+      background: #fff; top: 3px; left: 3px; transition: transform 0.2s;
+    }
+    .toggle input:checked + .toggle-slider { background: var(--green); }
+    .toggle input:checked + .toggle-slider::before { transform: translateX(16px); }
+    .toggle-label { font-size: 13px; color: var(--text); }
+
+    /* ── Prompt rows ── */
+    .prompt-block {
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 8px; padding: 18px; margin-bottom: 14px;
+    }
+    .prompt-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 14px;
+    }
+    .prompt-num {
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      color: #fff; width: 26px; height: 26px; border-radius: 6px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 12px; font-weight: 700;
+    }
+
+    /* ── Buttons ── */
+    .btn {
+      padding: 10px 20px; border-radius: 7px; border: none;
+      font-size: 13px; font-weight: 600; cursor: pointer;
+      transition: all 0.15s; font-family: inherit;
+    }
+    .btn-primary {
+      background: var(--accent); color: #fff;
+    }
+    .btn-primary:hover { background: #3d7ef0; }
+    .btn-outline {
+      background: transparent; color: var(--text);
+      border: 1px solid var(--border);
+    }
+    .btn-outline:hover { border-color: var(--accent); color: var(--accent); }
+    .btn-danger {
+      background: transparent; color: var(--red);
+      border: 1px solid rgba(239,68,68,0.3);
+    }
+    .btn-danger:hover { background: rgba(239,68,68,0.1); }
+    .btn-row { display: flex; gap: 10px; margin-top: 20px; flex-wrap: wrap; }
+
+    /* ── Summary dashboard ── */
+    .metric-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px; }
+    .metric-card {
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 20px;
+      display: flex; flex-direction: column; gap: 6px;
+    }
+    .metric-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.6px; }
+    .metric-value { font-size: 28px; font-weight: 700; line-height: 1; }
+    .metric-value.positive { color: var(--green); }
+    .metric-value.negative { color: var(--red); }
+    .metric-value.neutral { color: var(--accent); }
+    .metric-sub { font-size: 11px; color: var(--muted); }
+
+    /* ── Comparison table ── */
+    .compare-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .compare-table th {
+      text-align: left; padding: 10px 14px;
+      font-size: 11px; font-weight: 600; color: var(--muted);
+      text-transform: uppercase; letter-spacing: 0.5px;
+      border-bottom: 1px solid var(--border);
+    }
+    .compare-table td {
+      padding: 12px 14px; border-bottom: 1px solid rgba(42,48,69,0.5);
+      vertical-align: middle;
+    }
+    .compare-table tr:last-child td { border-bottom: none; }
+    .compare-table .better { color: var(--green); font-weight: 600; }
+    .compare-table .worse { color: var(--red); }
+    .compare-table th.relay-col { color: var(--accent); }
+
+    /* ── Signal checklist ── */
+    .signal-list { display: flex; flex-direction: column; gap: 10px; }
+    .signal-item {
+      display: flex; align-items: center; justify-content: space-between;
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 8px; padding: 12px 16px;
+    }
+    .signal-left { display: flex; align-items: center; gap: 12px; }
+    .signal-cmd {
+      font-family: 'Courier New', monospace; font-size: 12px;
+      color: var(--accent); background: rgba(79,142,247,0.1);
+      padding: 3px 8px; border-radius: 4px;
+    }
+    .signal-desc { font-size: 13px; color: var(--text); }
+    .signal-sub { font-size: 11px; color: var(--muted); }
+    .signal-status select {
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 6px; padding: 6px 10px; font-size: 12px; font-weight: 600;
+    }
+
+    /* ── Notes ── */
+    .notes-area {
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 8px; padding: 16px;
+    }
+    .notes-area textarea {
+      width: 100%; background: transparent; border: none;
+      color: var(--text); font-size: 13px; resize: vertical;
+      min-height: 120px; outline: none;
+    }
+
+    /* ── Verdict ── */
+    .verdict {
+      border-radius: var(--radius); padding: 20px 24px;
+      display: flex; align-items: center; gap: 16px;
+      border: 1px solid;
+    }
+    .verdict.working { background: rgba(34,197,94,0.08); border-color: rgba(34,197,94,0.3); }
+    .verdict.not-working { background: rgba(239,68,68,0.08); border-color: rgba(239,68,68,0.3); }
+    .verdict.inconclusive { background: rgba(245,158,11,0.08); border-color: rgba(245,158,11,0.3); }
+    .verdict-icon { font-size: 32px; }
+    .verdict-text h3 { font-size: 16px; font-weight: 700; margin-bottom: 4px; }
+    .verdict-text p { font-size: 13px; color: var(--muted); }
+
+    /* ── Section heading ── */
+    .section-heading {
+      font-size: 16px; font-weight: 700; margin-bottom: 18px;
+      display: flex; align-items: center; gap: 10px;
+    }
+    .section-heading .pill {
+      font-size: 10px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.8px; padding: 3px 9px; border-radius: 20px;
+      background: rgba(79,142,247,0.15); color: var(--accent);
+    }
+
+    /* ── Divider ── */
+    .divider { height: 1px; background: var(--border); margin: 28px 0; }
+
+    /* ── Print / export hint ── */
+    .export-hint {
+      display: flex; align-items: center; gap: 10px; padding: 12px 16px;
+      background: rgba(79,142,247,0.07); border: 1px solid rgba(79,142,247,0.2);
+      border-radius: 8px; font-size: 12px; color: var(--muted); margin-bottom: 24px;
+    }
+    .export-hint strong { color: var(--accent); }
+
+    @media (max-width: 768px) {
+      header, nav, .content { padding-left: 20px; padding-right: 20px; }
+      .field-row { grid-template-columns: 1fr 1fr; }
+      .metric-grid { grid-template-columns: 1fr 1fr; }
+    }
+  </style>
+</head>
+<body>
+<div class="app">
+
+  <!-- Header -->
+  <header>
+    <div class="logo">
+      <div class="logo-icon">R</div>
+      <div class="logo-text">
+        <h1>RelayAI Test Results</h1>
+        <p>matt-mcp · Before &amp; After Comparison Tracker</p>
+      </div>
+    </div>
+    <div class="header-meta">
+      Test Date: <span id="testDateDisplay">—</span><br>
+      Tester: <span id="testerDisplay">—</span>
+    </div>
+  </header>
+
+  <!-- Nav -->
+  <nav>
+    <div class="tab active" onclick="showTab('setup', this)">⚙️ Setup</div>
+    <div class="tab" onclick="showTab('baseline', this)">📋 Baseline</div>
+    <div class="tab" onclick="showTab('relay', this)">🔁 Relay-Enabled</div>
+    <div class="tab" onclick="showTab('signals', this)">✅ Pass/Fail Signals</div>
+    <div class="tab" onclick="showTab('summary', this)">📊 Summary</div>
+    <div class="tab" onclick="showTab('notes', this)">📝 Notes</div>
+  </nav>
+
+  <div class="content">
+
+    <!-- ══════════════════ SETUP ══════════════════ -->
+    <div id="tab-setup" class="panel active">
+      <div class="section-heading">Test Setup <span class="pill">Step 1</span></div>
+
+      <div class="card">
+        <div class="card-title">Session Info</div>
+        <div class="field-row">
+          <div class="field">
+            <label>Tester Name</label>
+            <input type="text" id="testerName" placeholder="Matt Walker" oninput="updateHeader()" />
+          </div>
+          <div class="field">
+            <label>Test Date</label>
+            <input type="text" id="testDate" placeholder="2026-05-23" oninput="updateHeader()" />
+          </div>
+          <div class="field">
+            <label>AI Provider / CLI</label>
+            <select id="aiProvider">
+              <option>Claude Code</option>
+              <option>GitHub Copilot</option>
+              <option>OpenAI Codex</option>
+              <option>Other</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Relay Version</label>
+            <input type="text" id="relayVersion" placeholder="e.g. 0.1.0" />
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label>Test Project</label>
+            <input type="text" id="testProject" value="matt-mcp" />
+          </div>
+          <div class="field">
+            <label>Baseline SHA</label>
+            <input type="text" id="baselineSha" placeholder="git rev-parse HEAD" />
+          </div>
+          <div class="field">
+            <label>Provider Token Rate ($/1K tokens)</label>
+            <input type="number" id="tokenRate" placeholder="0.003" step="0.0001" value="0.003" />
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Test Prompts</div>
+        <p style="font-size:13px;color:var(--muted);margin-bottom:16px;">Define the 5 prompts you will run in BOTH phases. Keep them identical.</p>
+        <div id="promptSetup">
+          <div class="field" style="margin-bottom:10px;">
+            <label>Prompt 1</label>
+            <input type="text" id="prompt1" value="Explain the overall architecture of this project" />
+          </div>
+          <div class="field" style="margin-bottom:10px;">
+            <label>Prompt 2</label>
+            <input type="text" id="prompt2" value="Review the auth flow and identify any security risks" />
+          </div>
+          <div class="field" style="margin-bottom:10px;">
+            <label>Prompt 3</label>
+            <input type="text" id="prompt3" value="Add input validation to the generate tool command" />
+          </div>
+          <div class="field" style="margin-bottom:10px;">
+            <label>Prompt 4</label>
+            <input type="text" id="prompt4" value="Summarize what has changed in the active diff" />
+          </div>
+          <div class="field">
+            <label>Prompt 5</label>
+            <input type="text" id="prompt5" value="Write unit tests for the register command" />
+          </div>
+        </div>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="showTab('baseline', document.querySelectorAll('.tab')[1])">Next → Baseline Phase</button>
+      </div>
+    </div>
+
+    <!-- ══════════════════ BASELINE ══════════════════ -->
+    <div id="tab-baseline" class="panel">
+      <div class="section-heading">Baseline Results <span class="pill">Phase 1 — No Relay</span></div>
+      <div class="export-hint">💡 Run each prompt directly in your AI CLI <strong>without</strong> using <code>relay ask</code>. Record results for both Session A and Session B.</div>
+
+      <div id="baselinePrompts">
+        <!-- generated by JS -->
+      </div>
+
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="showTab('relay', document.querySelectorAll('.tab')[2])">Next → Relay Phase</button>
+      </div>
+    </div>
+
+    <!-- ══════════════════ RELAY ══════════════════ -->
+    <div id="tab-relay" class="panel">
+      <div class="section-heading">Relay-Enabled Results <span class="pill">Phase 2 — With Relay</span></div>
+      <div class="export-hint">💡 Run <code>relay session start</code> first, then use <code>relay ask "prompt"</code> for each. Run <code>relay tokens inspect</code> and <code>relay cache inspect</code> after each prompt.</div>
+
+      <div class="card">
+        <div class="card-title">Relay Session Info</div>
+        <div class="field-row">
+          <div class="field">
+            <label>Session SHA (from relay session start)</label>
+            <input type="text" id="relaySessionSha" placeholder="abc123..." />
+          </div>
+          <div class="field">
+            <label>Initial Static Block Tokens</label>
+            <input type="number" id="staticTokens" placeholder="0" />
+          </div>
+          <div class="field">
+            <label>Initial State Layer Tokens</label>
+            <input type="number" id="stateTokens" placeholder="0" />
+          </div>
+          <div class="field">
+            <label>Initial Dynamic Tokens</label>
+            <input type="number" id="dynamicTokens" placeholder="0" />
+          </div>
+        </div>
+      </div>
+
+      <div id="relayPrompts">
+        <!-- generated by JS -->
+      </div>
+
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="showTab('signals', document.querySelectorAll('.tab')[3])">Next → Pass/Fail Signals</button>
+      </div>
+    </div>
+
+    <!-- ══════════════════ SIGNALS ══════════════════ -->
+    <div id="tab-signals" class="panel">
+      <div class="section-heading">Pass / Fail Signals <span class="pill">Step 3</span></div>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:20px;">All 7 signals must be ✅ Pass for RelayAI to be considered working. Record each after running the command.</p>
+
+      <div class="signal-list">
+        <div class="signal-item">
+          <div class="signal-left">
+            <div>
+              <div class="signal-cmd">relay doctor</div>
+              <div class="signal-desc" style="margin-top:4px;">CLI exits with no errors</div>
+            </div>
+          </div>
+          <div class="signal-status">
+            <select id="sig1">
+              <option value="">— Pending —</option>
+              <option value="pass">✅ Pass</option>
+              <option value="fail">❌ Fail</option>
+              <option value="warn">⚠️ Warning</option>
+            </select>
+          </div>
+        </div>
+        <div class="signal-item">
+          <div class="signal-left">
+            <div>
+              <div class="signal-cmd">relay session start</div>
+              <div class="signal-desc" style="margin-top:4px;">SHA is captured and anchored</div>
+            </div>
+          </div>
+          <div class="signal-status">
+            <select id="sig2">
+              <option value="">— Pending —</option>
+              <option value="pass">✅ Pass</option>
+              <option value="fail">❌ Fail</option>
+              <option value="warn">⚠️ Warning</option>
+            </select>
+          </div>
+        </div>
+        <div class="signal-item">
+          <div class="signal-left">
+            <div>
+              <div class="signal-cmd">relay tokens inspect</div>
+              <div class="signal-desc" style="margin-top:4px;">All 3 zones populated with counts</div>
+            </div>
+          </div>
+          <div class="signal-status">
+            <select id="sig3">
+              <option value="">— Pending —</option>
+              <option value="pass">✅ Pass</option>
+              <option value="fail">❌ Fail</option>
+              <option value="warn">⚠️ Warning</option>
+            </select>
+          </div>
+        </div>
+        <div class="signal-item">
+          <div class="signal-left">
+            <div>
+              <div class="signal-cmd">relay cache inspect</div>
+              <div class="signal-desc" style="margin-top:4px;">Same prefix hash on prompt 2+</div>
+            </div>
+          </div>
+          <div class="signal-status">
+            <select id="sig4">
+              <option value="">— Pending —</option>
+              <option value="pass">✅ Pass</option>
+              <option value="fail">❌ Fail</option>
+              <option value="warn">⚠️ Warning</option>
+            </select>
+          </div>
+        </div>
+        <div class="signal-item">
+          <div class="signal-left">
+            <div>
+              <div class="signal-cmd">relay diff</div>
+              <div class="signal-desc" style="margin-top:4px;">Shows only delta, not full files</div>
+            </div>
+          </div>
+          <div class="signal-status">
+            <select id="sig5">
+              <option value="">— Pending —</option>
+              <option value="pass">✅ Pass</option>
+              <option value="fail">❌ Fail</option>
+              <option value="warn">⚠️ Warning</option>
+            </select>
+          </div>
+        </div>
+        <div class="signal-item">
+          <div class="signal-left">
+            <div>
+              <div class="signal-cmd">relay tokens inspect (prompt 2+)</div>
+              <div class="signal-desc" style="margin-top:4px;">Dynamic zone shrinks on follow-up prompts</div>
+            </div>
+          </div>
+          <div class="signal-status">
+            <select id="sig6">
+              <option value="">— Pending —</option>
+              <option value="pass">✅ Pass</option>
+              <option value="fail">❌ Fail</option>
+              <option value="warn">⚠️ Warning</option>
+            </select>
+          </div>
+        </div>
+        <div class="signal-item">
+          <div class="signal-left">
+            <div>
+              <div class="signal-cmd">relay gc preview</div>
+              <div class="signal-desc" style="margin-top:4px;">Runs without errors (entries or empty)</div>
+            </div>
+          </div>
+          <div class="signal-status">
+            <select id="sig7">
+              <option value="">— Pending —</option>
+              <option value="pass">✅ Pass</option>
+              <option value="fail">❌ Fail</option>
+              <option value="warn">⚠️ Warning</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="showTab('summary', document.querySelectorAll('.tab')[4])">Next → Summary Dashboard</button>
+      </div>
+    </div>
+
+    <!-- ══════════════════ SUMMARY ══════════════════ -->
+    <div id="tab-summary" class="panel">
+      <div class="section-heading">Summary Dashboard <span class="pill">Leadership Report</span></div>
+      <div class="export-hint">💡 Use <strong>Ctrl+P → Save as PDF</strong> to export this page for your report. All data is drawn from your entries above.</div>
+
+      <!-- Verdict -->
+      <div id="verdictBox" class="verdict inconclusive" style="margin-bottom:24px;">
+        <div class="verdict-icon">⏳</div>
+        <div class="verdict-text">
+          <h3 id="verdictTitle">Awaiting Data</h3>
+          <p id="verdictSub">Complete all test phases and signal checks to generate the verdict.</p>
+        </div>
+      </div>
+
+      <!-- Metrics -->
+      <div class="metric-grid">
+        <div class="metric-card">
+          <div class="metric-label">Avg Token Reduction</div>
+          <div class="metric-value positive" id="tokenReduction">—</div>
+          <div class="metric-sub" id="tokenReductionSub">vs. baseline avg</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Est. Cost Savings / 5 Prompts</div>
+          <div class="metric-value positive" id="costSavings">—</div>
+          <div class="metric-sub" id="costSavingsSub">at configured token rate</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Quality Score (Relay)</div>
+          <div class="metric-value neutral" id="relayQuality">—</div>
+          <div class="metric-sub" id="qualityDelta">vs. baseline</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Context Accuracy (Relay)</div>
+          <div class="metric-value neutral" id="contextAccuracy">—</div>
+          <div class="metric-sub" id="contextDelta">vs. baseline</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Hallucination Rate (Relay)</div>
+          <div class="metric-value neutral" id="hallucinationRate">—</div>
+          <div class="metric-sub" id="hallucinationDelta">vs. baseline</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Pass/Fail Signals</div>
+          <div class="metric-value neutral" id="signalScore">—</div>
+          <div class="metric-sub">out of 7</div>
+        </div>
+      </div>
+
+      <!-- Comparison table -->
+      <div class="card">
+        <div class="card-title">Per-Prompt Comparison</div>
+        <table class="compare-table">
+          <thead>
+            <tr>
+              <th>Prompt</th>
+              <th>Baseline Tokens</th>
+              <th class="relay-col">Relay Tokens</th>
+              <th>Baseline Quality</th>
+              <th class="relay-col">Relay Quality</th>
+              <th>Context Accurate</th>
+              <th>Cache Hit</th>
+            </tr>
+          </thead>
+          <tbody id="compareTableBody">
+            <tr><td colspan="7" style="color:var(--muted);text-align:center;padding:20px;">Enter data in Baseline and Relay tabs to populate</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="buildSummary()">🔄 Refresh Summary</button>
+        <button class="btn btn-outline" onclick="window.print()">🖨️ Print / Export PDF</button>
+      </div>
+    </div>
+
+    <!-- ══════════════════ NOTES ══════════════════ -->
+    <div id="tab-notes" class="panel">
+      <div class="section-heading">Testing Notes &amp; Observations</div>
+
+      <div class="card">
+        <div class="card-title">Baseline Observations</div>
+        <div class="notes-area">
+          <textarea id="notesBaseline" placeholder="What did you observe during baseline testing? Any patterns, surprises, or recurring issues?"></textarea>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Relay Observations</div>
+        <div class="notes-area">
+          <textarea id="notesRelay" placeholder="How did Relay change the experience? What worked well or needs improvement?"></textarea>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Recommendations for Leadership</div>
+        <div class="notes-area">
+          <textarea id="notesLeadership" placeholder="Based on results: proceed to broader rollout / continue tuning / not ready. Include any blockers or next steps."></textarea>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Next Steps / Follow-Up Actions</div>
+        <div class="notes-area">
+          <textarea id="notesNext" placeholder="e.g. Update AGENTS.md, fix cache prefix instability, test with second project, schedule team demo..."></textarea>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /content -->
+</div><!-- /app -->
+
+<script>
+  // ── Tab switching ──
+  function showTab(id, el) {
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.getElementById('tab-' + id).classList.add('active');
+    el.classList.add('active');
+    if (id === 'summary') buildSummary();
+    if (id === 'baseline') buildPromptForms('baseline');
+    if (id === 'relay') buildPromptForms('relay');
+  }
+
+  function updateHeader() {
+    document.getElementById('testerDisplay').textContent = document.getElementById('testerName').value || '—';
+    document.getElementById('testDateDisplay').textContent = document.getElementById('testDate').value || '—';
+  }
+
+  // ── Build prompt entry forms ──
+  const prompts = () => [1,2,3,4,5].map(i => document.getElementById('prompt'+i)?.value || 'Prompt '+i);
+
+  function buildPromptForms(phase) {
+    const container = document.getElementById(phase + 'Prompts');
+    if (!container) return;
+    const pList = prompts();
+    container.innerHTML = '';
+    pList.forEach((p, i) => {
+      const n = i + 1;
+      const isRelay = phase === 'relay';
+      container.innerHTML += `
+        <div class="prompt-block">
+          <div class="prompt-header">
+            <div style="display:flex;align-items:center;gap:10px;">
+              <div class="prompt-num">${n}</div>
+              <div style="font-size:13px;color:var(--text);">${p}</div>
+            </div>
+          </div>
+          <div class="field-row">
+            <div class="field">
+              <label>Tokens Sent (Session A)</label>
+              <input type="number" id="${phase}_tokens_a_${n}" placeholder="e.g. 4200" />
+            </div>
+            <div class="field">
+              <label>Quality Score A (1–5)</label>
+              <input type="number" id="${phase}_quality_a_${n}" min="1" max="5" placeholder="1–5" />
+            </div>
+            <div class="field">
+              <label>Context Accurate? (A)</label>
+              <select id="${phase}_ctx_a_${n}">
+                <option value="">—</option>
+                <option value="yes">Yes</option>
+                <option value="partial">Partial</option>
+                <option value="no">No</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Hallucinations? (A)</label>
+              <select id="${phase}_hall_a_${n}">
+                <option value="no">None</option>
+                <option value="minor">Minor</option>
+                <option value="yes">Yes</option>
+              </select>
+            </div>
+            ${isRelay ? `
+            <div class="field">
+              <label>Cache Hit? (A)</label>
+              <select id="relay_cache_a_${n}">
+                <option value="">—</option>
+                <option value="yes">Yes</option>
+                <option value="no">No</option>
+              </select>
+            </div>` : ''}
+          </div>
+          <div class="field-row">
+            <div class="field">
+              <label>Tokens Sent (Session B)</label>
+              <input type="number" id="${phase}_tokens_b_${n}" placeholder="e.g. 4100" />
+            </div>
+            <div class="field">
+              <label>Quality Score B (1–5)</label>
+              <input type="number" id="${phase}_quality_b_${n}" min="1" max="5" placeholder="1–5" />
+            </div>
+            <div class="field">
+              <label>Context Accurate? (B)</label>
+              <select id="${phase}_ctx_b_${n}">
+                <option value="">—</option>
+                <option value="yes">Yes</option>
+                <option value="partial">Partial</option>
+                <option value="no">No</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Hallucinations? (B)</label>
+              <select id="${phase}_hall_b_${n}">
+                <option value="no">None</option>
+                <option value="minor">Minor</option>
+                <option value="yes">Yes</option>
+              </select>
+            </div>
+            ${isRelay ? `
+            <div class="field">
+              <label>Cache Hit? (B)</label>
+              <select id="relay_cache_b_${n}">
+                <option value="">—</option>
+                <option value="yes">Yes</option>
+                <option value="no">No</option>
+              </select>
+            </div>` : ''}
+          </div>
+        </div>`;
+    });
+  }
+
+  // ── Build summary ──
+  function avg(vals) {
+    const v = vals.filter(x => x > 0);
+    return v.length ? v.reduce((a,b)=>a+b,0)/v.length : null;
+  }
+  function pct(val) { return val !== null ? val.toFixed(1) + '%' : '—'; }
+  function fmtNum(val, dec=0) { return val !== null ? val.toFixed(dec) : '—'; }
+
+  function getVal(id) { const el = document.getElementById(id); return el ? (parseFloat(el.value)||0) : 0; }
+  function getStr(id) { const el = document.getElementById(id); return el ? el.value : ''; }
+
+  function buildSummary() {
+    const rate = parseFloat(document.getElementById('tokenRate')?.value) || 0.003;
+    const pList = prompts();
+
+    let bTokens=[], rTokens=[], bQual=[], rQual=[], bCtx=[], rCtx=[], bHall=[], rHall=[], rCache=[];
+
+    for (let n=1;n<=5;n++) {
+      const bt = [getVal(`baseline_tokens_a_${n}`), getVal(`baseline_tokens_b_${n}`)].filter(v=>v>0);
+      const rt = [getVal(`relay_tokens_a_${n}`), getVal(`relay_tokens_b_${n}`)].filter(v=>v>0);
+      const bq = [getVal(`baseline_quality_a_${n}`), getVal(`baseline_quality_b_${n}`)].filter(v=>v>0);
+      const rq = [getVal(`relay_quality_a_${n}`), getVal(`relay_quality_b_${n}`)].filter(v=>v>0);
+
+      if(bt.length) bTokens.push(...bt);
+      if(rt.length) rTokens.push(...rt);
+      if(bq.length) bQual.push(...bq);
+      if(rq.length) rQual.push(...rq);
+
+      ['a','b'].forEach(s => {
+        const bc = getStr(`baseline_ctx_${s}_${n}`);
+        const rc = getStr(`relay_ctx_${s}_${n}`);
+        const bh = getStr(`baseline_hall_${s}_${n}`);
+        const rh = getStr(`relay_hall_${s}_${n}`);
+        const ch = getStr(`relay_cache_${s}_${n}`);
+        if(bc) bCtx.push(bc==='yes'?1:bc==='partial'?0.5:0);
+        if(rc) rCtx.push(rc==='yes'?1:rc==='partial'?0.5:0);
+        if(bh) bHall.push(bh==='no'?0:1);
+        if(rh) rHall.push(rh==='no'?0:1);
+        if(ch) rCache.push(ch==='yes'?1:0);
+      });
+    }
+
+    const avgBT = avg(bTokens), avgRT = avg(rTokens);
+    const tokenReductionPct = (avgBT && avgRT) ? ((avgBT-avgRT)/avgBT*100) : null;
+    const costSaving = (avgBT && avgRT && bTokens.length) ? ((avgBT-avgRT)/1000*rate*bTokens.length) : null;
+    const avgBQ = avg(bQual), avgRQ = avg(rQual);
+    const ctxRate = rCtx.length ? avg(rCtx)*100 : null;
+    const bCtxRate = bCtx.length ? avg(bCtx)*100 : null;
+    const hallRate = rHall.length ? avg(rHall)*100 : null;
+    const bHallRate = bHall.length ? avg(bHall)*100 : null;
+
+    // Signals
+    const sigVals = [1,2,3,4,5,6,7].map(i => getStr('sig'+i));
+    const passes = sigVals.filter(v=>v==='pass').length;
+    const fails = sigVals.filter(v=>v==='fail').length;
+
+    // Update metric cards
+    document.getElementById('tokenReduction').textContent = tokenReductionPct !== null ? (tokenReductionPct>0?'-':'+') + Math.abs(tokenReductionPct).toFixed(1)+'%' : '—';
+    document.getElementById('tokenReductionSub').textContent = avgBT ? `Baseline avg: ${Math.round(avgBT).toLocaleString()} tokens` : 'No data';
+    document.getElementById('costSavings').textContent = costSaving !== null ? '$'+costSaving.toFixed(4) : '—';
+    document.getElementById('relayQuality').textContent = avgRQ !== null ? avgRQ.toFixed(1)+'/5' : '—';
+    document.getElementById('qualityDelta').textContent = (avgBQ && avgRQ) ? 'Baseline: '+avgBQ.toFixed(1)+'/5' : 'No data';
+    document.getElementById('contextAccuracy').textContent = ctxRate !== null ? ctxRate.toFixed(0)+'%' : '—';
+    document.getElementById('contextDelta').textContent = bCtxRate !== null ? 'Baseline: '+bCtxRate.toFixed(0)+'%' : 'No data';
+    document.getElementById('hallucinationRate').textContent = hallRate !== null ? hallRate.toFixed(0)+'%' : '—';
+    document.getElementById('hallucinationDelta').textContent = bHallRate !== null ? 'Baseline: '+bHallRate.toFixed(0)+'%' : 'No data';
+    document.getElementById('signalScore').textContent = passes + ' / 7';
+
+    // Comparison table
+    const tbody = document.getElementById('compareTableBody');
+    tbody.innerHTML = '';
+    for (let n=1;n<=5;n++) {
+      const bt = avg([getVal(`baseline_tokens_a_${n}`),getVal(`baseline_tokens_b_${n}`)].filter(v=>v>0));
+      const rt = avg([getVal(`relay_tokens_a_${n}`),getVal(`relay_tokens_b_${n}`)].filter(v=>v>0));
+      const bq = avg([getVal(`baseline_quality_a_${n}`),getVal(`baseline_quality_b_${n}`)].filter(v=>v>0));
+      const rq = avg([getVal(`relay_quality_a_${n}`),getVal(`relay_quality_b_${n}`)].filter(v=>v>0));
+      const rcA = getStr(`relay_ctx_a_${n}`), rcB = getStr(`relay_ctx_b_${n}`);
+      const cacheA = getStr(`relay_cache_a_${n}`), cacheB = getStr(`relay_cache_b_${n}`);
+      const ctxStr = [rcA,rcB].filter(Boolean).join(' / ') || '—';
+      const cacheStr = [cacheA,cacheB].filter(Boolean).join(' / ') || '—';
+      const betterToken = rt && bt ? rt < bt : false;
+      const betterQual = rq && bq ? rq > bq : false;
+      tbody.innerHTML += `<tr>
+        <td style="max-width:220px;font-size:12px;">${pList[n-1]}</td>
+        <td>${bt ? Math.round(bt).toLocaleString() : '—'}</td>
+        <td class="${betterToken?'better':''}">${rt ? Math.round(rt).toLocaleString() : '—'}</td>
+        <td>${bq ? bq.toFixed(1) : '—'}</td>
+        <td class="${betterQual?'better':''}">${rq ? rq.toFixed(1) : '—'}</td>
+        <td>${ctxStr}</td>
+        <td>${cacheStr}</td>
+      </tr>`;
+    }
+
+    // Verdict
+    const vBox = document.getElementById('verdictBox');
+    const vTitle = document.getElementById('verdictTitle');
+    const vSub = document.getElementById('verdictSub');
+    vBox.className = 'verdict';
+    if (passes === 7 && fails === 0 && tokenReductionPct !== null) {
+      if (tokenReductionPct > 5) {
+        vBox.classList.add('working');
+        vTitle.textContent = '✅ RelayAI Is Working';
+        vSub.textContent = `All 7 signals pass. Token reduction: ${tokenReductionPct.toFixed(1)}%. Ready to report to leadership.`;
+      } else {
+        vBox.classList.add('inconclusive');
+        vTitle.textContent = '⚠️ Relay Active — Marginal Token Impact';
+        vSub.textContent = 'All signals pass but token reduction is under 5%. Review project size and session configuration.';
+      }
+    } else if (fails > 0) {
+      vBox.classList.add('not-working');
+      vTitle.textContent = '❌ RelayAI Has Failures';
+      vSub.textContent = `${fails} signal(s) failed. Fix issues before reporting or expanding use.`;
+    } else {
+      vBox.classList.add('inconclusive');
+      vTitle.textContent = '⏳ Incomplete Data';
+      vSub.textContent = 'Complete all test phases and signal checks to generate a verdict.';
+    }
+  }
+
+  // Init
+  document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('testDate').value = new Date().toISOString().split('T')[0];
+    updateHeader();
+  });
+</script>
+</body>
+</html>

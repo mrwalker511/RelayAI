@@ -312,6 +312,37 @@
     <div id="tab-setup" class="panel active">
       <div class="section-heading">Test Setup <span class="pill">Step 1</span></div>
 
+      <!-- Import & Export Card -->
+      <div class="card" id="dropZone" style="border: 2px dashed var(--accent); background: rgba(79, 142, 247, 0.03); position: relative; transition: all 0.2s ease;">
+        <div class="card-title" style="color: var(--accent); display: flex; align-items: center; gap: 8px;">
+          <span>💾</span> Import &amp; Export Session Data
+        </div>
+        <p style="font-size:13px;color:var(--muted);margin-bottom:16px;line-height: 1.4;">
+          Upload a saved tracker JSON, <code>.relay/session.json</code>, or a Codex rollout log (<code>.jsonl</code>) to auto-populate test data. You can also drag and drop files directly onto this card.
+        </p>
+        
+        <div style="display: flex; gap: 14px; align-items: center; flex-wrap: wrap;">
+          <div style="flex: 1; min-width: 220px;">
+            <input type="file" id="importFile" accept=".json,.jsonl" style="display: none;" multiple onchange="handleFileUpload(this)" />
+            <button class="btn btn-outline" style="width: 100%; border-style: dashed; display: flex; align-items: center; justify-content: center; gap: 8px; height: 40px;" onclick="document.getElementById('importFile').click()">
+              📁 Select JSON / JSONL File(s)
+            </button>
+          </div>
+          <button class="btn btn-primary" onclick="exportData()" style="display: flex; align-items: center; gap: 8px; height: 40px;">
+            📥 Export Tracker JSON
+          </button>
+        </div>
+
+        <!-- File Upload Status / Codex Turn Selector -->
+        <div id="uploadFeedback" style="display: none; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 18px; margin-top: 16px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 1px solid var(--border); padding-bottom: 8px;">
+            <h4 style="font-size: 13px; font-weight: 600; color: var(--text); display: flex; align-items: center; gap: 6px;" id="feedbackTitle">File Processed</h4>
+            <button class="btn btn-danger" style="padding: 4px 10px; font-size: 11px; border-radius: 4px;" onclick="clearFeedback()">Dismiss</button>
+          </div>
+          <div id="feedbackContent" style="font-size: 12px; color: var(--muted); line-height: 1.5;"></div>
+        </div>
+      </div>
+
       <div class="card">
         <div class="card-title">Session Info</div>
         <div class="field-row">
@@ -359,23 +390,23 @@
         <div id="promptSetup">
           <div class="field" style="margin-bottom:10px;">
             <label>Prompt 1</label>
-            <input type="text" id="prompt1" value="Explain the overall architecture of this project" />
+            <input type="text" id="prompt1" value="Explain the overall architecture of this project" oninput="updatePromptLabels()" />
           </div>
           <div class="field" style="margin-bottom:10px;">
             <label>Prompt 2</label>
-            <input type="text" id="prompt2" value="Review the auth flow and identify any security risks" />
+            <input type="text" id="prompt2" value="Review the auth flow and identify any security risks" oninput="updatePromptLabels()" />
           </div>
           <div class="field" style="margin-bottom:10px;">
             <label>Prompt 3</label>
-            <input type="text" id="prompt3" value="Add input validation to the generate tool command" />
+            <input type="text" id="prompt3" value="Add input validation to the generate tool command" oninput="updatePromptLabels()" />
           </div>
           <div class="field" style="margin-bottom:10px;">
             <label>Prompt 4</label>
-            <input type="text" id="prompt4" value="Summarize what has changed in the active diff" />
+            <input type="text" id="prompt4" value="Summarize what has changed in the active diff" oninput="updatePromptLabels()" />
           </div>
           <div class="field">
             <label>Prompt 5</label>
-            <input type="text" id="prompt5" value="Write unit tests for the register command" />
+            <input type="text" id="prompt5" value="Write unit tests for the register command" oninput="updatePromptLabels()" />
           </div>
         </div>
       </div>
@@ -679,8 +710,6 @@
     document.getElementById('tab-' + id).classList.add('active');
     el.classList.add('active');
     if (id === 'summary') buildSummary();
-    if (id === 'baseline') buildPromptForms('baseline');
-    if (id === 'relay') buildPromptForms('relay');
   }
 
   function updateHeader() {
@@ -690,6 +719,16 @@
 
   // ── Build prompt entry forms ──
   const prompts = () => [1,2,3,4,5].map(i => document.getElementById('prompt'+i)?.value || 'Prompt '+i);
+
+  function updatePromptLabels() {
+    for (let n = 1; n <= 5; n++) {
+      const val = document.getElementById('prompt' + n)?.value || 'Prompt ' + n;
+      ['baseline', 'relay'].forEach(phase => {
+        const el = document.getElementById(`${phase}_prompt_label_${n}`);
+        if (el) el.textContent = val;
+      });
+    }
+  }
 
   function buildPromptForms(phase) {
     const container = document.getElementById(phase + 'Prompts');
@@ -704,21 +743,21 @@
           <div class="prompt-header">
             <div style="display:flex;align-items:center;gap:10px;">
               <div class="prompt-num">${n}</div>
-              <div style="font-size:13px;color:var(--text);">${p}</div>
+              <div id="${phase}_prompt_label_${n}" style="font-size:13px;color:var(--text);">${p}</div>
             </div>
           </div>
           <div class="field-row">
             <div class="field">
               <label>Tokens Sent (Session A)</label>
-              <input type="number" id="${phase}_tokens_a_${n}" placeholder="e.g. 4200" />
+              <input type="number" id="${phase}_tokens_a_${n}" placeholder="e.g. 4200" oninput="buildSummary()" />
             </div>
             <div class="field">
               <label>Quality Score A (1–5)</label>
-              <input type="number" id="${phase}_quality_a_${n}" min="1" max="5" placeholder="1–5" />
+              <input type="number" id="${phase}_quality_a_${n}" min="1" max="5" placeholder="1–5" oninput="buildSummary()" />
             </div>
             <div class="field">
               <label>Context Accurate? (A)</label>
-              <select id="${phase}_ctx_a_${n}">
+              <select id="${phase}_ctx_a_${n}" onchange="buildSummary()">
                 <option value="">—</option>
                 <option value="yes">Yes</option>
                 <option value="partial">Partial</option>
@@ -727,7 +766,7 @@
             </div>
             <div class="field">
               <label>Hallucinations? (A)</label>
-              <select id="${phase}_hall_a_${n}">
+              <select id="${phase}_hall_a_${n}" onchange="buildSummary()">
                 <option value="no">None</option>
                 <option value="minor">Minor</option>
                 <option value="yes">Yes</option>
@@ -736,7 +775,7 @@
             ${isRelay ? `
             <div class="field">
               <label>Cache Hit? (A)</label>
-              <select id="relay_cache_a_${n}">
+              <select id="relay_cache_a_${n}" onchange="buildSummary()">
                 <option value="">—</option>
                 <option value="yes">Yes</option>
                 <option value="no">No</option>
@@ -746,15 +785,15 @@
           <div class="field-row">
             <div class="field">
               <label>Tokens Sent (Session B)</label>
-              <input type="number" id="${phase}_tokens_b_${n}" placeholder="e.g. 4100" />
+              <input type="number" id="${phase}_tokens_b_${n}" placeholder="e.g. 4100" oninput="buildSummary()" />
             </div>
             <div class="field">
               <label>Quality Score B (1–5)</label>
-              <input type="number" id="${phase}_quality_b_${n}" min="1" max="5" placeholder="1–5" />
+              <input type="number" id="${phase}_quality_b_${n}" min="1" max="5" placeholder="1–5" oninput="buildSummary()" />
             </div>
             <div class="field">
               <label>Context Accurate? (B)</label>
-              <select id="${phase}_ctx_b_${n}">
+              <select id="${phase}_ctx_b_${n}" onchange="buildSummary()">
                 <option value="">—</option>
                 <option value="yes">Yes</option>
                 <option value="partial">Partial</option>
@@ -763,7 +802,7 @@
             </div>
             <div class="field">
               <label>Hallucinations? (B)</label>
-              <select id="${phase}_hall_b_${n}">
+              <select id="${phase}_hall_b_${n}" onchange="buildSummary()">
                 <option value="no">None</option>
                 <option value="minor">Minor</option>
                 <option value="yes">Yes</option>
@@ -772,7 +811,7 @@
             ${isRelay ? `
             <div class="field">
               <label>Cache Hit? (B)</label>
-              <select id="relay_cache_b_${n}">
+              <select id="relay_cache_b_${n}" onchange="buildSummary()">
                 <option value="">—</option>
                 <option value="yes">Yes</option>
                 <option value="no">No</option>
@@ -782,6 +821,403 @@
         </div>`;
     });
   }
+
+  // ── Import / Export Logic ──
+  let detectedTurns = [];
+
+  function clearFeedback() {
+    const fb = document.getElementById('uploadFeedback');
+    fb.style.display = 'none';
+    document.getElementById('feedbackContent').innerHTML = '';
+    detectedTurns = [];
+  }
+
+  function handleFileUpload(input) {
+    handleFiles(input.files);
+    input.value = '';
+  }
+
+  function handleFiles(files) {
+    if (!files.length) return;
+    
+    Array.from(files).forEach(file => {
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const text = e.target.result;
+        try {
+          if (file.name.endsWith('.jsonl') || text.includes('\n{"') || text.includes('\r\n{"') || (text.trim().startsWith('{"') && text.includes('"timestamp"'))) {
+            parseCodexJsonl(text, file.name);
+          } else {
+            const json = JSON.parse(text);
+            processJsonFile(json, file.name);
+          }
+        } catch (err) {
+          showStatus(`❌ Error reading ${file.name}: ${err.message}`, 'error');
+        }
+      };
+      reader.readAsText(file);
+    });
+  }
+
+  function showStatus(msg, type = 'info') {
+    const fb = document.getElementById('uploadFeedback');
+    const title = document.getElementById('feedbackTitle');
+    const content = document.getElementById('feedbackContent');
+    
+    fb.style.display = 'block';
+    title.innerHTML = type === 'error' ? '❌ Error Processing File' : 'ℹ️ Import Status';
+    content.innerHTML = `<div style="color: ${type === 'error' ? 'var(--red)' : 'var(--text)'};">${msg}</div>`;
+  }
+
+  function processJsonFile(json, filename) {
+    if (json.testerName !== undefined || json.baseline_tokens_a_1 !== undefined || json.prompt1 !== undefined) {
+      Object.entries(json).forEach(([id, value]) => {
+        const el = document.getElementById(id);
+        if (el) {
+          if (el.type === 'checkbox') {
+            el.checked = !!value;
+          } else {
+            el.value = value;
+          }
+        }
+      });
+      updateHeader();
+      updatePromptLabels();
+      buildSummary();
+      showStatus(`✅ Successfully imported full tracker data from <strong>${filename}</strong>.`);
+      return;
+    }
+
+    if (json.session_id !== undefined && json.base_git_sha !== undefined) {
+      const baseSha = json.base_git_sha;
+      const sessSha = json.session_id;
+      
+      const baseShaEl = document.getElementById('baselineSha');
+      const sessShaEl = document.getElementById('relaySessionSha');
+      if (baseShaEl) baseShaEl.value = baseSha;
+      if (sessShaEl) sessShaEl.value = sessSha;
+      
+      if (json.created_at) {
+        const dateEl = document.getElementById('testDate');
+        if (dateEl) dateEl.value = json.created_at.split('T')[0];
+      }
+      
+      updateHeader();
+      buildSummary();
+      showStatus(`✅ Imported Relay session info from <strong>${filename}</strong>:<br>• Session ID: <code>${sessSha}</code><br>• Base Git SHA: <code>${baseSha}</code>`);
+      return;
+    }
+
+    if (json.zones !== undefined && typeof json.zones.static_block === 'number') {
+      const staticEl = document.getElementById('staticTokens');
+      const stateEl = document.getElementById('stateTokens');
+      const dynamicEl = document.getElementById('dynamicTokens');
+      if (staticEl) staticEl.value = json.zones.static_block;
+      if (stateEl) stateEl.value = json.zones.state_layer;
+      if (dynamicEl) dynamicEl.value = json.zones.dynamic_input;
+      
+      buildSummary();
+      showStatus(`✅ Imported cache zones token counts from <strong>${filename}</strong>:<br>• Static: ${json.zones.static_block}<br>• State: ${json.zones.state_layer}<br>• Dynamic: ${json.zones.dynamic_input}`);
+      return;
+    }
+
+    if (json.provider !== undefined && json.provider.name !== undefined) {
+      const providerEl = document.getElementById('aiProvider');
+      if (providerEl) {
+        const pName = json.provider.name.toLowerCase();
+        if (pName.includes('claude')) providerEl.value = 'Claude Code';
+        else if (pName.includes('copilot')) providerEl.value = 'GitHub Copilot';
+        else if (pName.includes('codex') || pName.includes('openai')) providerEl.value = 'OpenAI Codex';
+        else providerEl.value = 'Other';
+      }
+      showStatus(`✅ Imported Relay config provider settings from <strong>${filename}</strong>.`);
+      return;
+    }
+
+    if (json.baseline !== undefined || json.relay !== undefined || json.signals !== undefined) {
+      if (json.testerName) document.getElementById('testerName').value = json.testerName;
+      if (json.testDate) document.getElementById('testDate').value = json.testDate;
+      if (json.aiProvider) document.getElementById('aiProvider').value = json.aiProvider;
+      if (json.relayVersion) document.getElementById('relayVersion').value = json.relayVersion;
+      if (json.tokenRate) document.getElementById('tokenRate').value = json.tokenRate;
+      
+      const phases = ['baseline', 'relay'];
+      phases.forEach(phase => {
+        if (json[phase]) {
+          const sessions = ['sessionA', 'sessionB'];
+          sessions.forEach(sess => {
+            const letter = sess.endsWith('A') ? 'a' : 'b';
+            if (Array.isArray(json[phase][sess])) {
+              json[phase][sess].forEach((p, idx) => {
+                const n = idx + 1;
+                if (p.tokens !== undefined) {
+                  const el = document.getElementById(`${phase}_tokens_${letter}_${n}`);
+                  if (el) el.value = p.tokens;
+                }
+                if (p.quality !== undefined) {
+                  const el = document.getElementById(`${phase}_quality_${letter}_${n}`);
+                  if (el) el.value = p.quality;
+                }
+                if (p.ctx !== undefined) {
+                  const el = document.getElementById(`${phase}_ctx_${letter}_${n}`);
+                  if (el) el.value = p.ctx;
+                }
+                if (p.hall !== undefined) {
+                  const el = document.getElementById(`${phase}_hall_${letter}_${n}`);
+                  if (el) el.value = p.hall;
+                }
+                if (p.cacheHit !== undefined && phase === 'relay') {
+                  const el = document.getElementById(`relay_cache_${letter}_${n}`);
+                  if (el) el.value = p.cacheHit;
+                }
+              });
+            }
+          });
+        }
+      });
+
+      if (json.signals) {
+        Object.entries(json.signals).forEach(([sig, val]) => {
+          const el = document.getElementById(sig);
+          if (el) el.value = val;
+        });
+      }
+
+      if (json.notes) {
+        if (json.notes.baseline) document.getElementById('notesBaseline').value = json.notes.baseline;
+        if (json.notes.relay) document.getElementById('notesRelay').value = json.notes.relay;
+        if (json.notes.leadership) document.getElementById('notesLeadership').value = json.notes.leadership;
+        if (json.notes.next) document.getElementById('notesNext').value = json.notes.next;
+      }
+
+      updateHeader();
+      buildSummary();
+      showStatus(`✅ Successfully imported structured metrics from <strong>${filename}</strong>.`);
+      return;
+    }
+
+    showStatus(`⚠️ JSON file format not recognized.`, 'error');
+  }
+
+  function parseCodexJsonl(text, filename) {
+    const lines = text.split('\n');
+    detectedTurns = [];
+    let currentTurn = null;
+
+    for (let line of lines) {
+      line = line.trim();
+      if (!line) continue;
+      try {
+        const obj = JSON.parse(line);
+        if (obj.type === 'response_item' && obj.payload && obj.payload.role === 'user') {
+          const contents = obj.payload.content || [];
+          const textContent = contents.map(c => c.text || '').join('\n');
+          if (textContent.trim()) {
+            currentTurn = {
+              prompt: textContent.trim(),
+              inputTokens: 0,
+              cachedTokens: 0,
+              outputTokens: 0,
+              tokenCountsCount: 0
+            };
+            detectedTurns.push(currentTurn);
+          }
+        } else if (obj.type === 'event_msg' && obj.payload && obj.payload.type === 'token_count') {
+          const info = obj.payload.info;
+          if (info && info.last_token_usage) {
+            const last = info.last_token_usage;
+            if (currentTurn) {
+              currentTurn.inputTokens += (last.input_tokens || 0);
+              currentTurn.cachedTokens += (last.cached_input_tokens || 0);
+              currentTurn.outputTokens += (last.output_tokens || 0);
+              currentTurn.tokenCountsCount++;
+            }
+          }
+        }
+      } catch (err) {
+        // Skip malformed lines
+      }
+    }
+
+    detectedTurns = detectedTurns.filter(t => t.inputTokens > 0);
+
+    if (detectedTurns.length === 0) {
+      showStatus(`⚠️ No turns with token count information found in Codex log <strong>${filename}</strong>.`, 'error');
+      return;
+    }
+
+    const fb = document.getElementById('uploadFeedback');
+    const title = document.getElementById('feedbackTitle');
+    const content = document.getElementById('feedbackContent');
+    
+    fb.style.display = 'block';
+    title.innerHTML = `🤖 Codex Session Log — Turn Selector`;
+    
+    let tableRows = '';
+    detectedTurns.forEach((turn, idx) => {
+      const snippet = turn.prompt.length > 80 ? turn.prompt.substring(0, 80) + '...' : turn.prompt;
+      const isSetupPrompt = turn.prompt.includes('<INSTRUCTIONS>') || turn.prompt.includes('<environment_context>') || turn.prompt.startsWith('# AGENTS.md');
+      const checkedAttr = isSetupPrompt ? '' : 'checked';
+      
+      tableRows += `
+        <tr style="border-bottom: 1px solid var(--border);">
+          <td style="padding: 8px;"><input type="checkbox" class="turn-select-chk" data-index="${idx}" ${checkedAttr} /></td>
+          <td style="padding: 8px; font-weight:600; color:var(--accent);">${idx + 1}</td>
+          <td style="padding: 8px; color:var(--text); font-family: monospace; font-size:11px; white-space:pre-wrap; max-width: 400px; word-break: break-all;">${escapeHtml(snippet)}</td>
+          <td style="padding: 8px; text-align: right; font-weight:600;">${turn.inputTokens.toLocaleString()}</td>
+          <td style="padding: 8px; text-align: right; color:var(--green);">${turn.cachedTokens.toLocaleString()}</td>
+        </tr>
+      `;
+    });
+
+    content.innerHTML = `
+      <p style="margin-bottom: 12px; color: var(--text);">
+        We analyzed <strong>${filename}</strong> and found <strong>${detectedTurns.length}</strong> turns. 
+        Setup steps are unchecked by default. Adjust your selection below:
+      </p>
+
+      <div style="max-height: 250px; overflow-y: auto; border: 1px solid var(--border); border-radius: 6px; margin-bottom: 16px; background: var(--bg);">
+        <table style="width: 100%; border-collapse: collapse; font-size: 11px; text-align: left;">
+          <thead>
+            <tr style="border-bottom: 1px solid var(--border); background: var(--surface);">
+              <th style="padding: 8px; width: 30px;"><input type="checkbox" id="selectAllTurns" checked onchange="toggleSelectAllTurns(this)" /></th>
+              <th style="padding: 8px; width: 40px;">Turn</th>
+              <th style="padding: 8px;">Prompt Content</th>
+              <th style="padding: 8px; text-align: right;">Input Tokens</th>
+              <th style="padding: 8px; text-align: right;">Cached Tokens</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${tableRows}
+          </tbody>
+        </table>
+      </div>
+
+      <div style="display: flex; gap: 18px; align-items: flex-end; flex-wrap: wrap; margin-bottom: 16px; background: var(--surface); padding: 12px; border-radius: 6px; border: 1px solid var(--border);">
+        <div class="field" style="flex: 1; min-width: 180px; margin-bottom: 0;">
+          <label style="font-size: 10px;">Select Target Slot</label>
+          <select id="importTargetSlot" style="background: var(--surface2); width: 100%; height: 36px; padding: 6px 10px; margin-top: 4px;">
+            <option value="baseline_a">Baseline Session A (No Relay)</option>
+            <option value="baseline_b">Baseline Session B (No Relay)</option>
+            <option value="relay_a">Relay-Enabled Session A</option>
+            <option value="relay_b">Relay-Enabled Session B</option>
+          </select>
+        </div>
+        <div style="display: flex; align-items: center; gap: 8px; height: 36px;">
+          <label class="toggle" style="margin-bottom:0;">
+            <input type="checkbox" id="overwritePrompts" />
+            <span class="toggle-slider"></span>
+          </label>
+          <span class="toggle-label" style="font-size: 12px; color: var(--text);">Overwrite Setup Prompts</span>
+        </div>
+      </div>
+
+      <button class="btn btn-primary" onclick="applyCodexImport()" style="width: 100%; font-size: 13px; padding: 10px 16px; border-radius: 6px;">
+        ✅ Import Selected Turns
+      </button>
+    `;
+
+    document.getElementById('selectAllTurns').checked = detectedTurns.some((t, i) => {
+      const isSetupPrompt = t.prompt.includes('<INSTRUCTIONS>') || t.prompt.includes('<environment_context>') || t.prompt.startsWith('# AGENTS.md');
+      return !isSetupPrompt;
+    });
+  }
+
+  function toggleSelectAllTurns(master) {
+    document.querySelectorAll('.turn-select-chk').forEach(chk => {
+      chk.checked = master.checked;
+    });
+  }
+
+  function applyCodexImport() {
+    const chks = document.querySelectorAll('.turn-select-chk:checked');
+    if (!chks.length) {
+      alert('Please select at least one turn to import.');
+      return;
+    }
+    
+    const targetSlot = document.getElementById('importTargetSlot').value;
+    const overwritePrompts = document.getElementById('overwritePrompts').checked;
+    
+    const parts = targetSlot.split('_');
+    const phase = parts[0];
+    const session = parts[1];
+    
+    const selectedIndices = Array.from(chks).map(chk => parseInt(chk.getAttribute('data-index'))).sort((a,b)=>a-b);
+    
+    selectedIndices.forEach((turnIdx, i) => {
+      const n = i + 1;
+      if (n > 5) return;
+      
+      const turn = detectedTurns[turnIdx];
+      
+      const tokensEl = document.getElementById(`${phase}_tokens_${session}_${n}`);
+      if (tokensEl) tokensEl.value = turn.inputTokens;
+      
+      const qualEl = document.getElementById(`${phase}_quality_${session}_${n}`);
+      if (qualEl) qualEl.value = 5;
+      
+      const ctxEl = document.getElementById(`${phase}_ctx_${session}_${n}`);
+      if (ctxEl) ctxEl.value = 'yes';
+      
+      const hallEl = document.getElementById(`${phase}_hall_${session}_${n}`);
+      if (hallEl) hallEl.value = 'no';
+      
+      if (phase === 'relay') {
+        const cacheEl = document.getElementById(`relay_cache_${session}_${n}`);
+        if (cacheEl) {
+          cacheEl.value = turn.cachedTokens > 0 ? 'yes' : 'no';
+        }
+      }
+      
+      if (overwritePrompts) {
+        const promptSetupEl = document.getElementById(`prompt${n}`);
+        if (promptSetupEl) {
+          promptSetupEl.value = turn.prompt;
+        }
+      }
+    });
+    
+    if (overwritePrompts) {
+      updatePromptLabels();
+    }
+    
+    buildSummary();
+    
+    const count = Math.min(selectedIndices.length, 5);
+    const slotName = targetSlot === 'baseline_a' ? 'Baseline Session A' :
+                     targetSlot === 'baseline_b' ? 'Baseline Session B' :
+                     targetSlot === 'relay_a' ? 'Relay-Enabled Session A' :
+                     'Relay-Enabled Session B';
+                     
+    showStatus(`✅ Successfully imported ${count} turn(s) into <strong>${slotName}</strong>.`);
+  }
+
+  function escapeHtml(text) {
+    return text
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
+  }
+
+  function exportData() {
+    const data = {};
+    document.querySelectorAll('input, select, textarea').forEach(el => {
+      if (el.id && el.id !== 'importFile') {
+        data[el.id] = el.type === 'checkbox' ? el.checked : el.value;
+      }
+    });
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `relay-test-results-${new Date().toISOString().split('T')[0]}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
 
   // ── Build summary ──
   function avg(vals) {
@@ -905,7 +1341,37 @@
   // Init
   document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('testDate').value = new Date().toISOString().split('T')[0];
+    buildPromptForms('baseline');
+    buildPromptForms('relay');
     updateHeader();
+
+    // Drag & Drop Setup
+    const dropZone = document.getElementById('dropZone');
+    if (dropZone) {
+      ['dragenter', 'dragover'].forEach(eventName => {
+        dropZone.addEventListener(eventName, (e) => {
+          e.preventDefault();
+          dropZone.style.background = 'rgba(79, 142, 247, 0.08)';
+          dropZone.style.borderColor = 'var(--accent2)';
+        }, false);
+      });
+
+      ['dragleave', 'drop'].forEach(eventName => {
+        dropZone.addEventListener(eventName, (e) => {
+          e.preventDefault();
+          dropZone.style.background = 'rgba(79, 142, 247, 0.03)';
+          dropZone.style.borderColor = 'var(--accent)';
+        }, false);
+      });
+
+      dropZone.addEventListener('drop', (e) => {
+        const dt = e.dataTransfer;
+        const files = dt.files;
+        if (files.length) {
+          handleFiles(files);
+        }
+      }, false);
+    }
   });
 </script>
 </body>

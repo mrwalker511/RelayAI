@@ -6,6 +6,13 @@ This guide covers three testing levels in order of scope:
 2. [Hook Verification](#2-hook-verification) — confirm lifecycle hooks fire in each supported agent
 3. [Manual Integration Testing](#3-manual-integration-testing) — end-to-end validation against a real project
 
+### 💡 Pro Tip — Autopopulating Session Data
+
+Instead of manually typing token counts and SHAs, you can upload session files directly into the reviewer tool:
+- **Relay metadata**: Drag and drop `.relay/session.json` or `.relay/config.json` to autopopulate SHAs, AI Provider, and date.
+- **Codex sessions**: Locate your Codex log files under `~/.codex/sessions/` and upload the `.jsonl` files. The reviewer tool will display an interactive **Turn Selector** allowing you to select turns and import their token metrics automatically into either the **Baseline** or **Relay-Enabled** slots.
+- **Export/Import State**: You can export the entire state of your results tracker as a JSON file at any time and upload it later to resume.
+
 ---
 
 ## 1. Automated Tests

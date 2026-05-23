@@ -512,17 +512,16 @@ test("relay mcp get_prompt_payload returns Relay zones", { skip: canSpawnNode ? 
   assert.equal(runRelay(["init"], cwd).result.status, 0);
 
   await withMcpServer(cwd, async (request) => {
-    const result = parseToolJson(await request("tools/call", {
+    const response = await request("tools/call", {
       name: "get_prompt_payload",
       arguments: { prompt: "summarize this repo" }
-    }));
-
-    assert.equal(result.blocked, false);
-    assert.equal((result.budget as { status: string }).status, "ok");
-    assert.match(result.payload as string, /<STATIC_BLOCK>/);
-    assert.match(result.payload as string, /<STATE_LAYER>/);
-    assert.match(result.payload as string, /<DYNAMIC_INPUT>/);
-    assert.match(result.payload as string, /summarize this repo/);
+    });
+    assert.ok("result" in response);
+    const result = response.result as { content: Array<{ type: string; text: string }> };
+    assert.equal(result.content.length, 3);
+    assert.match(result.content[0].text, /# Static Block/);
+    assert.match(result.content[1].text, /# State Layer/);
+    assert.match(result.content[2].text, /summarize this repo/);
   });
 });
 
@@ -587,14 +586,14 @@ test("relay session end removes session.json", { skip: canSpawnNode ? false : "n
   assert.match(result.stdout, /session ended/i);
 });
 
-test("relay session end reports error when no session is active", { skip: canSpawnNode ? false : "nested Node execution is unavailable in this sandbox" }, () => {
+test("relay session end reports message when no session is active", { skip: canSpawnNode ? false : "nested Node execution is unavailable in this sandbox" }, () => {
   const cwd = tempWorkspace();
   assert.equal(runRelay(["init"], cwd).result.status, 0);
 
   const result = runRelay(["session", "end"], cwd).result;
 
-  assert.notEqual(result.status, 0);
-  assert.match(result.stderr, /No active session/);
+  assert.equal(result.status, 0);
+  assert.match(result.stdout, /No active session/);
 });
 
 test("relay session end --reset-memory resets raw history and semantic state", { skip: canSpawnNode ? false : "nested Node execution is unavailable in this sandbox" }, () => {
@@ -610,23 +609,24 @@ test("relay session end --reset-memory resets raw history and semantic state", {
   assert.equal(raw.trim(), "# Raw Session History");
 });
 
-test("relay init creates .gitignore with .relay entry when none exists", { skip: canSpawnNode ? false : "nested Node execution is unavailable in this sandbox" }, () => {
+test("relay init creates .gitignore with Relay session data entries when none exists", { skip: canSpawnNode ? false : "nested Node execution is unavailable in this sandbox" }, () => {
   const { cwd, result } = runRelay(["init"]);
 
   assert.equal(result.status, 0);
   const gitignore = readFileSync(join(cwd, ".gitignore"), "utf8");
-  assert.match(gitignore, /^\.relay$/m);
+  assert.match(gitignore, /\.relay\/memory\/session\.raw\.md/);
+  assert.match(gitignore, /\.relay\/session\.json/);
 });
 
-test("relay init appends .relay to existing .gitignore without duplicating", { skip: canSpawnNode ? false : "nested Node execution is unavailable in this sandbox" }, () => {
+test("relay init appends Relay entries to existing .gitignore without duplicating", { skip: canSpawnNode ? false : "nested Node execution is unavailable in this sandbox" }, () => {
   const cwd = tempWorkspace();
   writeFileSync(join(cwd, ".gitignore"), "node_modules\ndist\n");
   runRelay(["init"], cwd);
   runRelay(["init"], cwd);
 
   const gitignore = readFileSync(join(cwd, ".gitignore"), "utf8");
-  const relayLines = gitignore.split("\n").filter(l => l.trim() === ".relay");
-  assert.equal(relayLines.length, 1, ".relay should appear exactly once");
+  const sessionRawLines = gitignore.split("\n").filter(l => l.trim() === ".relay/memory/session.raw.md");
+  assert.equal(sessionRawLines.length, 1, ".relay/memory/session.raw.md should appear exactly once");
   assert.match(gitignore, /node_modules/);
 });
 
@@ -637,7 +637,7 @@ test("relay init does not modify .gitignore that already contains .relay", { ski
   runRelay(["init"], cwd);
 
   const gitignore = readFileSync(join(cwd, ".gitignore"), "utf8");
-  assert.equal(gitignore, original);
+  assert.equal(gitignore, original, "should not modify .gitignore when .relay directory entry already exists");
 });
 
 test("relay ask --model flag is accepted and does not change exit code", { skip: canSpawnNode ? false : "nested Node execution is unavailable in this sandbox" }, () => {

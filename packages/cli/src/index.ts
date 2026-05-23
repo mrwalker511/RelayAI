@@ -8,6 +8,7 @@ import {
   DEFAULT_RELAY_CONFIG,
   RelayConfigSchema,
   buildPromptPayload,
+  buildPrioritizedFileIndex,
   buildStaticBlock,
   buildStateLayer,
   buildDynamicInput,
@@ -16,10 +17,12 @@ import {
   createEmptySemanticState,
   createSessionSnapshot,
   createShellProvider,
+  createShellProviderForTask,
   detectPromptLoop,
   estimateTokens,
   estimateZoneAwareInputCost,
   getGitDiffSince,
+  getStagedDiff,
   getPrefixHash,
   inspectCacheDiagnostics,
   inspectZoneTokens,
@@ -105,12 +108,20 @@ function buildZonesForAsk(
   baseRef: string,
   semanticState: string,
   files: string,
-  staticBlockInput: StaticBlockInput = {}
+  staticBlockInput: StaticBlockInput = {},
+  diffOverride?: string,
+  diffMode?: "full" | "summarized" | "auto",
+  includeTimestamp?: boolean
 ) {
   return {
     staticBlock: buildStaticBlock(staticBlockInput),
     stateLayer: buildStateLayer({ semanticStateJson: semanticState, fileIndex: files }),
-    dynamicInput: buildDynamicInput({ prompt, gitDiff: getGitDiffSince(baseRef) })
+    dynamicInput: buildDynamicInput({
+      prompt,
+      gitDiff: diffOverride ?? getGitDiffSince(baseRef),
+      diffMode,
+      includeTimestamp
+    })
   };
 }
 
@@ -185,9 +196,13 @@ program.command("init").description("Initialize Relay in the current repository.
   }
   const gitignorePath = join(process.cwd(), ".gitignore");
   const gitignoreContent = existsSync(gitignorePath) ? readFileSync(gitignorePath, "utf8") : "";
-  if (!gitignoreContent.split("\n").some(line => line.trim() === ".relay")) {
-    appendFileSync(gitignorePath, gitignoreContent.endsWith("\n") || gitignoreContent === "" ? ".relay\n" : "\n.relay\n");
-    console.log("Added .relay to .gitignore.");
+  const alreadyCovered =
+    gitignoreContent.includes(".relay/memory/session.raw.md") ||
+    gitignoreContent.split("\n").some((line) => line.trim() === ".relay");
+  if (!alreadyCovered) {
+    const gitignoreEntry = "# Relay session data\n.relay/memory/session.raw.md\n.relay/memory/session.compacted.md\n.relay/memory/semantic-state.json\n.relay/memory/semantic-state.snapshot.json\n.relay/session.json\n.relay/calls.json\n";
+    appendFileSync(gitignorePath, gitignoreContent.endsWith("\n") || gitignoreContent === "" ? gitignoreEntry : `\n${gitignoreEntry}`);
+    console.log("Updated .gitignore to exclude Relay session data.");
   }
   console.log("Initialized .relay workspace.");
 });
@@ -200,7 +215,7 @@ session.command("start").description("Start a git-anchored Relay session.").acti
   const staticBlock = buildStaticBlock(readStaticBlockInput(relayDir));
   const stateLayer = buildStateLayer({
     semanticStateJson: serializeSemanticState(createEmptySemanticState()),
-    fileIndex: trackedPaths.slice(0, cfg.files.maxIndex).join("\n")
+    fileIndex: buildPrioritizedFileIndex(process.cwd(), { limit: cfg.files.maxIndex }).join("\n")
   });
   const prefixHash = getPrefixHash(staticBlock, stateLayer);
   const snapshot = createSessionSnapshot(trackedPaths, {
@@ -222,8 +237,8 @@ session.command("end")
   .action((options: { resetMemory?: boolean }) => {
     const sessionPath = join(relayDir, "session.json");
     if (!existsSync(sessionPath)) {
-      process.stderr.write("No active session found.\n");
-      process.exit(1);
+      console.log("No active session to end.");
+      return;
     }
     unlinkSync(sessionPath);
     console.log("Relay session ended.");
@@ -240,7 +255,10 @@ program.command("ask")
   .option("--provider <name>", "Route the payload through a configured provider")
   .option("--model <model>", "Model name for token cost estimation (e.g. claude-opus-4-7)")
   .option("--dry-run", "Print the resolved command and payload without executing")
-  .action(async (prompt: string, options: { provider?: string; model?: string; dryRun?: boolean }) => {
+  .option("--staged", "Use staged diff instead of full session diff")
+  .option("--diff-mode <mode>", "Diff rendering mode: full | summarized | auto (default: auto)")
+  .option("--include-timestamp", "Include ISO timestamp in dynamic input zone")
+  .action(async (prompt: string, options: { provider?: string; model?: string; dryRun?: boolean; staged?: boolean; diffMode?: "full" | "summarized" | "auto"; includeTimestamp?: boolean }) => {
     ensureRelayDir();
 
     // Anomaly detection — include current call before checking threshold
@@ -254,12 +272,13 @@ program.command("ask")
 
     const cfg = readRelayConfig();
     const semanticState = readOptional(join(relayDir, "memory", "semantic-state.json"), serializeSemanticState(createEmptySemanticState()));
-    const files = listTrackedFiles().slice(0, cfg.files.maxIndex).join("\n");
+    const files = buildPrioritizedFileIndex(process.cwd(), { limit: cfg.files.maxIndex }).join("\n");
     const sessionText = readOptional(join(relayDir, "session.json"), "{}");
     const sessionData = parseSessionJson(sessionText);
     const baseRef = (sessionData.base_git_sha as string | undefined) ?? "HEAD";
 
-    const zones = buildZonesForAsk(prompt, baseRef, semanticState, files, readStaticBlockInput(relayDir));
+    const diffOverride = options.staged ? getStagedDiff() : undefined;
+    const zones = buildZonesForAsk(prompt, baseRef, semanticState, files, readStaticBlockInput(relayDir), diffOverride, options.diffMode, options.includeTimestamp);
     const payload = buildPromptPayload(zones);
     const budget = checkTokenBudget(payload, cfg.tokens);
 
@@ -334,11 +353,18 @@ program.command("ask")
     console.log("---END RELAY PAYLOAD---");
   });
 
-program.command("diff").description("Show git diff since current session base SHA.").action(() => {
-  const sessionText = readOptional(join(relayDir, "session.json"), "{}");
-  const sessionData = parseSessionJson(sessionText);
-  console.log(getGitDiffSince((sessionData.base_git_sha as string | undefined) ?? "HEAD"));
-});
+program.command("diff")
+  .description("Show git diff since current session base SHA.")
+  .option("--staged", "Show staged diff instead of session diff")
+  .action((options: { staged?: boolean }) => {
+    if (options.staged) {
+      console.log(getStagedDiff());
+      return;
+    }
+    const sessionText = readOptional(join(relayDir, "session.json"), "{}");
+    const sessionData = parseSessionJson(sessionText);
+    console.log(getGitDiffSince((sessionData.base_git_sha as string | undefined) ?? "HEAD"));
+  });
 
 program.command("doctor").description("Check whether the current workspace is ready for Relay dogfooding.").action(() => {
   const report = runRelayDoctor(process.cwd());
@@ -375,7 +401,7 @@ cache.command("inspect")
     const sessionExists = existsSync(sessionPath);
     const sessionData = sessionExists ? parseSessionJson(readFileSync(sessionPath, "utf8")) : {};
     const baseRef = (sessionData.base_git_sha as string | undefined) ?? "HEAD";
-    const files = listTrackedFiles().slice(0, readRelayConfig().files.maxIndex).join("\n");
+    const files = buildPrioritizedFileIndex(process.cwd(), { limit: readRelayConfig().files.maxIndex }).join("\n");
     const staticBlock = buildStaticBlock(readStaticBlockInput(relayDir));
     const stateLayer = buildStateLayer({ semanticStateJson: semanticState, fileIndex: files });
     const dynamicInput = buildDynamicInput({ prompt: "(cache inspect)", gitDiff: getGitDiffSince(baseRef) });
@@ -424,7 +450,7 @@ cache.command("warm")
     ensureRelayDir();
     const cfg = readRelayConfig();
     const semanticState = readOptional(join(relayDir, "memory", "semantic-state.json"), serializeSemanticState(createEmptySemanticState()));
-    const files = listTrackedFiles().slice(0, cfg.files.maxIndex).join("\n");
+    const files = buildPrioritizedFileIndex(process.cwd(), { limit: cfg.files.maxIndex }).join("\n");
     const zones = {
       staticBlock: buildStaticBlock(readStaticBlockInput(relayDir)),
       stateLayer: buildStateLayer({ semanticStateJson: semanticState, fileIndex: files }),
@@ -480,7 +506,7 @@ tokens.command("inspect").description("Show zone-by-zone token breakdown for the
   ensureRelayDir();
   const cfg = readRelayConfig();
   const semanticState = readOptional(join(relayDir, "memory", "semantic-state.json"), serializeSemanticState(createEmptySemanticState()));
-  const files = listTrackedFiles().slice(0, cfg.files.maxIndex).join("\n");
+  const files = buildPrioritizedFileIndex(process.cwd(), { limit: cfg.files.maxIndex }).join("\n");
   const sessionText = readOptional(join(relayDir, "session.json"), "{}");
   const sessionData = parseSessionJson(sessionText);
   const baseRef = (sessionData.base_git_sha as string | undefined) ?? "HEAD";
@@ -531,10 +557,17 @@ gc.command("run").description("Compact session history into semantic state using
   }
 
   writeFileSync(snapshotPath, existingJson);
-  const gcCommand = cfg.gc.command ?? cfg.provider.commands?.[cfg.provider.default];
-  if (!gcCommand || gcCommand.length === 0) {
-    process.stderr.write("Error: configure gc.command or provider.commands for the default provider before running `relay gc run`.\n");
-    process.exit(1);
+  let gcCommand: string[];
+  if (cfg.gc.command && cfg.gc.command.length > 0) {
+    gcCommand = cfg.gc.command;
+  } else {
+    try {
+      const gcProvider = createShellProviderForTask("gc", cfg);
+      gcCommand = gcProvider.commandTemplate;
+    } catch {
+      process.stderr.write("Error: configure gc.command or provider.commands for the default provider before running `relay gc run`.\n");
+      process.exit(1);
+    }
   }
   process.stderr.write(`Compacting session history via ${gcCommand.join(" ")}...\n`);
 
@@ -617,7 +650,7 @@ context.command("inspect").description("Print current context construction diagn
   const sessionExists = existsSync(sessionPath);
   const sessionData = sessionExists ? parseSessionJson(readFileSync(sessionPath, "utf8")) : {};
   const baseRef = (sessionData.base_git_sha as string | undefined) ?? "HEAD";
-  const files = listTrackedFiles().slice(0, cfg.files.maxIndex).join("\n");
+  const files = buildPrioritizedFileIndex(process.cwd(), { limit: cfg.files.maxIndex }).join("\n");
   const gitDiff = getGitDiffSince(baseRef);
   const zones = {
     staticBlock: buildStaticBlock(readStaticBlockInput(relayDir)),

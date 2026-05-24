@@ -759,6 +759,8 @@ cp ~/.codex/sessions/&lt;latest-uuid&gt;.json ~/relay-test-relay.json</pre>
     const el = document.getElementById('step-' + n);
     if (!el) return;
     el.classList.toggle('open');
+    // Re-sync prompts whenever steps 6 or 13 open so edits from Step 4 propagate
+    if ((n === 6 || n === 13) && el.classList.contains('open')) syncPrompts();
   }
 
   function resetAll() {

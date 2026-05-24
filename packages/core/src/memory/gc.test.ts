@@ -63,6 +63,15 @@ test("compactHistoryToState token counts use estimateTokens not char/4", async (
   assert.ok(result.compactedApproxTokens > 0);
 });
 
+test("compactHistoryToState rejects when GC command exits with non-zero code", async () => {
+  await assert.rejects(
+    compactHistoryToState("history", createEmptySemanticState(), {
+      command: ["/bin/sh", "-c", "cat >/dev/null; exit 1"],
+    }),
+    /exited with code 1/
+  );
+});
+
 test("compactHistoryToState extracts JSON embedded in prose output", async () => {
   const json = JSON.stringify({
     active_target: null,

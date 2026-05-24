@@ -527,6 +527,8 @@ test("relay mcp get_prompt_payload returns Relay zones", { skip: canSpawnNode ? 
 
 test("relay mcp get_git_delta reports truncation", { skip: canSpawnNode ? false : "nested Node execution is unavailable in this sandbox" }, async () => {
   const cwd = tempGitWorkspace();
+  // Commit the initial files so getCurrentGitSha() returns a real SHA and git diff works
+  spawnSync("git", ["-c", "user.email=test@test.com", "-c", "user.name=Test", "-c", "commit.gpgsign=false", "commit", "-m", "init"], { cwd, encoding: "utf8" });
   assert.equal(runRelay(["init"], cwd).result.status, 0);
   assert.equal(runRelay(["session", "start"], cwd).result.status, 0);
   writeFileSync(join(cwd, "src", "app.ts"), "export const app = false;\nexport const changed = true;\n");

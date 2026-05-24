@@ -1,10 +1,17 @@
 # Relay CLI
 
-Relay is a local-first context optimizer for engineers using coding agents and model CLIs.
+[![CI](https://github.com/mrwalker511/relayai/actions/workflows/ci.yml/badge.svg)](https://github.com/mrwalker511/relayai/actions/workflows/ci.yml)
+[![Node.js ≥ 20](https://img.shields.io/badge/node-%3E%3D20-brightgreen)](https://nodejs.org)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.7-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org)
+[![pnpm](https://img.shields.io/badge/pnpm-9-F69220?logo=pnpm&logoColor=white)](https://pnpm.io)
 
-It wraps your existing provider command, builds deterministic prompt payloads from your repository state, and keeps volatile details at the end of the prompt so provider-side prompt caching can work more effectively.
+> Local-first context and prompt-cache optimizer for coding agents and model CLIs.
+
+Relay wraps your existing provider command, builds deterministic prompt payloads from your repository state, and keeps volatile details at the end of the prompt so provider-side caching can work more effectively.
 
 Relay does **not** replace your model or coding agent. It gives them cleaner, repeatable context.
+
+---
 
 ## Why Relay
 
@@ -13,107 +20,166 @@ Relay does **not** replace your model or coding agent. It gives them cleaner, re
 | Lower repeated prompt cost | Stable prompt zones designed for provider cache reuse |
 | Better continuity between sessions | Compact semantic memory stored in `.relay/` |
 | Smaller follow-up prompts | Git-anchored diffs instead of resending full files |
-| Safer large-context usage | Local token estimates, budget checks, and diagnostics |
+| Safer large-context usage | Local token estimates, budget checks, and anomaly detection |
 | Provider flexibility | Shell-based adapters for any CLI that reads stdin |
+
+---
 
 ## How It Works
 
-Relay builds every outbound prompt in three ordered zones:
+Relay assembles every outbound prompt in three ordered zones:
 
-1. **Static Block**: project rules, architecture notes, and stable source context.
-2. **State Layer**: semantic memory, file index, and session metadata.
-3. **Dynamic Input**: the latest user request, git diff, runtime output, and timestamps.
+```
+┌─────────────────────────────────────────┐
+│  STATIC_BLOCK                           │  ← project rules, architecture notes,
+│  (stable across requests)               │    source snapshots
+├─────────────────────────────────────────┤
+│  STATE_LAYER                            │  ← semantic memory, file index,
+│  (stable, structured)                   │    session summary
+├─────────────────────────────────────────┤
+│  DYNAMIC_INPUT                          │  ← current prompt, git diff,
+│  (volatile, always last)                │    runtime output, timestamp
+└─────────────────────────────────────────┘
+          │
+          ▼
+   configured provider CLI  (stdin)
+```
 
-The stable zones come first. The changing material goes last.
+The stable zones come first so provider caches hit on repeat calls. Volatile data goes last so it never busts the cached prefix. Relay also records a base git SHA at session start — follow-up prompts include only the diff since that base, not the whole repository.
 
-Relay also records a base git SHA when you start a session. Later prompts include the diff from that base, which keeps follow-up context focused on what changed.
+---
 
-## Quick Start
+## Prerequisites
 
-Install dependencies and build Relay:
+- **Node.js 20 or newer**
+- **pnpm 9** — `npm install -g pnpm`
+- **git**
+- A model or coding-agent CLI that can read a prompt from stdin (Claude, Ollama, ChatGPT CLI, etc.)
+
+---
+
+## Installation
+
+Clone this repository, install dependencies, and build:
 
 ```bash
+git clone https://github.com/mrwalker511/relayai.git RelayAI
+cd RelayAI
 pnpm install
 pnpm build
 ```
 
-Try the CLI from this checkout:
+Confirm the CLI works:
 
 ```bash
 node packages/cli/dist/index.js --help
-node packages/cli/dist/index.js init
-node packages/cli/dist/index.js session start
-node packages/cli/dist/index.js ask "Summarize this repository"
 ```
 
-For a complete walkthrough, including using Relay from another repository, see [`docs/USER_INSTALLATION_GUIDE.md`](docs/USER_INSTALLATION_GUIDE.md).
+Create a shell alias so you can use `relay` from any repository:
+
+```bash
+alias relay='node /absolute/path/to/RelayAI/packages/cli/dist/index.js'
+```
+
+Replace `/absolute/path/to/RelayAI` with your actual clone path. Add the alias to your shell profile (`.bashrc`, `.zshrc`, etc.) once you've confirmed it works.
+
+---
+
+## Quick Start
+
+Run these commands inside the repository you want Relay to manage:
+
+```bash
+relay init                          # create .relay/ with config and memory files
+relay doctor                        # verify workspace readiness
+relay session start                 # anchor context to the current git SHA
+relay ask "Summarize this repo"     # print the assembled prompt payload
+```
+
+Without `--provider`, `relay ask` prints the payload between `---BEGIN RELAY PAYLOAD---` and `---END RELAY PAYLOAD---`. Once you have a provider configured, add `--provider default` to route the payload to your model.
+
+For a complete walkthrough including provider setup, see [`docs/USER_INSTALLATION_GUIDE.md`](docs/USER_INSTALLATION_GUIDE.md).
+
+---
 
 ## Everyday Commands
 
 ```bash
-relay doctor                         # verify local Relay readiness
-relay session start                  # anchor context to the current git SHA
-relay ask "Review the active diff"   # print a Relay payload
-relay ask "Review the active diff" --provider default
-relay diff                           # inspect the session delta
-relay mcp                            # expose Relay context to MCP-compatible agents
-relay context inspect                # inspect prompt-construction state
-relay tokens inspect                 # inspect token usage by zone
-relay cache inspect                  # inspect cache-relevant prefix metadata
-relay gc preview                     # preview semantic memory compaction
-relay gc run                         # compact session history
+relay doctor                                      # verify Relay readiness
+relay session start                               # anchor context to the current git SHA
+relay ask "Review the active diff"                # print a Relay payload
+relay ask "Review the active diff" --provider default  # send to configured provider
+relay diff                                        # inspect the session delta
+relay context inspect                             # inspect prompt-construction state
+relay tokens inspect                              # inspect token usage by zone
+relay cache inspect                               # inspect cache-relevant prefix metadata
+relay gc preview                                  # preview semantic memory compaction
+relay gc run                                      # compact session history
+relay mcp                                         # expose Relay context to MCP agents
 ```
+
+See [`docs/COMMANDS.md`](docs/COMMANDS.md) for the full command reference.
+
+---
+
+## MCP Integration
+
+Relay can run as a read-only MCP context server so any MCP-compatible agent (Claude Code, Cursor, etc.) can request deterministic project context without leaving its normal workflow.
+
+```bash
+relay mcp   # starts the MCP stdio server
+```
+
+See [`docs/MCP.md`](docs/MCP.md) for setup instructions and the full tool contract.
+
+---
 
 ## Documentation
 
 | Document | Purpose |
 | --- | --- |
-| [`docs/USER_INSTALLATION_GUIDE.md`](docs/USER_INSTALLATION_GUIDE.md) | Polished setup, provider configuration, daily workflow, and troubleshooting |
+| [`docs/USER_INSTALLATION_GUIDE.md`](docs/USER_INSTALLATION_GUIDE.md) | Setup, provider configuration, daily workflow, and troubleshooting |
 | [`docs/GETTING_STARTED.md`](docs/GETTING_STARTED.md) | Short local development quick start |
-| [`docs/COMMANDS.md`](docs/COMMANDS.md) | CLI command reference |
+| [`docs/COMMANDS.md`](docs/COMMANDS.md) | Full CLI command reference |
+| [`docs/CONFIGURATION.md`](docs/CONFIGURATION.md) | `.relay/config.json` schema reference |
+| [`docs/PROVIDER_ADAPTERS.md`](docs/PROVIDER_ADAPTERS.md) | Provider command examples and adapter design |
 | [`docs/MCP.md`](docs/MCP.md) | MCP setup and tool contract for agent integrations |
-| [`docs/CONFIGURATION.md`](docs/CONFIGURATION.md) | `.relay/config.json` reference |
-| [`docs/PROVIDER_ADAPTERS.md`](docs/PROVIDER_ADAPTERS.md) | Provider command behavior |
-| [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Context construction architecture |
+| [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Context construction architecture and module reference |
+
+---
 
 ## Repository Structure
 
-```txt
-relay-cli/
-├── packages/
-│   ├── core/       # Context engine, token guardrails, git delta logic
-│   └── cli/        # Terminal interface
-├── docs/           # Product, architecture, and implementation docs
-└── examples/       # Example config and semantic state files
 ```
+RelayAI/
+├── packages/
+│   ├── core/       # Context engine, token guardrails, git delta logic, semantic memory
+│   └── cli/        # Terminal interface and MCP server
+├── docs/           # Product, architecture, and implementation docs
+├── examples/       # Example config and semantic state files
+├── AGENTS.md       # Guidance for coding agents working with this repo
+└── README.md
+```
+
+---
 
 ## Development
 
 ```bash
-pnpm install
-pnpm build
-pnpm typecheck
-pnpm test
+pnpm install        # install all workspace dependencies
+pnpm build          # compile all packages
+pnpm typecheck      # type-check without emitting
+pnpm test           # run tests (build first)
+pnpm dev            # run CLI via tsx without building
+pnpm run ci         # full CI: build + typecheck + test + pack:check
+pnpm pack:check     # validate package artifacts (dry run)
 ```
 
-CI runs build, typecheck, tests, and package dry-run checks. Before preparing local package artifacts, run:
+Filter commands to a single package:
 
 ```bash
-pnpm run ci
+pnpm --filter @relay/core build
+pnpm --filter @relay/cli dev
 ```
 
-For package-only validation:
-
-```bash
-pnpm pack:check
-```
-
-## Status
-
-This repository has implemented the MVP command surface described in `docs/MVP_ROADMAP.md`, including doctor diagnostics, MCP context tools, cache diagnostics, provider dry runs, token inspection, and package dry-run checks.
-
-The current phase is dogfood hardening: keep runtime diagnostics, package validation, and documentation aligned with the live CLI before publishing or broader use.
-
-## Package Readiness
-
-`pnpm pack:check` removes generated `dist` output, rebuilds both workspaces, and runs `npm pack --dry-run` for `@relay/core` and `@relay/cli` with npm cache data under `/tmp`. Package dry runs should include package metadata plus runtime `dist/**/*.js` and `dist/**/*.d.ts` files only.
+CI runs on every push and pull request to `main`. The pipeline runs `build`, `typecheck`, `test`, and `pack:check` on Node.js 22.

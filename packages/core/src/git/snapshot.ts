@@ -16,9 +16,9 @@ export function getCurrentGitSha(cwd = process.cwd()): string {
       cwd,
       encoding: "utf8"
     }).trim();
-    return sha || "HEAD";
+    return sha;
   } catch {
-    return "HEAD";
+    return "";
   }
 }
 

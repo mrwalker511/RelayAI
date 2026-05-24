@@ -225,7 +225,12 @@ export function readRelayWorkspace(options: RelayWorkspaceOptions = {}): RelayWo
     priorityPaths: stateFiles,
   });
   const trimmedState = state.parsed ? trimSemanticState(state.parsed, { cwd }) : createEmptySemanticState();
-  const gitDiff = getGitDiffSince(baseRef, cwd);
+  let gitDiff = "";
+  try {
+    gitDiff = getGitDiffSince(baseRef, cwd);
+  } catch {
+    // Not in a git repo or git unavailable — proceed without diff context
+  }
   const zones = {
     staticBlock: buildStaticBlock({
       projectRules: readOptional(join(relayDir, "memory", "project-rules.md")) || undefined,

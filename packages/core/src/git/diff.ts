@@ -38,7 +38,7 @@ export function getGitDiffSince(baseRef = "HEAD", cwd = process.cwd()): string {
       stdio: ["ignore", "pipe", "pipe"]
     });
   } catch (error) {
-    return `Unable to read git diff: ${String(error)}`;
+    throw new Error(`Unable to read git diff: ${String(error)}`);
   }
 }
 
@@ -50,6 +50,6 @@ export function getStagedDiff(cwd = process.cwd()): string {
       stdio: ["ignore", "pipe", "pipe"]
     });
   } catch (error) {
-    return `Unable to read staged git diff: ${String(error)}`;
+    throw new Error(`Unable to read staged git diff: ${String(error)}`);
   }
 }

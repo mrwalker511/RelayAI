@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { createShellProvider } from "./shell-provider.js";
+import { createShellProvider, ShellProvider } from "./shell-provider.js";
 import type { RelayConfig } from "../config/relay-config.js";
 
 const baseConfig: RelayConfig = {
@@ -51,4 +51,22 @@ test("createShellProvider resolves claude from built-in defaults", () => {
 
 test("createShellProvider error message lists built-in provider names", () => {
   assert.throws(() => createShellProvider("missing", baseConfig), /Built-in providers: claude, openai/);
+});
+
+test("ShellProvider.sendPrompt pipes payload to stdin and returns exit code 0", async () => {
+  // cat reads stdin and exits 0 — verifies payload is written without hanging
+  const provider = new ShellProvider("cat", "cat", []);
+  const code = await provider.sendPrompt("hello relay");
+  assert.equal(code, 0);
+});
+
+test("ShellProvider.sendPrompt returns non-zero exit code from process", async () => {
+  const provider = new ShellProvider("false", "/bin/sh", ["-c", "cat >/dev/null; exit 42"]);
+  const code = await provider.sendPrompt("test payload");
+  assert.equal(code, 42);
+});
+
+test("ShellProvider.sendPrompt rejects when command is not found", async () => {
+  const provider = new ShellProvider("nonexistent", "relay-nonexistent-command-xyz", []);
+  await assert.rejects(() => provider.sendPrompt("test"), /not found in PATH/);
 });

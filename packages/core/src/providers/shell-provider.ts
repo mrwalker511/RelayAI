@@ -49,7 +49,13 @@ export class ShellProvider implements ProviderAdapter {
       });
       child.stdin.write(payload);
       child.stdin.end();
-      child.on("exit", (code) => resolve(code ?? 0));
+      child.on("exit", (code) => {
+        if (code === null) {
+          reject(new Error(`Provider '${this.command}' was terminated by a signal before it could exit.`));
+        } else {
+          resolve(code);
+        }
+      });
       child.on("error", (err: NodeJS.ErrnoException) => {
         if (err.code === "ENOENT")
           reject(new Error(`'${this.command}' not found in PATH.`));

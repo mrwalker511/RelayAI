@@ -92,7 +92,7 @@ function readCallLog(): number[] {
 function writeCallLog(timestamps: number[]): void {
   const windowMs = 60_000;
   const now = Date.now();
-  const pruned = timestamps.filter((t) => now - t <= windowMs * 2);
+  const pruned = timestamps.filter((t) => now - t <= windowMs);
   writeFileSync(callLogPath, JSON.stringify(pruned));
 }
 
@@ -102,6 +102,24 @@ function readStaticBlockInput(dir: string): StaticBlockInput {
     architectureNotes: readOptional(join(dir, "memory", "architecture-notes.md")) || undefined,
     sourceSnapshot: readOptional(join(dir, "memory", "source-snapshot.md")) || undefined,
   };
+}
+
+function safeGetGitDiff(baseRef: string): string {
+  try {
+    return getGitDiffSince(baseRef);
+  } catch (err) {
+    process.stderr.write(`Warning: could not read git diff — ${(err as Error).message}\n`);
+    return "";
+  }
+}
+
+function safeGetStagedDiff(): string {
+  try {
+    return getStagedDiff();
+  } catch (err) {
+    process.stderr.write(`Warning: could not read staged diff — ${(err as Error).message}\n`);
+    return "";
+  }
 }
 
 function buildZonesForAsk(
@@ -119,7 +137,7 @@ function buildZonesForAsk(
     stateLayer: buildStateLayer({ semanticStateJson: semanticState, fileIndex: files }),
     dynamicInput: buildDynamicInput({
       prompt,
-      gitDiff: diffOverride ?? getGitDiffSince(baseRef),
+      gitDiff: diffOverride ?? safeGetGitDiff(baseRef),
       diffMode,
       includeTimestamp
     })
@@ -278,7 +296,7 @@ program.command("ask")
     const sessionData = parseSessionJson(sessionText);
     const baseRef = (sessionData.base_git_sha as string | undefined) ?? "HEAD";
 
-    const diffOverride = options.staged ? getStagedDiff() : undefined;
+    const diffOverride = options.staged ? safeGetStagedDiff() : undefined;
     const zones = buildZonesForAsk(prompt, baseRef, semanticState, files, readStaticBlockInput(relayDir), diffOverride, options.diffMode, options.includeTimestamp);
     const payload = buildPromptPayload(zones);
     const resolvedTokens = resolveTokenBudget(cfg);
@@ -360,12 +378,12 @@ program.command("diff")
   .option("--staged", "Show staged diff instead of session diff")
   .action((options: { staged?: boolean }) => {
     if (options.staged) {
-      console.log(getStagedDiff());
+      console.log(safeGetStagedDiff());
       return;
     }
     const sessionText = readOptional(join(relayDir, "session.json"), "{}");
     const sessionData = parseSessionJson(sessionText);
-    console.log(getGitDiffSince((sessionData.base_git_sha as string | undefined) ?? "HEAD"));
+    console.log(safeGetGitDiff((sessionData.base_git_sha as string | undefined) ?? "HEAD"));
   });
 
 program.command("doctor").description("Check whether the current workspace is ready for Relay dogfooding.").action(() => {
@@ -406,7 +424,7 @@ cache.command("inspect")
     const files = buildPrioritizedFileIndex(process.cwd(), { limit: readRelayConfig().files.maxIndex }).join("\n");
     const staticBlock = buildStaticBlock(readStaticBlockInput(relayDir));
     const stateLayer = buildStateLayer({ semanticStateJson: semanticState, fileIndex: files });
-    const dynamicInput = buildDynamicInput({ prompt: "(cache inspect)", gitDiff: getGitDiffSince(baseRef) });
+    const dynamicInput = buildDynamicInput({ prompt: "(cache inspect)", gitDiff: safeGetGitDiff(baseRef) });
     const savedPrefixHash = sessionData.prefix_hash as string | undefined;
     const savedStaticBlockHash = sessionData.static_block_hash as string | undefined;
     const savedStateLayerHash = sessionData.state_layer_hash as string | undefined;
@@ -662,7 +680,7 @@ context.command("inspect").description("Print current context construction diagn
   const sessionData = sessionExists ? parseSessionJson(readFileSync(sessionPath, "utf8")) : {};
   const baseRef = (sessionData.base_git_sha as string | undefined) ?? "HEAD";
   const files = buildPrioritizedFileIndex(process.cwd(), { limit: cfg.files.maxIndex }).join("\n");
-  const gitDiff = getGitDiffSince(baseRef);
+  const gitDiff = safeGetGitDiff(baseRef);
   const zones = {
     staticBlock: buildStaticBlock(readStaticBlockInput(relayDir)),
     stateLayer: buildStateLayer({ semanticStateJson: semanticState, fileIndex: files }),

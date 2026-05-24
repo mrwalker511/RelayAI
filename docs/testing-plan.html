@@ -1,0 +1,820 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RelayAI — Testing Plan</title>
+  <style>
+    :root {
+      --bg: #0f1117;
+      --surface: #181c27;
+      --surface2: #1e2333;
+      --border: #2a3045;
+      --accent: #4f8ef7;
+      --accent2: #7c5cbf;
+      --green: #22c55e;
+      --red: #ef4444;
+      --yellow: #f59e0b;
+      --text: #e2e8f0;
+      --muted: #8892a4;
+      --radius: 10px;
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg); color: var(--text); min-height: 100vh; }
+
+    header {
+      background: linear-gradient(135deg, #1a1f35 0%, #0f1117 100%);
+      border-bottom: 1px solid var(--border);
+      padding: 20px 40px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .logo { display: flex; align-items: center; gap: 12px; }
+    .logo-icon {
+      width: 38px; height: 38px; border-radius: 9px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px; font-weight: 800; color: #fff;
+    }
+    .logo-text h1 { font-size: 18px; font-weight: 700; letter-spacing: -0.3px; }
+    .logo-text p { font-size: 12px; color: var(--muted); margin-top: 1px; }
+    .header-actions { display: flex; gap: 10px; align-items: center; }
+
+    .progress-bar-wrap {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 12px 40px;
+      display: flex; align-items: center; gap: 16px;
+    }
+    .progress-track {
+      flex: 1; height: 6px; background: var(--border); border-radius: 3px; overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent2));
+      border-radius: 3px; transition: width 0.3s;
+      width: 0%;
+    }
+    .progress-label { font-size: 12px; color: var(--muted); white-space: nowrap; min-width: 80px; text-align: right; }
+    .reset-btn {
+      font-size: 11px; color: var(--muted); background: none; border: 1px solid var(--border);
+      border-radius: 5px; padding: 4px 10px; cursor: pointer; font-family: inherit;
+      transition: all 0.15s;
+    }
+    .reset-btn:hover { border-color: var(--red); color: var(--red); }
+
+    .content { max-width: 860px; margin: 0 auto; padding: 40px 40px 80px; }
+
+    .intro-card {
+      background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 24px; margin-bottom: 36px;
+    }
+    .intro-card h2 { font-size: 15px; font-weight: 700; margin-bottom: 10px; }
+    .intro-card p { font-size: 13px; color: var(--muted); line-height: 1.7; margin-bottom: 8px; }
+    .intro-card p:last-child { margin-bottom: 0; }
+    .tag-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
+    .tag {
+      font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 20px;
+      background: rgba(79,142,247,0.12); color: var(--accent); border: 1px solid rgba(79,142,247,0.25);
+    }
+    .tag.green { background: rgba(34,197,94,0.1); color: var(--green); border-color: rgba(34,197,94,0.25); }
+    .tag.purple { background: rgba(124,92,191,0.12); color: #a78bfa; border-color: rgba(124,92,191,0.25); }
+
+    .phase-header {
+      display: flex; align-items: center; gap: 12px; margin: 36px 0 20px;
+    }
+    .phase-label {
+      font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px;
+      padding: 4px 12px; border-radius: 20px;
+    }
+    .phase-label.setup { background: rgba(245,158,11,0.12); color: var(--yellow); }
+    .phase-label.baseline { background: rgba(79,142,247,0.12); color: var(--accent); }
+    .phase-label.relay { background: rgba(124,92,191,0.12); color: #a78bfa; }
+    .phase-label.results { background: rgba(34,197,94,0.12); color: var(--green); }
+    .phase-title { font-size: 17px; font-weight: 700; }
+    .phase-line { flex: 1; height: 1px; background: var(--border); }
+
+    /* Step cards */
+    .step {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); margin-bottom: 14px; overflow: hidden;
+      transition: border-color 0.2s;
+    }
+    .step.done { border-color: rgba(34,197,94,0.35); }
+    .step-header {
+      display: flex; align-items: center; gap: 14px; padding: 16px 20px;
+      cursor: pointer; user-select: none;
+    }
+    .step-check {
+      width: 22px; height: 22px; border-radius: 6px; border: 2px solid var(--border);
+      flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+      transition: all 0.15s; cursor: pointer;
+    }
+    .step.done .step-check {
+      background: var(--green); border-color: var(--green);
+    }
+    .step-check-inner { display: none; width: 10px; height: 10px; }
+    .step.done .step-check-inner { display: block; }
+    .step-check-inner svg { width: 10px; height: 10px; stroke: #fff; fill: none; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
+    .step-num {
+      font-size: 11px; font-weight: 700; color: var(--muted);
+      background: var(--surface2); padding: 3px 8px; border-radius: 5px;
+      flex-shrink: 0;
+    }
+    .step.done .step-num { color: var(--green); }
+    .step-title { font-size: 14px; font-weight: 600; flex: 1; }
+    .step.done .step-title { color: var(--muted); text-decoration: line-through; text-decoration-color: rgba(136,146,164,0.5); }
+    .step-chevron { font-size: 12px; color: var(--muted); transition: transform 0.2s; flex-shrink: 0; }
+    .step.open .step-chevron { transform: rotate(90deg); }
+
+    .step-body { display: none; padding: 0 20px 20px; }
+    .step.open .step-body { display: block; }
+
+    .step-desc { font-size: 13px; color: var(--muted); line-height: 1.7; margin-bottom: 16px; }
+
+    /* Code blocks */
+    .cmd-block {
+      background: #0d1117; border: 1px solid var(--border); border-radius: 7px;
+      margin-bottom: 12px; overflow: hidden;
+    }
+    .cmd-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 8px 14px; border-bottom: 1px solid var(--border);
+      background: rgba(255,255,255,0.02);
+    }
+    .cmd-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.6px; color: var(--muted); }
+    .copy-btn {
+      font-size: 11px; font-weight: 600; color: var(--accent);
+      background: none; border: none; cursor: pointer; font-family: inherit;
+      padding: 2px 6px; border-radius: 4px; transition: background 0.15s;
+    }
+    .copy-btn:hover { background: rgba(79,142,247,0.1); }
+    .copy-btn.copied { color: var(--green); }
+    pre {
+      padding: 14px 16px; overflow-x: auto; font-size: 12.5px;
+      line-height: 1.65; color: #c9d1d9; font-family: 'Courier New', monospace;
+    }
+    .inline-code {
+      font-family: 'Courier New', monospace; font-size: 12px;
+      background: rgba(79,142,247,0.1); color: var(--accent);
+      padding: 1px 6px; border-radius: 4px;
+    }
+
+    /* Tip / warning / info boxes */
+    .tip {
+      border-radius: 7px; padding: 12px 14px; font-size: 12.5px;
+      line-height: 1.6; margin-bottom: 12px; display: flex; gap: 10px;
+    }
+    .tip.info { background: rgba(79,142,247,0.07); border: 1px solid rgba(79,142,247,0.2); color: var(--muted); }
+    .tip.warn { background: rgba(245,158,11,0.07); border: 1px solid rgba(245,158,11,0.2); color: #d4a726; }
+    .tip.success { background: rgba(34,197,94,0.07); border: 1px solid rgba(34,197,94,0.2); color: #4ade80; }
+    .tip-icon { flex-shrink: 0; font-size: 15px; line-height: 1.4; }
+    .tip a { color: inherit; text-decoration: underline; }
+
+    /* Prompt table */
+    .prompt-table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 12px; }
+    .prompt-table th {
+      text-align: left; padding: 8px 12px; font-size: 11px; font-weight: 600;
+      color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px;
+      border-bottom: 1px solid var(--border);
+    }
+    .prompt-table td { padding: 10px 12px; border-bottom: 1px solid rgba(42,48,69,0.5); }
+    .prompt-table tr:last-child td { border-bottom: none; }
+    .prompt-num-badge {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 22px; height: 22px; border-radius: 5px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      color: #fff; font-size: 11px; font-weight: 700;
+    }
+
+    /* Editable prompt inputs */
+    .prompt-input {
+      background: var(--surface2); border: 1px solid var(--border); border-radius: 5px;
+      padding: 7px 10px; color: var(--text); font-size: 12.5px; font-family: inherit;
+      outline: none; transition: border-color 0.15s; width: 100%;
+    }
+    .prompt-input:focus { border-color: var(--accent); }
+
+    /* CTA section */
+    .cta-card {
+      background: linear-gradient(135deg, rgba(79,142,247,0.1), rgba(124,92,191,0.1));
+      border: 1px solid rgba(79,142,247,0.3); border-radius: var(--radius);
+      padding: 28px; text-align: center; margin-top: 36px;
+    }
+    .cta-card h3 { font-size: 18px; font-weight: 700; margin-bottom: 8px; }
+    .cta-card p { font-size: 13px; color: var(--muted); margin-bottom: 20px; }
+    .btn {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 12px 24px; border-radius: 8px; border: none;
+      font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.15s;
+      font-family: inherit; text-decoration: none;
+    }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-primary:hover { background: #3d7ef0; }
+    .btn-outline { background: transparent; color: var(--text); border: 1px solid var(--border); }
+    .btn-outline:hover { border-color: var(--accent); color: var(--accent); }
+
+    .divider { height: 1px; background: var(--border); margin: 32px 0; }
+
+    /* Config JSON block */
+    .json-block {
+      background: #0d1117; border: 1px solid var(--border); border-radius: 7px; overflow: hidden;
+      margin-bottom: 12px;
+    }
+    .json-block pre { color: #c9d1d9; }
+    .json-key { color: #79c0ff; }
+    .json-str { color: #a5d6ff; }
+    .json-num { color: #f2cc60; }
+
+    /* Session file path hint */
+    .file-path {
+      font-family: 'Courier New', monospace; font-size: 11.5px;
+      background: rgba(124,92,191,0.1); color: #a78bfa;
+      padding: 2px 7px; border-radius: 4px;
+    }
+
+    @media (max-width: 720px) {
+      header, .progress-bar-wrap, .content { padding-left: 20px; padding-right: 20px; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">R</div>
+    <div class="logo-text">
+      <h1>RelayAI — Testing Plan</h1>
+      <p>Codex CLI + Relay MCP · Step-by-Step Guide</p>
+    </div>
+  </div>
+  <div class="header-actions">
+    <a href="session-compare.html" class="btn btn-outline" style="font-size:12px;padding:8px 16px;">Open Compare Page →</a>
+  </div>
+</header>
+
+<div class="progress-bar-wrap">
+  <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+  <div class="progress-label" id="progressLabel">0 / 14 done</div>
+  <button class="reset-btn" onclick="resetAll()">Reset All</button>
+</div>
+
+<div class="content">
+
+  <div class="intro-card">
+    <h2>How This Testing Works</h2>
+    <p>
+      You run all prompts through <strong>Codex CLI</strong> — Relay never intercepts your terminal.
+      In the baseline phase, Codex has no context help. In the Relay phase, Codex connects to
+      <span class="inline-code">relay mcp</span> over stdio, which feeds it deterministic project context
+      automatically. Both phases produce Codex session files that you upload to the
+      <a href="session-compare.html" style="color:var(--accent)">Compare Page</a> — no manual metric recording required.
+    </p>
+    <p>
+      The test project is <strong>matt-mcp</strong>. You run the same 5 prompts in both phases and
+      let the comparison page calculate token reduction, response quality, and the verdict.
+    </p>
+    <div class="tag-row">
+      <span class="tag">Codex CLI primary</span>
+      <span class="tag purple">Relay via MCP</span>
+      <span class="tag green">Auto session capture</span>
+      <span class="tag green">No manual recording</span>
+    </div>
+  </div>
+
+  <!-- ══════════ SETUP ══════════ -->
+  <div class="phase-header">
+    <span class="phase-label setup">Setup</span>
+    <span class="phase-title">Before You Start</span>
+    <div class="phase-line"></div>
+  </div>
+
+  <!-- Step 1 -->
+  <div class="step" id="step-1">
+    <div class="step-header" onclick="toggleStep(1)">
+      <div class="step-check" onclick="toggleDone(event,1)">
+        <div class="step-check-inner"><svg viewBox="0 0 10 10"><polyline points="1.5,5 4,7.5 8.5,2.5"/></svg></div>
+      </div>
+      <span class="step-num">01</span>
+      <span class="step-title">Build RelayAI</span>
+      <span class="step-chevron">▶</span>
+    </div>
+    <div class="step-body">
+      <p class="step-desc">Install dependencies and compile the CLI. You only need to do this once per code change.</p>
+      <div class="cmd-block">
+        <div class="cmd-header"><span class="cmd-label">terminal — RelayAI repo</span><button class="copy-btn" onclick="copyCmd(this)">Copy</button></div>
+        <pre>cd /path/to/RelayAI
+pnpm install
+pnpm build</pre>
+      </div>
+      <div class="tip info">
+        <span class="tip-icon">ℹ️</span>
+        Verify the build succeeded: <span class="inline-code">node packages/cli/dist/index.js --help</span> should print the Relay command list.
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 2 -->
+  <div class="step" id="step-2">
+    <div class="step-header" onclick="toggleStep(2)">
+      <div class="step-check" onclick="toggleDone(event,2)">
+        <div class="step-check-inner"><svg viewBox="0 0 10 10"><polyline points="1.5,5 4,7.5 8.5,2.5"/></svg></div>
+      </div>
+      <span class="step-num">02</span>
+      <span class="step-title">Clone &amp; build the test project (matt-mcp)</span>
+      <span class="step-chevron">▶</span>
+    </div>
+    <div class="step-body">
+      <p class="step-desc">matt-mcp is the project you'll be asking Codex questions about. It must build cleanly before testing starts.</p>
+      <div class="cmd-block">
+        <div class="cmd-header"><span class="cmd-label">terminal</span><button class="copy-btn" onclick="copyCmd(this)">Copy</button></div>
+        <pre>git clone https://github.com/mrwalker511/matt-mcp.git
+cd matt-mcp
+npm install
+npm run build
+npm test</pre>
+      </div>
+      <div class="tip warn">
+        <span class="tip-icon">⚠️</span>
+        If <span class="inline-code">npm test</span> fails, fix the project before continuing. You need a clean baseline.
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 3 -->
+  <div class="step" id="step-3">
+    <div class="step-header" onclick="toggleStep(3)">
+      <div class="step-check" onclick="toggleDone(event,3)">
+        <div class="step-check-inner"><svg viewBox="0 0 10 10"><polyline points="1.5,5 4,7.5 8.5,2.5"/></svg></div>
+      </div>
+      <span class="step-num">03</span>
+      <span class="step-title">Record the baseline git SHA</span>
+      <span class="step-chevron">▶</span>
+    </div>
+    <div class="step-body">
+      <p class="step-desc">Save this SHA — Relay will anchor its session diff to it so follow-up prompts only contain what changed.</p>
+      <div class="cmd-block">
+        <div class="cmd-header"><span class="cmd-label">terminal — matt-mcp</span><button class="copy-btn" onclick="copyCmd(this)">Copy</button></div>
+        <pre>git rev-parse HEAD</pre>
+      </div>
+      <div class="tip info">
+        <span class="tip-icon">📋</span>
+        Save the SHA output somewhere handy — you'll reference it in Step 9.
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 4 -->
+  <div class="step" id="step-4">
+    <div class="step-header" onclick="toggleStep(4)">
+      <div class="step-check" onclick="toggleDone(event,4)">
+        <div class="step-check-inner"><svg viewBox="0 0 10 10"><polyline points="1.5,5 4,7.5 8.5,2.5"/></svg></div>
+      </div>
+      <span class="step-num">04</span>
+      <span class="step-title">Define your 5 test prompts</span>
+      <span class="step-chevron">▶</span>
+    </div>
+    <div class="step-body">
+      <p class="step-desc">
+        You must use the <strong>exact same prompts</strong> in Phase 1 and Phase 2 so the comparison is valid.
+        The defaults below work well for matt-mcp — edit them if you want custom prompts.
+      </p>
+      <table class="prompt-table">
+        <thead>
+          <tr><th style="width:40px;">#</th><th>Prompt (edit below)</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><span class="prompt-num-badge">1</span></td><td><input class="prompt-input" id="p1" value="Explain the overall architecture of this project" /></td></tr>
+          <tr><td><span class="prompt-num-badge">2</span></td><td><input class="prompt-input" id="p2" value="Review the auth flow and identify any security risks" /></td></tr>
+          <tr><td><span class="prompt-num-badge">3</span></td><td><input class="prompt-input" id="p3" value="Add input validation to the generate tool command" /></td></tr>
+          <tr><td><span class="prompt-num-badge">4</span></td><td><input class="prompt-input" id="p4" value="Summarize what has changed in the active diff" /></td></tr>
+          <tr><td><span class="prompt-num-badge">5</span></td><td><input class="prompt-input" id="p5" value="Write unit tests for the register command" /></td></tr>
+        </tbody>
+      </table>
+      <div class="tip info" style="margin-top:12px;">
+        <span class="tip-icon">ℹ️</span>
+        Your prompts are saved automatically. They'll appear pre-filled in the Compare Page after you upload the session files.
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ PHASE 1 ══════════ -->
+  <div class="phase-header">
+    <span class="phase-label baseline">Phase 1</span>
+    <span class="phase-title">Baseline — Codex Without Relay</span>
+    <div class="phase-line"></div>
+  </div>
+
+  <div class="tip info" style="margin-bottom:16px;">
+    <span class="tip-icon">ℹ️</span>
+    In this phase Codex has no help from Relay. You're recording how well it performs with only what it can see from your project directory.
+  </div>
+
+  <!-- Step 5 -->
+  <div class="step" id="step-5">
+    <div class="step-header" onclick="toggleStep(5)">
+      <div class="step-check" onclick="toggleDone(event,5)">
+        <div class="step-check-inner"><svg viewBox="0 0 10 10"><polyline points="1.5,5 4,7.5 8.5,2.5"/></svg></div>
+      </div>
+      <span class="step-num">05</span>
+      <span class="step-title">Open a fresh Codex session in matt-mcp</span>
+      <span class="step-chevron">▶</span>
+    </div>
+    <div class="step-body">
+      <p class="step-desc">Start Codex from the matt-mcp directory. Use a brand-new session — do not reuse one that has prior context about this project.</p>
+      <div class="cmd-block">
+        <div class="cmd-header"><span class="cmd-label">terminal — matt-mcp</span><button class="copy-btn" onclick="copyCmd(this)">Copy</button></div>
+        <pre>cd /path/to/matt-mcp
+codex</pre>
+      </div>
+      <div class="tip warn">
+        <span class="tip-icon">⚠️</span>
+        Do NOT add any MCP servers in this session. Relay must not be connected.
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 6 -->
+  <div class="step" id="step-6">
+    <div class="step-header" onclick="toggleStep(6)">
+      <div class="step-check" onclick="toggleDone(event,6)">
+        <div class="step-check-inner"><svg viewBox="0 0 10 10"><polyline points="1.5,5 4,7.5 8.5,2.5"/></svg></div>
+      </div>
+      <span class="step-num">06</span>
+      <span class="step-title">Run all 5 prompts via Codex</span>
+      <span class="step-chevron">▶</span>
+    </div>
+    <div class="step-body">
+      <p class="step-desc">
+        Inside the Codex session, send each prompt one at a time. Wait for the full response before sending the next one.
+        You do not need to record anything — Codex will save the session automatically.
+      </p>
+      <div class="cmd-block">
+        <div class="cmd-header"><span class="cmd-label">example — run in Codex interactive mode</span><button class="copy-btn" onclick="copyCmd(this)">Copy</button></div>
+        <pre id="baselinePrompts">Explain the overall architecture of this project</pre>
+      </div>
+      <div class="tip success">
+        <span class="tip-icon">✅</span>
+        Send all 5 prompts in the same session. This is your baseline run.
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 7 -->
+  <div class="step" id="step-7">
+    <div class="step-header" onclick="toggleStep(7)">
+      <div class="step-check" onclick="toggleDone(event,7)">
+        <div class="step-check-inner"><svg viewBox="0 0 10 10"><polyline points="1.5,5 4,7.5 8.5,2.5"/></svg></div>
+      </div>
+      <span class="step-num">07</span>
+      <span class="step-title">Save the Codex baseline session file</span>
+      <span class="step-chevron">▶</span>
+    </div>
+    <div class="step-body">
+      <p class="step-desc">
+        Codex automatically saves your session to <span class="file-path">~/.codex/sessions/</span>.
+        Find the most recent file, copy it, and rename it so you can tell it apart later.
+      </p>
+      <div class="cmd-block">
+        <div class="cmd-header"><span class="cmd-label">terminal</span><button class="copy-btn" onclick="copyCmd(this)">Copy</button></div>
+        <pre># Find the latest session file
+ls -lt ~/.codex/sessions/ | head -5
+
+# Copy and rename it
+cp ~/.codex/sessions/&lt;latest-uuid&gt;.json ~/relay-test-baseline.json</pre>
+      </div>
+      <div class="tip info">
+        <span class="tip-icon">📁</span>
+        If Codex stores sessions elsewhere on your system, check <span class="inline-code">codex --help</span> or your Codex config for the sessions directory path.
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ PHASE 2 ══════════ -->
+  <div class="phase-header">
+    <span class="phase-label relay">Phase 2</span>
+    <span class="phase-title">Relay-Enabled — Codex + Relay MCP</span>
+    <div class="phase-line"></div>
+  </div>
+
+  <div class="tip info" style="margin-bottom:16px;">
+    <span class="tip-icon">ℹ️</span>
+    You'll still use Codex CLI directly — but now Relay runs as an MCP server in the background.
+    Codex automatically calls Relay tools to get deterministic project context before it answers.
+    You type prompts in Codex exactly as before.
+  </div>
+
+  <!-- Step 8 -->
+  <div class="step" id="step-8">
+    <div class="step-header" onclick="toggleStep(8)">
+      <div class="step-check" onclick="toggleDone(event,8)">
+        <div class="step-check-inner"><svg viewBox="0 0 10 10"><polyline points="1.5,5 4,7.5 8.5,2.5"/></svg></div>
+      </div>
+      <span class="step-num">08</span>
+      <span class="step-title">Initialize Relay in matt-mcp</span>
+      <span class="step-chevron">▶</span>
+    </div>
+    <div class="step-body">
+      <p class="step-desc">This creates the <span class="inline-code">.relay/</span> directory and writes the default config. Run this once per project.</p>
+      <div class="cmd-block">
+        <div class="cmd-header"><span class="cmd-label">terminal — matt-mcp</span><button class="copy-btn" onclick="copyCmd(this)">Copy</button></div>
+        <pre>cd /path/to/matt-mcp
+
+# If relay is on your PATH:
+relay init
+
+# If using the local build directly:
+node /path/to/RelayAI/packages/cli/dist/index.js init</pre>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 9 -->
+  <div class="step" id="step-9">
+    <div class="step-header" onclick="toggleStep(9)">
+      <div class="step-check" onclick="toggleDone(event,9)">
+        <div class="step-check-inner"><svg viewBox="0 0 10 10"><polyline points="1.5,5 4,7.5 8.5,2.5"/></svg></div>
+      </div>
+      <span class="step-num">09</span>
+      <span class="step-title">Verify Relay health</span>
+      <span class="step-chevron">▶</span>
+    </div>
+    <div class="step-body">
+      <p class="step-desc">Run the doctor check. All items must pass before you continue.</p>
+      <div class="cmd-block">
+        <div class="cmd-header"><span class="cmd-label">terminal — matt-mcp</span><button class="copy-btn" onclick="copyCmd(this)">Copy</button></div>
+        <pre>relay doctor</pre>
+      </div>
+      <div class="tip warn">
+        <span class="tip-icon">⚠️</span>
+        Fix any errors <span class="inline-code">relay doctor</span> reports before moving on. A failing doctor means context will be incomplete.
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 10 -->
+  <div class="step" id="step-10">
+    <div class="step-header" onclick="toggleStep(10)">
+      <div class="step-check" onclick="toggleDone(event,10)">
+        <div class="step-check-inner"><svg viewBox="0 0 10 10"><polyline points="1.5,5 4,7.5 8.5,2.5"/></svg></div>
+      </div>
+      <span class="step-num">10</span>
+      <span class="step-title">Start the Relay session</span>
+      <span class="step-chevron">▶</span>
+    </div>
+    <div class="step-body">
+      <p class="step-desc">
+        This anchors Relay's diff tracking to the current git SHA. The SHA printed should match the one you recorded in Step 3.
+      </p>
+      <div class="cmd-block">
+        <div class="cmd-header"><span class="cmd-label">terminal — matt-mcp</span><button class="copy-btn" onclick="copyCmd(this)">Copy</button></div>
+        <pre>relay session start</pre>
+      </div>
+      <div class="tip info">
+        <span class="tip-icon">ℹ️</span>
+        Relay prints the base SHA it anchored to. Confirm it matches your baseline SHA from Step 3.
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 11 -->
+  <div class="step" id="step-11">
+    <div class="step-header" onclick="toggleStep(11)">
+      <div class="step-check" onclick="toggleDone(event,11)">
+        <div class="step-check-inner"><svg viewBox="0 0 10 10"><polyline points="1.5,5 4,7.5 8.5,2.5"/></svg></div>
+      </div>
+      <span class="step-num">11</span>
+      <span class="step-title">Add Relay to Codex's MCP configuration</span>
+      <span class="step-chevron">▶</span>
+    </div>
+    <div class="step-body">
+      <p class="step-desc">
+        Codex reads its MCP server list from <span class="file-path">~/.codex/config.json</span> (or your platform's equivalent).
+        Add the relay entry below. When Codex starts, it will launch <span class="inline-code">relay mcp</span> as a subprocess over stdio.
+      </p>
+      <div class="cmd-block">
+        <div class="cmd-header"><span class="cmd-label">~/.codex/config.json — add this block</span><button class="copy-btn" onclick="copyCmd(this)">Copy</button></div>
+        <pre>{
+  "mcpServers": {
+    "relay": {
+      "command": "relay",
+      "args": ["mcp"]
+    }
+  }
+}</pre>
+      </div>
+      <div class="tip info">
+        <span class="tip-icon">ℹ️</span>
+        If <span class="inline-code">relay</span> isn't on your PATH, replace <span class="inline-code">"command": "relay"</span> with
+        <span class="inline-code">"command": "node"</span> and add the full path to <span class="inline-code">args</span>:
+        <span class="inline-code">["args": ["/path/to/RelayAI/packages/cli/dist/index.js", "mcp"]]</span>.
+      </div>
+      <div class="tip warn">
+        <span class="tip-icon">⚠️</span>
+        The Relay MCP server is read-only. It provides context to Codex but does not run GC, start sessions, or write files. You still run those relay commands yourself from the terminal.
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 12 -->
+  <div class="step" id="step-12">
+    <div class="step-header" onclick="toggleStep(12)">
+      <div class="step-check" onclick="toggleDone(event,12)">
+        <div class="step-check-inner"><svg viewBox="0 0 10 10"><polyline points="1.5,5 4,7.5 8.5,2.5"/></svg></div>
+      </div>
+      <span class="step-num">12</span>
+      <span class="step-title">Open a fresh Codex session (with Relay connected)</span>
+      <span class="step-chevron">▶</span>
+    </div>
+    <div class="step-body">
+      <p class="step-desc">
+        Start Codex from the matt-mcp directory. Codex will automatically connect to the Relay MCP server.
+        You should see Relay listed as an available tool in the Codex interface.
+      </p>
+      <div class="cmd-block">
+        <div class="cmd-header"><span class="cmd-label">terminal — matt-mcp</span><button class="copy-btn" onclick="copyCmd(this)">Copy</button></div>
+        <pre>cd /path/to/matt-mcp
+codex</pre>
+      </div>
+      <div class="tip success">
+        <span class="tip-icon">✅</span>
+        You should see Relay MCP tools listed (get_prompt_payload, get_project_context, etc.) when Codex connects.
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 13 -->
+  <div class="step" id="step-13">
+    <div class="step-header" onclick="toggleStep(13)">
+      <div class="step-check" onclick="toggleDone(event,13)">
+        <div class="step-check-inner"><svg viewBox="0 0 10 10"><polyline points="1.5,5 4,7.5 8.5,2.5"/></svg></div>
+      </div>
+      <span class="step-num">13</span>
+      <span class="step-title">Run the same 5 prompts through Codex</span>
+      <span class="step-chevron">▶</span>
+    </div>
+    <div class="step-body">
+      <p class="step-desc">
+        Send the exact same prompts you used in Phase 1 — in the same order. Codex will call Relay's
+        <span class="inline-code">get_prompt_payload</span> tool under the hood to build context before responding.
+      </p>
+      <div class="cmd-block">
+        <div class="cmd-header"><span class="cmd-label">example — same prompts as Phase 1</span><button class="copy-btn" onclick="copyCmd(this)">Copy</button></div>
+        <pre id="relayPrompts">Explain the overall architecture of this project</pre>
+      </div>
+      <div class="tip info">
+        <span class="tip-icon">ℹ️</span>
+        You don't need to do anything special — just type prompts normally. Relay context flows in automatically via MCP.
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 14 -->
+  <div class="step" id="step-14">
+    <div class="step-header" onclick="toggleStep(14)">
+      <div class="step-check" onclick="toggleDone(event,14)">
+        <div class="step-check-inner"><svg viewBox="0 0 10 10"><polyline points="1.5,5 4,7.5 8.5,2.5"/></svg></div>
+      </div>
+      <span class="step-num">14</span>
+      <span class="step-title">Save the Relay-enabled Codex session file</span>
+      <span class="step-chevron">▶</span>
+    </div>
+    <div class="step-body">
+      <p class="step-desc">Find the new session file Codex wrote and copy it with a name that identifies it as the Relay-enabled run.</p>
+      <div class="cmd-block">
+        <div class="cmd-header"><span class="cmd-label">terminal</span><button class="copy-btn" onclick="copyCmd(this)">Copy</button></div>
+        <pre># Find the latest session file (created after Phase 2 started)
+ls -lt ~/.codex/sessions/ | head -5
+
+# Copy and rename it
+cp ~/.codex/sessions/&lt;latest-uuid&gt;.json ~/relay-test-relay.json</pre>
+      </div>
+      <div class="tip success">
+        <span class="tip-icon">✅</span>
+        You now have two session files: <span class="inline-code">relay-test-baseline.json</span> and <span class="inline-code">relay-test-relay.json</span>.
+        Upload both to the Compare Page.
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ RESULTS ══════════ -->
+  <div class="phase-header">
+    <span class="phase-label results">Results</span>
+    <span class="phase-title">Compare Sessions &amp; Get the Verdict</span>
+    <div class="phase-line"></div>
+  </div>
+
+  <div class="cta-card">
+    <h3>You're done collecting data</h3>
+    <p>Upload your two Codex session files to the Compare Page. It will parse them automatically,<br>calculate token reduction, response quality, and generate the leadership verdict.</p>
+    <a href="session-compare.html" class="btn btn-primary">Open Session Compare Page →</a>
+  </div>
+
+  <div class="divider"></div>
+
+  <div class="tip info">
+    <span class="tip-icon">📖</span>
+    <div>
+      <strong>Relay MCP tools Codex will use:</strong><br>
+      <span class="inline-code">get_prompt_payload</span> — full context payload before each answer &nbsp;·&nbsp;
+      <span class="inline-code">get_project_context</span> — session metadata, token counts, git delta info &nbsp;·&nbsp;
+      <span class="inline-code">get_git_delta</span> — diff since session base SHA &nbsp;·&nbsp;
+      <span class="inline-code">get_token_budget</span> — zone token counts
+    </div>
+  </div>
+
+</div><!-- /content -->
+
+<script>
+  const TOTAL_STEPS = 14;
+
+  function stepKey(n) { return 'step_done_' + n; }
+
+  function isDone(n) { return localStorage.getItem(stepKey(n)) === '1'; }
+
+  function applyState(n) {
+    const el = document.getElementById('step-' + n);
+    if (!el) return;
+    if (isDone(n)) el.classList.add('done');
+    else el.classList.remove('done');
+  }
+
+  function updateProgress() {
+    let done = 0;
+    for (let i = 1; i <= TOTAL_STEPS; i++) if (isDone(i)) done++;
+    const pct = Math.round(done / TOTAL_STEPS * 100);
+    document.getElementById('progressFill').style.width = pct + '%';
+    document.getElementById('progressLabel').textContent = done + ' / ' + TOTAL_STEPS + ' done';
+  }
+
+  function toggleDone(e, n) {
+    e.stopPropagation();
+    const newVal = isDone(n) ? null : '1';
+    if (newVal) localStorage.setItem(stepKey(n), newVal);
+    else localStorage.removeItem(stepKey(n));
+    applyState(n);
+    updateProgress();
+  }
+
+  function toggleStep(n) {
+    const el = document.getElementById('step-' + n);
+    if (!el) return;
+    el.classList.toggle('open');
+  }
+
+  function resetAll() {
+    if (!confirm('Reset all progress checkboxes?')) return;
+    for (let i = 1; i <= TOTAL_STEPS; i++) localStorage.removeItem(stepKey(i));
+    for (let i = 1; i <= TOTAL_STEPS; i++) applyState(i);
+    updateProgress();
+  }
+
+  function copyCmd(btn) {
+    const pre = btn.closest('.cmd-block').querySelector('pre');
+    navigator.clipboard.writeText(pre.textContent.trim()).then(() => {
+      btn.textContent = 'Copied!';
+      btn.classList.add('copied');
+      setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 1800);
+    });
+  }
+
+  function syncPrompts() {
+    const vals = [1,2,3,4,5].map(i => document.getElementById('p'+i)?.value || '').filter(Boolean);
+    const text = vals.join('\n');
+    const bp = document.getElementById('baselinePrompts');
+    const rp = document.getElementById('relayPrompts');
+    if (bp) bp.textContent = text;
+    if (rp) rp.textContent = text;
+    localStorage.setItem('test_prompts', JSON.stringify(vals));
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    // restore prompts
+    try {
+      const saved = JSON.parse(localStorage.getItem('test_prompts') || '[]');
+      if (saved.length === 5) {
+        saved.forEach((v, i) => {
+          const el = document.getElementById('p'+(i+1));
+          if (el) el.value = v;
+        });
+      }
+    } catch(e) {}
+
+    // wire prompt inputs
+    [1,2,3,4,5].forEach(i => {
+      document.getElementById('p'+i)?.addEventListener('input', syncPrompts);
+    });
+
+    syncPrompts();
+
+    // restore step states
+    for (let i = 1; i <= TOTAL_STEPS; i++) applyState(i);
+    updateProgress();
+
+    // open first incomplete step
+    for (let i = 1; i <= TOTAL_STEPS; i++) {
+      if (!isDone(i)) { toggleStep(i); break; }
+    }
+  });
+</script>
+</body>
+</html>

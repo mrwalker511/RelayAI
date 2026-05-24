@@ -1,8 +1,17 @@
 # RelayAI Testing Plan
 
+> **This plan has moved to an interactive HTML guide.**
+>
+> Open **`docs/testing-plan.html`** in your browser for the step-by-step Codex CLI workflow with progress tracking and copy-paste commands.
+>
+> After testing, upload your two Codex session files to **`docs/session-compare.html`** to get automatic comparison metrics — no manual recording required.
+
+---
+
 **Test Project:** [`matt-mcp`](https://github.com/mrwalker511/matt-mcp)  
 **Purpose:** Validate RelayAI effectiveness for leadership reporting — compare AI coding session quality, token usage, and context accuracy with and without Relay.  
-**Reviewer Tool:** Open `docs/relay-test-results.html` in your browser to log and review results.
+**Primary tool:** Open `docs/testing-plan.html` in your browser.  
+**Results tool:** Open `docs/session-compare.html` to upload Codex session files and view the comparison.
 
 ---
 

@@ -1,19 +1,30 @@
 # Relay MCP
 
-Relay can run as a local MCP server so your existing AI coding tool can ask Relay for deterministic project context.
+Relay can run as a local MCP server so your existing AI coding tool can request deterministic project context without changing how you work.
 
-Relay remains the context layer. Codex, Claude Code, Cursor, or another MCP-compatible host remains the interface.
+Relay remains the context layer. Claude Code, Cursor, or another MCP-compatible host remains the interface. Relay adds cache-friendly payloads, git delta awareness, semantic memory, and token safety — invisibly.
 
-## Setup
+---
 
-Initialize Relay in the repository and start a session:
+## Prerequisites
+
+Before the MCP server is useful, initialize Relay in your repository and start a session:
 
 ```bash
 relay init
+relay doctor
 relay session start
 ```
 
-Add Relay to your MCP host configuration:
+The MCP server reads from `.relay/` — it will not function correctly without an initialized workspace and an active session.
+
+---
+
+## Setup
+
+### Claude Code
+
+Add Relay to your Claude Code MCP configuration. The config file is at `~/.claude/mcp_settings.json` (create it if it doesn't exist):
 
 ```json
 {
@@ -26,39 +37,103 @@ Add Relay to your MCP host configuration:
 }
 ```
 
-After that, use your agent normally. The host launches `relay mcp` over stdio and calls Relay tools when it needs project context.
+If you're using the `relay` alias from a shell profile, replace `"relay"` with the full path to the built CLI:
+
+```json
+{
+  "mcpServers": {
+    "relay": {
+      "command": "node",
+      "args": ["/absolute/path/to/RelayAI/packages/cli/dist/index.js", "mcp"]
+    }
+  }
+}
+```
+
+### Cursor
+
+Add Relay to `.cursor/mcp.json` in your project root (or in Cursor's global config):
+
+```json
+{
+  "mcpServers": {
+    "relay": {
+      "command": "relay",
+      "args": ["mcp"]
+    }
+  }
+}
+```
+
+### Generic MCP Host
+
+Any MCP-compatible host can launch `relay mcp` over stdio:
+
+```json
+{
+  "mcpServers": {
+    "relay": {
+      "command": "relay",
+      "args": ["mcp"]
+    }
+  }
+}
+```
+
+---
 
 ## Tools
 
-`get_prompt_payload`
+Once connected, the host can call these read-only Relay tools:
 
-Returns Relay's full cache-friendly prompt payload for a user prompt. Agents should call this before coding tasks, debugging, code review, test planning, or repository explanations.
+### `get_prompt_payload`
 
-`get_project_context`
+Returns Relay's full cache-friendly prompt payload for a user prompt, assembled from the current static block, semantic state, file index, and git delta.
 
-Returns session metadata, prefix status, semantic state, file index, zone token counts, budget status, and git delta metadata without the full payload.
+Call this before coding tasks, debugging sessions, code review, test planning, or repository explanations.
 
-`get_git_delta`
+### `get_project_context`
 
-Returns the git diff since the Relay session base SHA. Accepts `max_chars` to limit the returned diff text.
+Returns session metadata, prefix status, semantic state, file index, zone token counts, budget status, and git delta metadata — without the full payload.
 
-`get_semantic_state`
+Useful for light context checks that don't need the complete assembled prompt.
 
-Returns Relay's compacted semantic memory and validity metadata.
+### `get_git_delta`
 
-`get_token_budget`
+Returns the git diff since the Relay session base SHA.
 
-Returns zone token counts and configured budget status for an optional prompt.
+Accepts an optional `max_chars` argument to limit the returned diff length.
 
-`inspect_context_health`
+### `get_semantic_state`
 
-Returns agent-friendly health findings for config, session, semantic state, prefix drift, token budget, and git delta.
+Returns Relay's compacted semantic memory (`SemanticState`) and validity metadata.
+
+The `SemanticState` includes: `active_target`, `current_goal`, `runtime_errors`, `verified_hypotheses`, `rejected_hypotheses`, `next_actions`, and `code_changes`.
+
+### `get_token_budget`
+
+Returns zone-by-zone token counts and configured budget status for an optional prompt. Use this to check whether a prompt will be blocked or require confirmation before sending it.
+
+### `inspect_context_health`
+
+Returns structured health findings for config validity, session state, semantic state freshness, prefix drift, token budget, and git delta presence.
+
+Useful as a quick sanity check before a coding session.
+
+---
 
 ## Safety
 
-The MCP server is read-only in this version. MCP tools do not start sessions, run GC, warm caches, call providers, execute shell commands, or write `.relay` files.
+The MCP server is **read-only**. MCP tools do not:
 
-Run mutating Relay workflows yourself from the CLI:
+- Start or end sessions
+- Run garbage collection
+- Warm provider caches
+- Call configured provider commands
+- Write to `.relay/` files
+- Execute shell commands
+
+All mutating workflows must be run from the CLI:
 
 ```bash
 relay session start
@@ -66,3 +141,5 @@ relay gc preview
 relay gc run
 relay cache warm --provider default
 ```
+
+This boundary ensures the MCP server cannot interfere with session state or trigger unexpected provider calls.

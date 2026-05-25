@@ -24,10 +24,20 @@ pnpm --filter @relay/cli dev
 Tests run against compiled output via Node's built-in test runner. Always build before testing:
 
 ```bash
-cd packages/core && pnpm build && node --test dist/path/to/file.test.js
+pnpm build && pnpm test      # full suite (133 tests across core + cli)
+pnpm run ci                  # build + typecheck + test + pack:check (matches CI)
 ```
 
-There is no ESLint. `pnpm typecheck` (strict TypeScript) is the lint step. The full local CI command is `pnpm run ci`, which runs build, typecheck, tests, and package dry-run checks.
+Run a single test file:
+
+```bash
+pnpm --filter @relay/core build
+node --test packages/core/dist/tokens/budget.test.js
+```
+
+There is no ESLint. `pnpm typecheck` (strict TypeScript) is the lint step.
+
+For full testing instructions — including hook verification for Claude Code, Codex CLI, and GitHub Copilot, and manual integration testing — see [`docs/TESTING_PLAN.md`](docs/TESTING_PLAN.md).
 
 ## Architecture
 

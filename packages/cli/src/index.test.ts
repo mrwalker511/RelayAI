@@ -451,6 +451,24 @@ test("relay gc status uses configured GC settings", { skip: canSpawnNode ? false
   assert.deepEqual(gc.command, ["example-gc"]);
 });
 
+test("relay ask prefix hash is stable when only the prompt changes", { skip: canSpawnNode ? false : "nested Node execution is unavailable in this sandbox" }, () => {
+  const cwd = tempWorkspace();
+  assert.equal(runRelay(["init"], cwd).result.status, 0);
+
+  // Capture prefix hash before any ask call
+  const before = JSON.parse(runRelay(["context", "inspect"], cwd).result.stdout);
+  const hashBefore: string = before.prefix.current_hash;
+
+  // Run ask — the prompt goes into DYNAMIC_INPUT only, never into the prefix
+  assert.equal(runRelay(["ask", "first prompt — this is volatile content"], cwd).result.status, 0);
+
+  // Capture prefix hash after ask
+  const after = JSON.parse(runRelay(["context", "inspect"], cwd).result.stdout);
+  const hashAfter: string = after.prefix.current_hash;
+
+  assert.equal(hashBefore, hashAfter, "prefix hash (STATIC_BLOCK + STATE_LAYER) must be identical across calls with different prompts — cache stability invariant");
+});
+
 test("relay doctor reports warnings before Relay init without failing", { skip: canSpawnNode ? false : "nested Node execution is unavailable in this sandbox" }, () => {
   const result = runRelay(["doctor"], tempGitWorkspace()).result;
   const report = JSON.parse(result.stdout);

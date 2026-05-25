@@ -10,6 +10,7 @@
     "dev": "pnpm --filter @relay/cli dev",
     "lint": "pnpm -r lint",
     "pack:check": "pnpm clean && pnpm build && npm pack --dry-run --cache /tmp/npm-cache ./packages/core && npm pack --dry-run --cache /tmp/npm-cache ./packages/cli",
+    "compare": "tsx scripts/compare.ts",
     "sigmap": "tsx scripts/gen-sigmap.ts",
     "test": "pnpm -r test",
     "typecheck": "pnpm -r typecheck",

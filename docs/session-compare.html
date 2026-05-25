@@ -252,6 +252,26 @@
       .exchange-col:first-child { border-right: none; border-bottom: 1px solid var(--border); }
     }
 
+    /* ── Manual entry form ── */
+    .manual-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 24px;
+    }
+    .form-group { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
+    .form-label { font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
+    .form-input {
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 7px; padding: 10px 14px; color: var(--text);
+      font-size: 13px; font-family: inherit; outline: none;
+      transition: border-color 0.15s;
+    }
+    .form-input:focus { border-color: var(--accent); }
+    .form-hint { font-size: 11px; color: var(--muted); margin-top: 2px; }
+    .manual-section-title {
+      font-size: 12px; font-weight: 700; color: var(--muted);
+      text-transform: uppercase; letter-spacing: 0.6px;
+      margin-bottom: 14px; padding-bottom: 8px; border-bottom: 1px solid var(--border);
+    }
+
     @media print {
       header { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
       .upload-grid, .btn-row, nav { display: none !important; }
@@ -279,6 +299,7 @@
 <nav>
   <div class="tab active" onclick="showTab('summary',this)">📊 Summary</div>
   <div class="tab" onclick="showTab('exchanges',this)">💬 Side-by-Side</div>
+  <div class="tab" onclick="showTab('manual',this)">✏️ Manual Entry</div>
 </nav>
 
 <div class="content">
@@ -408,6 +429,68 @@
   <div id="tab-exchanges" class="panel">
     <div id="exchangeList" class="exchange-list">
       <p class="no-data">Upload both session files to see the side-by-side view.</p>
+    </div>
+  </div>
+
+  <!-- ══ Manual entry panel ══ -->
+  <div id="tab-manual" class="panel">
+    <div class="card">
+      <div class="card-title">Manual Token Entry</div>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:20px;line-height:1.7;">
+        Enter average token counts from any provider's session output — Ollama, Claude CLI, ChatGPT, or any other tool.
+        Use <code style="font-size:12px;background:var(--surface2);padding:1px 5px;border-radius:3px;">relay tokens inspect</code> for the Relay side.
+      </p>
+
+      <div class="manual-grid">
+        <!-- Baseline column -->
+        <div>
+          <div class="manual-section-title">Baseline — Without Relay</div>
+          <div class="form-group">
+            <label class="form-label" for="m-baseline-provider">Provider / tool</label>
+            <input class="form-input" id="m-baseline-provider" type="text" placeholder="e.g. claude, ollama, codex" />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="m-baseline-in">Avg input tokens per prompt</label>
+            <input class="form-input" id="m-baseline-in" type="number" min="0" placeholder="e.g. 12000" />
+            <span class="form-hint">From usage.input_tokens or similar field</span>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="m-baseline-out">Avg output tokens per prompt <span style="font-weight:400;text-transform:none;">(optional)</span></label>
+            <input class="form-input" id="m-baseline-out" type="number" min="0" placeholder="e.g. 800" />
+          </div>
+        </div>
+
+        <!-- Relay column -->
+        <div>
+          <div class="manual-section-title">Relay-Enabled</div>
+          <div class="form-group">
+            <label class="form-label" for="m-relay-provider">Provider / tool</label>
+            <input class="form-input" id="m-relay-provider" type="text" placeholder="e.g. claude, ollama, codex" />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="m-relay-in">Avg input tokens per prompt</label>
+            <input class="form-input" id="m-relay-in" type="number" min="0" placeholder="e.g. 4500" />
+            <span class="form-hint">From <code style="font-size:11px;">relay tokens inspect</code> → total</span>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="m-relay-out">Avg output tokens per prompt <span style="font-weight:400;text-transform:none;">(optional)</span></label>
+            <input class="form-input" id="m-relay-out" type="number" min="0" placeholder="e.g. 800" />
+          </div>
+        </div>
+      </div>
+
+      <div class="form-group" style="max-width:260px;">
+        <label class="form-label" for="m-exchanges">Number of prompts compared</label>
+        <input class="form-input" id="m-exchanges" type="number" min="1" max="100" placeholder="5" value="5" />
+        <span class="form-hint">Used for the per-prompt comparison table</span>
+      </div>
+
+      <div id="m-error" class="parse-error" style="display:none;"></div>
+
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="applyManualEntry()">Compare →</button>
+        <button class="btn btn-outline" onclick="clearManualEntry()">Clear</button>
+      </div>
     </div>
   </div>
 
@@ -812,6 +895,60 @@
     document.getElementById('resultsArea').style.display = 'none';
     document.getElementById('exchangeList').innerHTML = '<p class="no-data">Upload both session files to see the side-by-side view.</p>';
     clearError();
+  }
+
+  // ── Manual entry ──
+  function applyManualEntry() {
+    const mErr = document.getElementById('m-error');
+    mErr.style.display = 'none';
+
+    const baselineIn = parseFloat(document.getElementById('m-baseline-in').value);
+    const relayIn = parseFloat(document.getElementById('m-relay-in').value);
+    const baselineOut = parseFloat(document.getElementById('m-baseline-out').value) || 0;
+    const relayOut = parseFloat(document.getElementById('m-relay-out').value) || 0;
+    const count = Math.max(1, parseInt(document.getElementById('m-exchanges').value) || 5);
+    const baselineProv = document.getElementById('m-baseline-provider').value || 'baseline';
+    const relayProv = document.getElementById('m-relay-provider').value || 'relay';
+
+    if (isNaN(baselineIn) || baselineIn <= 0) {
+      mErr.textContent = 'Enter a valid baseline avg input token count.';
+      mErr.style.display = 'block';
+      return;
+    }
+    if (isNaN(relayIn) || relayIn <= 0) {
+      mErr.textContent = 'Enter a valid Relay avg input token count.';
+      mErr.style.display = 'block';
+      return;
+    }
+
+    // Build synthetic exchange arrays — one exchange per count, all with identical avg tokens
+    function makeExchanges(inTkns, outTkns, label, n) {
+      return Array.from({ length: n }, (_, i) => ({
+        prompt: `Prompt ${i + 1} (${label})`,
+        response: '',
+        inputTokens: inTkns,
+        outputTokens: outTkns || null,
+        ts: null,
+        estimated: false,
+      }));
+    }
+
+    sessions.baseline = { name: baselineProv, size: 0, exchanges: makeExchanges(baselineIn, baselineOut, baselineProv, count) };
+    sessions.relay    = { name: relayProv,    size: 0, exchanges: makeExchanges(relayIn,    relayOut,    relayProv,    count) };
+
+    // Switch to summary tab and render
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelector('[onclick*="summary"]').classList.add('active');
+    showTab('summary', document.querySelector('[onclick*="summary"]'));
+    maybeRender();
+  }
+
+  function clearManualEntry() {
+    ['m-baseline-provider','m-baseline-in','m-baseline-out','m-relay-provider','m-relay-in','m-relay-out'].forEach(id => {
+      document.getElementById(id).value = '';
+    });
+    document.getElementById('m-exchanges').value = '5';
+    document.getElementById('m-error').style.display = 'none';
   }
 </script>
 </body>

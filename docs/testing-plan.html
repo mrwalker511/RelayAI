@@ -270,7 +270,7 @@
       <a href="session-compare.html" style="color:var(--accent)">Compare Page</a> — no manual metric recording required.
     </p>
     <p>
-      The test project is <strong>matt-mcp</strong>. You run the same 5 prompts in both phases and
+      The test project is <strong>AgentFlow</strong>. You run the same 5 prompts in both phases and
       let the comparison page calculate token reduction, response quality, and the verdict.
     </p>
     <div class="tag-row">
@@ -320,15 +320,15 @@ pnpm build</pre>
         <div class="step-check-inner"><svg viewBox="0 0 10 10"><polyline points="1.5,5 4,7.5 8.5,2.5"/></svg></div>
       </div>
       <span class="step-num">02</span>
-      <span class="step-title">Clone &amp; build the test project (matt-mcp)</span>
+      <span class="step-title">Clone &amp; build the test project (AgentFlow)</span>
       <span class="step-chevron">▶</span>
     </div>
     <div class="step-body">
-      <p class="step-desc">matt-mcp is the project you'll be asking Codex questions about. It must build cleanly before testing starts.</p>
+      <p class="step-desc">AgentFlow is the project you'll be asking Codex questions about. It must build cleanly before testing starts.</p>
       <div class="cmd-block">
         <div class="cmd-header"><span class="cmd-label">terminal</span><button class="copy-btn" onclick="copyCmd(this)">Copy</button></div>
-        <pre>git clone https://github.com/mrwalker511/matt-mcp.git
-cd matt-mcp
+        <pre>git clone https://github.com/mrwalker511/AgentFlow.git
+cd AgentFlow
 npm install
 npm run build
 npm test</pre>
@@ -353,7 +353,7 @@ npm test</pre>
     <div class="step-body">
       <p class="step-desc">Save this SHA — Relay will anchor its session diff to it so follow-up prompts only contain what changed.</p>
       <div class="cmd-block">
-        <div class="cmd-header"><span class="cmd-label">terminal — matt-mcp</span><button class="copy-btn" onclick="copyCmd(this)">Copy</button></div>
+        <div class="cmd-header"><span class="cmd-label">terminal — AgentFlow</span><button class="copy-btn" onclick="copyCmd(this)">Copy</button></div>
         <pre>git rev-parse HEAD</pre>
       </div>
       <div class="tip info">
@@ -376,7 +376,7 @@ npm test</pre>
     <div class="step-body">
       <p class="step-desc">
         You must use the <strong>exact same prompts</strong> in Phase 1 and Phase 2 so the comparison is valid.
-        The defaults below work well for matt-mcp — edit them if you want custom prompts.
+        The defaults below work well for AgentFlow — edit them if you want custom prompts.
       </p>
       <table class="prompt-table">
         <thead>
@@ -384,10 +384,10 @@ npm test</pre>
         </thead>
         <tbody>
           <tr><td><span class="prompt-num-badge">1</span></td><td><input class="prompt-input" id="p1" value="Explain the overall architecture of this project" /></td></tr>
-          <tr><td><span class="prompt-num-badge">2</span></td><td><input class="prompt-input" id="p2" value="Review the auth flow and identify any security risks" /></td></tr>
-          <tr><td><span class="prompt-num-badge">3</span></td><td><input class="prompt-input" id="p3" value="Add input validation to the generate tool command" /></td></tr>
+          <tr><td><span class="prompt-num-badge">2</span></td><td><input class="prompt-input" id="p2" value="Explain how the semantic-engine clusters events and determines risk levels" /></td></tr>
+          <tr><td><span class="prompt-num-badge">3</span></td><td><input class="prompt-input" id="p3" value="Add support for poetry run test to classifyCommand as a test_run" /></td></tr>
           <tr><td><span class="prompt-num-badge">4</span></td><td><input class="prompt-input" id="p4" value="Summarize what has changed in the active diff" /></td></tr>
-          <tr><td><span class="prompt-num-badge">5</span></td><td><input class="prompt-input" id="p5" value="Write unit tests for the register command" /></td></tr>
+          <tr><td><span class="prompt-num-badge">5</span></td><td><input class="prompt-input" id="p5" value="Write unit tests for the classifyCommand function in event-engine" /></td></tr>
         </tbody>
       </table>
       <div class="tip info" style="margin-top:12px;">
@@ -416,14 +416,14 @@ npm test</pre>
         <div class="step-check-inner"><svg viewBox="0 0 10 10"><polyline points="1.5,5 4,7.5 8.5,2.5"/></svg></div>
       </div>
       <span class="step-num">05</span>
-      <span class="step-title">Open a fresh Codex session in matt-mcp</span>
+      <span class="step-title">Open a fresh Codex session in AgentFlow</span>
       <span class="step-chevron">▶</span>
     </div>
     <div class="step-body">
-      <p class="step-desc">Start Codex from the matt-mcp directory. Use a brand-new session — do not reuse one that has prior context about this project.</p>
+      <p class="step-desc">Start Codex from the AgentFlow directory. Use a brand-new session — do not reuse one that has prior context about this project.</p>
       <div class="cmd-block">
-        <div class="cmd-header"><span class="cmd-label">terminal — matt-mcp</span><button class="copy-btn" onclick="copyCmd(this)">Copy</button></div>
-        <pre>cd /path/to/matt-mcp
+        <div class="cmd-header"><span class="cmd-label">terminal — AgentFlow</span><button class="copy-btn" onclick="copyCmd(this)">Copy</button></div>
+        <pre>cd /path/to/AgentFlow
 codex</pre>
       </div>
       <div class="tip warn">
@@ -510,14 +510,14 @@ cp ~/.codex/sessions/&lt;latest-uuid&gt;.json ~/relay-test-baseline.json</pre>
         <div class="step-check-inner"><svg viewBox="0 0 10 10"><polyline points="1.5,5 4,7.5 8.5,2.5"/></svg></div>
       </div>
       <span class="step-num">08</span>
-      <span class="step-title">Initialize Relay in matt-mcp</span>
+      <span class="step-title">Initialize Relay in AgentFlow</span>
       <span class="step-chevron">▶</span>
     </div>
     <div class="step-body">
       <p class="step-desc">This creates the <span class="inline-code">.relay/</span> directory and writes the default config. Run this once per project.</p>
       <div class="cmd-block">
-        <div class="cmd-header"><span class="cmd-label">terminal — matt-mcp</span><button class="copy-btn" onclick="copyCmd(this)">Copy</button></div>
-        <pre>cd /path/to/matt-mcp
+        <div class="cmd-header"><span class="cmd-label">terminal — AgentFlow</span><button class="copy-btn" onclick="copyCmd(this)">Copy</button></div>
+        <pre>cd /path/to/AgentFlow
 
 # If relay is on your PATH:
 relay init
@@ -541,7 +541,7 @@ node /path/to/RelayAI/packages/cli/dist/index.js init</pre>
     <div class="step-body">
       <p class="step-desc">Run the doctor check. All items must pass before you continue.</p>
       <div class="cmd-block">
-        <div class="cmd-header"><span class="cmd-label">terminal — matt-mcp</span><button class="copy-btn" onclick="copyCmd(this)">Copy</button></div>
+        <div class="cmd-header"><span class="cmd-label">terminal — AgentFlow</span><button class="copy-btn" onclick="copyCmd(this)">Copy</button></div>
         <pre>relay doctor</pre>
       </div>
       <div class="tip warn">
@@ -566,7 +566,7 @@ node /path/to/RelayAI/packages/cli/dist/index.js init</pre>
         This anchors Relay's diff tracking to the current git SHA. The SHA printed should match the one you recorded in Step 3.
       </p>
       <div class="cmd-block">
-        <div class="cmd-header"><span class="cmd-label">terminal — matt-mcp</span><button class="copy-btn" onclick="copyCmd(this)">Copy</button></div>
+        <div class="cmd-header"><span class="cmd-label">terminal — AgentFlow</span><button class="copy-btn" onclick="copyCmd(this)">Copy</button></div>
         <pre>relay session start</pre>
       </div>
       <div class="tip info">
@@ -627,12 +627,12 @@ node /path/to/RelayAI/packages/cli/dist/index.js init</pre>
     </div>
     <div class="step-body">
       <p class="step-desc">
-        Start Codex from the matt-mcp directory. Codex will automatically connect to the Relay MCP server.
+        Start Codex from the AgentFlow directory. Codex will automatically connect to the Relay MCP server.
         You should see Relay listed as an available tool in the Codex interface.
       </p>
       <div class="cmd-block">
-        <div class="cmd-header"><span class="cmd-label">terminal — matt-mcp</span><button class="copy-btn" onclick="copyCmd(this)">Copy</button></div>
-        <pre>cd /path/to/matt-mcp
+        <div class="cmd-header"><span class="cmd-label">terminal — AgentFlow</span><button class="copy-btn" onclick="copyCmd(this)">Copy</button></div>
+        <pre>cd /path/to/AgentFlow
 codex</pre>
       </div>
       <div class="tip success">

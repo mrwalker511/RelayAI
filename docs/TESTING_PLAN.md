@@ -151,15 +151,15 @@ This phase validates RelayAI's effectiveness against a real project by comparing
 
 ### Setup
 
-**Test project:** [`matt-mcp`](https://github.com/mrwalker511/matt-mcp)
+**Test project:** [`AgentFlow`](https://github.com/mrwalker511/AgentFlow)
 
 ```bash
 # 1. Verify RelayAI CLI is functional
 node packages/cli/dist/index.js --help
 
 # 2. Clone the test project
-git clone https://github.com/mrwalker511/matt-mcp.git
-cd matt-mcp
+git clone https://github.com/mrwalker511/AgentFlow.git
+cd AgentFlow
 npm install && npm run build && npm test
 
 # 3. Record the current HEAD SHA (your baseline anchor)
@@ -173,10 +173,10 @@ Use the same 5 prompts in both the baseline and Relay-enabled rounds:
 | # | Prompt |
 |---|--------|
 | P1 | `Explain the overall architecture of this project` |
-| P2 | `Review the auth flow and identify any security risks` |
-| P3 | `Add input validation to the generate tool command` |
+| P2 | `Explain how the semantic-engine clusters events and determines risk levels` |
+| P3 | `Add support for poetry run test to classifyCommand as a test_run` |
 | P4 | `Summarize what has changed in the active diff` |
-| P5 | `Write unit tests for the register command` |
+| P5 | `Write unit tests for the classifyCommand function in event-engine` |
 
 ### Phase 1 — Baseline (WITHOUT Relay)
 
@@ -199,7 +199,7 @@ Use the same 5 prompts in both the baseline and Relay-enabled rounds:
 ### Phase 2 — Relay-Enabled (WITH Relay)
 
 ```bash
-cd matt-mcp
+cd AgentFlow
 
 # Initialize Relay
 node /path/to/RelayAI/packages/cli/dist/index.js init

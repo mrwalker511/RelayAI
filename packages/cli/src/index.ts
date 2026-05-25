@@ -27,6 +27,7 @@ import {
   inspectCacheDiagnostics,
   inspectZoneTokens,
   listTrackedFiles,
+  loadHierarchicalContext,
   readOptional,
   resolveTokenBudget,
   runRelayDoctor,
@@ -96,12 +97,32 @@ function writeCallLog(timestamps: number[]): void {
   writeFileSync(callLogPath, JSON.stringify(pruned));
 }
 
-function readStaticBlockInput(dir: string): StaticBlockInput {
-  return {
-    projectRules: readOptional(join(dir, "memory", "project-rules.md")) || undefined,
-    architectureNotes: readOptional(join(dir, "memory", "architecture-notes.md")) || undefined,
-    sourceSnapshot: readOptional(join(dir, "memory", "source-snapshot.md")) || undefined,
-  };
+function readStaticBlockInput(
+  dir: string,
+  opts?: { cfg?: RelayConfig; prompt?: string; gitDiff?: string }
+): StaticBlockInput {
+  const projectRules = readOptional(join(dir, "memory", "project-rules.md")) || undefined;
+  const architectureNotes = readOptional(join(dir, "memory", "architecture-notes.md")) || undefined;
+
+  const snapshotRaw = readOptional(join(dir, "memory", "source-snapshot.md")) || undefined;
+  const sigemapPath = join(dir, "sigmap.md");
+  const sourceSnapshot =
+    snapshotRaw && !snapshotRaw.includes("Paste stable key source files here")
+      ? snapshotRaw
+      : existsSync(sigemapPath) ? readFileSync(sigemapPath, "utf8") : snapshotRaw;
+
+  let domainContext: string | undefined;
+  if (opts?.cfg?.context.hierarchical) {
+    const contextDir = join(process.cwd(), opts.cfg.context.contextDir);
+    domainContext = loadHierarchicalContext({
+      contextDir,
+      prompt: opts.prompt,
+      gitDiff: opts.gitDiff,
+      maxBranches: opts.cfg.context.maxBranches,
+    }).loaded;
+  }
+
+  return { projectRules, architectureNotes, sourceSnapshot, domainContext };
 }
 
 function safeGetGitDiff(baseRef: string): string {
@@ -297,7 +318,9 @@ program.command("ask")
     const baseRef = (sessionData.base_git_sha as string | undefined) ?? "HEAD";
 
     const diffOverride = options.staged ? safeGetStagedDiff() : undefined;
-    const zones = buildZonesForAsk(prompt, baseRef, semanticState, files, readStaticBlockInput(relayDir), diffOverride, options.diffMode, options.includeTimestamp);
+    const activeDiff = diffOverride ?? safeGetGitDiff(baseRef);
+    const staticInput = readStaticBlockInput(relayDir, { cfg, prompt, gitDiff: activeDiff });
+    const zones = buildZonesForAsk(prompt, baseRef, semanticState, files, staticInput, diffOverride, options.diffMode, options.includeTimestamp);
     const payload = buildPromptPayload(zones);
     const resolvedTokens = resolveTokenBudget(cfg);
     const budget = checkTokenBudget(payload, resolvedTokens);
@@ -682,7 +705,7 @@ context.command("inspect").description("Print current context construction diagn
   const files = buildPrioritizedFileIndex(process.cwd(), { limit: cfg.files.maxIndex }).join("\n");
   const gitDiff = safeGetGitDiff(baseRef);
   const zones = {
-    staticBlock: buildStaticBlock(readStaticBlockInput(relayDir)),
+    staticBlock: buildStaticBlock(readStaticBlockInput(relayDir, { cfg, prompt: "(inspect)", gitDiff })),
     stateLayer: buildStateLayer({ semanticStateJson: semanticState, fileIndex: files }),
     dynamicInput: buildDynamicInput({ prompt: "(inspect)", gitDiff })
   };
@@ -730,5 +753,59 @@ context.command("inspect").description("Print current context construction diagn
     }
   }, null, 2));
 });
+
+context.command("build")
+  .description("Scaffold hierarchical context files at .relay/context/ from docs.")
+  .action(() => {
+    ensureRelayDir();
+    const contextDir = join(relayDir, "context");
+    const branchesDir = join(contextDir, "branches");
+    mkdirSync(branchesDir, { recursive: true });
+
+    const archPath = join(process.cwd(), "docs", "ARCHITECTURE.md");
+    const agentsPath = join(process.cwd(), "AGENTS.md");
+    const archContent = existsSync(archPath) ? readFileSync(archPath, "utf8") : "";
+    const agentsContent = existsSync(agentsPath) ? readFileSync(agentsPath, "utf8") : "";
+
+    // Build trunk.md: project overview + commands reference (~300 tokens target)
+    const trunkParts: string[] = ["# Project Context Trunk", ""];
+    const archIntro = archContent.split(/^---$/m)[0]?.trim() ?? "";
+    if (archIntro) trunkParts.push(archIntro, "");
+    const agentsCmds = agentsContent.match(/## Commands[\s\S]+?(?=\n## |\n$|$)/)?.[0]?.trim() ?? "";
+    if (agentsCmds) trunkParts.push(agentsCmds, "");
+    trunkParts.push("_Load domain branches for detailed module context._");
+    writeFileSync(join(contextDir, "trunk.md"), trunkParts.join("\n"), "utf8");
+
+    // Extract domain sections from ARCHITECTURE.md
+    const domainPatternMap: Record<string, RegExp[]> = {
+      context:   [/context\//i, /payload/i, /three.zone/i, /cache strategy/i],
+      git:       [/git\//i, /delta/i, /snapshot/i, /git delta/i],
+      memory:    [/memory\//i, /garbage/i, /semantic/i, /compaction/i],
+      tokens:    [/tokens\//i, /token guardrail/i, /budget/i, /anomaly/i],
+      providers: [/providers\//i, /provider adapter/i, /shell/i],
+      config:    [/config\//i, /local runtime/i, /\.relay\//i],
+    };
+
+    const parts = archContent.split(/^(?=#{2,3} )/m).filter(Boolean);
+    const domainSections: Record<string, string[]> = {};
+    for (const part of parts) {
+      for (const [domain, patterns] of Object.entries(domainPatternMap)) {
+        if (patterns.some((p) => p.test(part))) {
+          (domainSections[domain] ??= []).push(part.trim());
+        }
+      }
+    }
+
+    let branchCount = 0;
+    for (const [domain, sections] of Object.entries(domainSections)) {
+      if (sections.length > 0) {
+        writeFileSync(join(branchesDir, `${domain}.md`), sections.join("\n\n"), "utf8");
+        branchCount++;
+      }
+    }
+
+    console.log(`Generated .relay/context/trunk.md and ${branchCount} branch files.`);
+    console.log("Enable with: set context.hierarchical = true in .relay/config.json");
+  });
 
 await program.parseAsync();

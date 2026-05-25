@@ -1,5 +1,7 @@
 import { estimateTokens } from "../tokens/tokenizer.js";
 import { summarizeDiff } from "../git/diff.js";
+import { filterOutput } from "../utils/output-filter.js";
+import type { FilterOptions } from "../utils/output-filter.js";
 
 export interface DynamicInputInput {
   prompt: string;
@@ -9,6 +11,7 @@ export interface DynamicInputInput {
   includeTimestamp?: boolean;
   diffMode?: "full" | "summarized" | "auto";
   diffTokenThreshold?: number;
+  outputFilterOptions?: FilterOptions;
 }
 
 export function buildDynamicInput(input: DynamicInputInput): string {
@@ -22,6 +25,10 @@ export function buildDynamicInput(input: DynamicInputInput): string {
     renderedDiff = `[diff summarized — ${diffTokens.toLocaleString()} tokens]\n` + summarizeDiff(rawDiff);
   }
 
+  const filteredOutput = input.runtimeOutput
+    ? filterOutput(input.runtimeOutput, input.outputFilterOptions)
+    : null;
+
   return [
     "# Dynamic Input",
     input.includeTimestamp
@@ -29,6 +36,6 @@ export function buildDynamicInput(input: DynamicInputInput): string {
       : null,
     `## User Prompt\n${input.prompt}`,
     `## Git Diff\n${renderedDiff}`,
-    input.runtimeOutput ? `## Runtime Output\n${input.runtimeOutput}` : null,
+    filteredOutput ? `## Runtime Output\n${filteredOutput}` : null,
   ].filter(Boolean).join("\n\n");
 }

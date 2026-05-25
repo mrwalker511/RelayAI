@@ -8,6 +8,7 @@ export interface ZoneBuildInput {
   projectRules: string;
   architectureNotes: string;
   sourceSnapshot: string;
+  domainContext?: string;
   semanticState: string;
   fileIndex: string;
   userPrompt: string;

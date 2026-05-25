@@ -44,6 +44,9 @@ Without a provider, Relay prints the assembled payload between `---BEGIN RELAY P
 | --- | --- |
 | `--provider <name>` | Route the payload to the named provider command. Relay writes the payload to stdin and propagates the exit code. |
 | `--dry-run` | Print the resolved provider command and payload without executing the provider. |
+| `--staged` | Use staged diff instead of the full session diff. |
+| `--diff-mode <mode>` | Diff rendering: `full`, `summarized`, or `auto` (default). `auto` summarizes diffs above 8 000 tokens. |
+| `--include-timestamp` | Include ISO timestamp in the `DYNAMIC_INPUT` zone. |
 
 ---
 
@@ -56,6 +59,15 @@ Prints the git diff since the current session base SHA.
 ## `relay context inspect`
 
 Prints context-construction diagnostics, including session metadata, prefix hash comparison, zone token counts, semantic state validity, and git diff presence.
+
+## `relay context build`
+
+Scaffolds hierarchical context files at `.relay/context/` by parsing `docs/ARCHITECTURE.md` and `AGENTS.md`. Generates:
+
+- `.relay/context/trunk.md` — slim project overview (~300 tokens, always loaded)
+- `.relay/context/branches/{domain}.md` — domain-specific details (lazy-loaded when prompt/diff matches)
+
+After running, enable with `"context": { "hierarchical": true }` in `.relay/config.json`.
 
 ---
 
@@ -131,3 +143,13 @@ Runs Relay as a read-only MCP context server over stdio.
 Configure an MCP-compatible coding agent to launch this command. Relay exposes project context, git delta, semantic memory, token budget, and prompt payload as MCP tools without mutating `.relay/` state.
 
 See [`docs/MCP.md`](MCP.md) for setup instructions and the full tool contract.
+
+---
+
+## `pnpm sigmap`
+
+_(Root workspace script, not a relay CLI command)_
+
+Generates `.relay/sigmap.md` — a structural skeleton of the codebase using TypeScript's compiler API. Extracts interfaces, type aliases, enums, and function signatures while stripping implementation bodies. Token cost is ~10–15% of full source.
+
+Relay automatically uses this file as `sourceSnapshot` when `.relay/memory/source-snapshot.md` is absent or contains the default placeholder.

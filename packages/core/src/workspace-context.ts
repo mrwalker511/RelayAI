@@ -2,6 +2,7 @@ import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { DEFAULT_RELAY_CONFIG, RelayConfigSchema, resolveTokenBudget } from "./config/relay-config.js";
 import type { RelayConfig } from "./config/relay-config.js";
+import { loadHierarchicalContext } from "./context/hierarchical-loader.js";
 import { buildDynamicInput } from "./context/dynamic-input.js";
 import { buildPromptPayload } from "./context/payload-builder.js";
 import { getPrefixHash } from "./context/prefix-hash.js";
@@ -231,11 +232,25 @@ export function readRelayWorkspace(options: RelayWorkspaceOptions = {}): RelayWo
   } catch {
     // Not in a git repo or git unavailable — proceed without diff context
   }
+  const sourceSnapshotRaw = readOptional(join(relayDir, "memory", "source-snapshot.md")) || undefined;
+  const sigemapPath = join(relayDir, "sigmap.md");
+  const sourceSnapshot =
+    sourceSnapshotRaw && !sourceSnapshotRaw.includes("Paste stable key source files here")
+      ? sourceSnapshotRaw
+      : existsSync(sigemapPath) ? readOptional(sigemapPath) : sourceSnapshotRaw;
+
+  let domainContext: string | undefined;
+  if (config.value.context.hierarchical) {
+    const contextDir = join(cwd, config.value.context.contextDir);
+    domainContext = loadHierarchicalContext({ contextDir, prompt, gitDiff, maxBranches: config.value.context.maxBranches }).loaded;
+  }
+
   const zones = {
     staticBlock: buildStaticBlock({
       projectRules: readOptional(join(relayDir, "memory", "project-rules.md")) || undefined,
       architectureNotes: readOptional(join(relayDir, "memory", "architecture-notes.md")) || undefined,
-      sourceSnapshot: readOptional(join(relayDir, "memory", "source-snapshot.md")) || undefined,
+      sourceSnapshot,
+      domainContext,
     }),
     stateLayer: buildStateLayer({ semanticStateJson: serializeSemanticState(trimmedState), fileIndex: includedPaths.join("\n") }),
     dynamicInput: buildDynamicInput({ prompt, gitDiff })

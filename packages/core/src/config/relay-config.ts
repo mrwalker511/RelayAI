@@ -29,6 +29,18 @@ export const RelayConfigSchema = z.object({
   }).default({}),
   files: z.object({
     maxIndex: z.number().int().positive().default(200)
+  }).default({}),
+  context: z.object({
+    hierarchical: z.boolean().default(false),
+    contextDir: z.string().default(".relay/context"),
+    maxBranches: z.number().int().positive().default(3)
+  }).default({}),
+  filter: z.object({
+    enabled: z.boolean().default(true),
+    maxLines: z.number().int().positive().default(300),
+    maxSuccessOccurrences: z.number().int().nonnegative().default(3),
+    dedupConsecutive: z.boolean().default(true),
+    collapseBlankLines: z.boolean().default(true)
   }).default({})
 });
 

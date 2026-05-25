@@ -1,0 +1,39 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "relay session start 2>/dev/null || true"
+          },
+          {
+            "type": "command",
+            "command": "pnpm --silent sigmap 2>/dev/null || true"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "relay gc run 2>/dev/null || true"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "pnpm --silent sigmap 2>/dev/null || true"
+          }
+        ]
+      }
+    ]
+  }
+}

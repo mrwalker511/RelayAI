@@ -27,12 +27,19 @@ Developer
 │  └──────┬───────┘  │  base SHA)   │  │  preview)  │ │
 │         │          └──────┬───────┘  └──────┬──────┘ │
 │         │                 │                 │        │
+│  ┌──────▼───────┐         │                 │        │
+│  │ Hierarchical │         │                 │        │
+│  │ Context Loader│         │                 │        │
+│  │ (trunk +     │         │                 │        │
+│  │  branches)   │         │                 │        │
+│  └──────┬───────┘         │                 │        │
 │         └────────┬────────┘                 │        │
 │                  ▼                          │        │
 │  ┌───────────────────────────────┐          │        │
 │  │  Payload Builder              │◄─────────┘        │
 │  │  STATIC_BLOCK → STATE_LAYER   │                   │
 │  │  → DYNAMIC_INPUT              │                   │
+│  │  (output filtered via RTK)    │                   │
 │  └───────────────┬───────────────┘                   │
 │                  │                                   │
 │  ┌───────────────▼───────────────┐                   │
@@ -80,6 +87,8 @@ Every outbound prompt is assembled in this fixed order:
 
 The three-zone payload builder. `payload-builder.ts` assembles zones in a fixed order by calling `static-block.ts`, `state-layer.ts`, and `dynamic-input.ts` in sequence. Zone type definitions live in `zones.ts`. `prefix-hash.ts` hashes the combined static + state content to produce a cache fingerprint used by `relay cache fingerprint` and `relay cache inspect`. `cache-diagnostics.ts` aggregates cache-relevant metadata for reporting.
 
+`hierarchical-loader.ts` implements two-tier context loading. When `context.hierarchical = true`, `loadHierarchicalContext()` reads a slim `trunk.md` (~300 tokens) unconditionally and then lazy-loads per-domain `branches/*.md` files based on keyword scoring of the current prompt and diff text. Domains: `git`, `tokens`, `memory`, `providers`, `config`, `context`. The combined result replaces `sourceSnapshot` in `STATIC_BLOCK`.
+
 ### `packages/core/src/git/`
 
 Git-anchored delta prompting. When `relay session start` runs, `snapshot.ts` records the current `HEAD` SHA as `base_git_sha` in `.relay/session.json`. On every subsequent `relay ask`, `delta-builder.ts` calls `git diff <base_git_sha>` and injects only the diff into `DYNAMIC_INPUT` — not the full file contents. `tracked-files.ts` calls `git ls-files` to enumerate the project file index placed in `STATE_LAYER`. `diff.ts` contains the raw diff execution logic.
@@ -96,9 +105,13 @@ Token budgeting and safety. `tokenizer.ts` estimates token counts using `js-tikt
 
 Provider adapter layer. The `ProviderAdapter` interface (`provider.ts`) requires only `name: string` and `sendPrompt(payload: string): Promise<number>`. `ShellProvider` implements this by spawning the configured CLI command array and writing the assembled payload to its stdin. Relay handles all context construction upstream; the provider is responsible only for model execution.
 
+### `packages/core/src/utils/`
+
+Shared utilities. `fs.ts` provides `readOptional()` and file write helpers. `output-filter.ts` implements `filterOutput(raw, opts?)` — a deterministic middleware pipeline for noisy CLI/tool output. It strips ANSI codes, collapses blank lines, deduplicates consecutive identical lines, suppresses excess success/pass lines, and truncates to a line limit with head+tail strategy. Applied automatically inside `buildDynamicInput()` to the `runtimeOutput` field.
+
 ### `packages/core/src/config/`
 
-Configuration loading and validation. `relay-config.ts` defines the `RelayConfigSchema` using Zod. Config is validated at load time; invalid configs surface as errors rather than silently falling back to defaults. The schema covers `provider`, `routing`, `gc`, `tokens`, and `files` sections. See [`docs/CONFIGURATION.md`](CONFIGURATION.md) for the full schema reference.
+Configuration loading and validation. `relay-config.ts` defines the `RelayConfigSchema` using Zod. Config is validated at load time; invalid configs surface as errors rather than silently falling back to defaults. The schema covers `provider`, `routing`, `gc`, `tokens`, `files`, `context` (hierarchical loading), and `filter` (output filtering) sections. See [`docs/CONFIGURATION.md`](CONFIGURATION.md) for the full schema reference.
 
 ### `packages/core/src/doctor.ts`
 
@@ -151,6 +164,20 @@ Use `relay tokens inspect` to see the current zone-by-zone breakdown and budget 
 
 ---
 
+## Signature Mapping
+
+`scripts/gen-sigmap.ts` (run with `pnpm sigmap`) uses TypeScript's compiler API to walk `packages/*/src/**/*.ts` and extract:
+
+- Interface and type alias declarations (verbatim)
+- Enum declarations (verbatim)
+- Function declaration signatures without bodies
+- Variable declarations with arrow/function values — signature only
+- Class headers with method signatures, property bodies stripped
+
+Output is written to `.relay/sigmap.md` in markdown with per-file code fences. Token cost is ~10–15% of the equivalent full source. Relay uses it as `sourceSnapshot` automatically when `.relay/memory/source-snapshot.md` is absent or is the default placeholder. Regenerate after structural changes.
+
+---
+
 ## Local Runtime State
 
 All runtime state lives in `.relay/` inside the managed repository and is intentionally not committed to git:
@@ -160,6 +187,16 @@ All runtime state lives in `.relay/` inside the managed repository and is intent
 ├── config.json                      # RelayConfig (Zod-validated)
 ├── session.json                     # base_git_sha, prefix_hash, tracked_paths
 ├── calls.json                       # timestamp log for anomaly detection
+├── sigmap.md                        # generated by pnpm sigmap
+├── context/                         # generated by relay context build
+│   ├── trunk.md                     # slim project overview (always loaded)
+│   └── branches/                    # domain context files (lazy-loaded)
+│       ├── git.md
+│       ├── tokens.md
+│       ├── memory.md
+│       ├── providers.md
+│       ├── config.md
+│       └── context.md
 └── memory/
     ├── semantic-state.json          # compacted SemanticState
     ├── semantic-state.snapshot.json # pre-GC backup (restored by relay gc restore)

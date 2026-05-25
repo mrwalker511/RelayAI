@@ -10,12 +10,14 @@
     "dev": "pnpm --filter @relay/cli dev",
     "lint": "pnpm -r lint",
     "pack:check": "pnpm clean && pnpm build && npm pack --dry-run --cache /tmp/npm-cache ./packages/core && npm pack --dry-run --cache /tmp/npm-cache ./packages/cli",
+    "sigmap": "tsx scripts/gen-sigmap.ts",
     "test": "pnpm -r test",
     "typecheck": "pnpm -r typecheck",
     "clean": "rm -rf packages/*/dist"
   },
   "devDependencies": {
     "@types/node": "^22.10.1",
+    "tsx": "^4.19.2",
     "typescript": "^5.7.2"
   }
 }

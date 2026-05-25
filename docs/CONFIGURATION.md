@@ -33,6 +33,18 @@ This is what `relay init` writes:
   },
   "files": {
     "maxIndex": 200
+  },
+  "context": {
+    "hierarchical": false,
+    "contextDir": ".relay/context",
+    "maxBranches": 3
+  },
+  "filter": {
+    "enabled": true,
+    "maxLines": 300,
+    "maxSuccessOccurrences": 3,
+    "dedupConsecutive": true,
+    "collapseBlankLines": true
   }
 }
 ```
@@ -160,6 +172,54 @@ Controls repository file indexing.
 
 ---
 
+### `context`
+
+Controls hierarchical context loading — a two-tier strategy that reduces `STATIC_BLOCK` token spend by lazy-loading domain-specific context only when the prompt/diff text matches domain keywords.
+
+```json
+"context": {
+  "hierarchical": true,
+  "contextDir": ".relay/context",
+  "maxBranches": 3
+}
+```
+
+| Field | Type | Default | Description |
+| --- | --- | --- | --- |
+| `hierarchical` | boolean | `false` | When `true`, load `trunk.md` + matching branch files instead of the full `source-snapshot.md` |
+| `contextDir` | string | `".relay/context"` | Directory containing `trunk.md` and `branches/*.md`. Resolved relative to the workspace root. |
+| `maxBranches` | number | `3` | Maximum number of domain branch files to load per request |
+
+Run `relay context build` to scaffold the context directory from `docs/ARCHITECTURE.md`. Domains: `git`, `tokens`, `memory`, `providers`, `config`, `context`.
+
+---
+
+### `filter`
+
+Controls automatic output filtering applied to `runtimeOutput` before it is added to `DYNAMIC_INPUT`. Prevents noisy tool output (ANSI codes, duplicate log lines, verbose test passes) from inflating the prompt.
+
+```json
+"filter": {
+  "enabled": true,
+  "maxLines": 300,
+  "maxSuccessOccurrences": 3,
+  "dedupConsecutive": true,
+  "collapseBlankLines": true
+}
+```
+
+| Field | Type | Default | Description |
+| --- | --- | --- | --- |
+| `enabled` | boolean | `true` | Master switch. Set to `false` to pass `runtimeOutput` through unmodified. |
+| `maxLines` | number | `300` | Maximum lines in filtered output. Overflow is handled with head-60%/tail-40% truncation and a count note. |
+| `maxSuccessOccurrences` | number | `3` | Lines matching success patterns (`PASS`, `ok`, `✓`, etc.) beyond this count are suppressed with a note. Set to `0` to suppress all. |
+| `dedupConsecutive` | boolean | `true` | Collapse consecutive identical lines into `[×N repeated]` annotations. |
+| `collapseBlankLines` | boolean | `true` | Reduce runs of blank lines to a single blank line. |
+
+The filter settings in config apply when callers of `buildDynamicInput()` pass `outputFilterOptions` derived from `config.filter`. ANSI stripping is always on by default regardless of config (it can be disabled per-call with `outputFilterOptions: { stripAnsi: false }`).
+
+---
+
 ## Cache Stability Rules
 
 To keep the `STATIC_BLOCK` and `STATE_LAYER` prefix stable across requests (so provider caches hit), avoid putting these in the stable zones:
@@ -172,6 +232,12 @@ To keep the `STATIC_BLOCK` and `STATE_LAYER` prefix stable across requests (so p
 - Frequently-changing diffs
 
 All of the above belong in `DYNAMIC_INPUT`. Relay places them there automatically.
+
+---
+
+## Signature Map Integration
+
+Run `pnpm sigmap` to generate `.relay/sigmap.md` — a structural skeleton of the codebase (interfaces, types, function signatures without bodies) that costs ~10–15% of the tokens of full source. Relay automatically uses it as `sourceSnapshot` when `.relay/memory/source-snapshot.md` is absent or contains the default placeholder text. Regenerate after major structural changes.
 
 ---
 
@@ -222,3 +288,42 @@ With this config, `relay ask "prompt" --provider default` sends the assembled pa
 ```
 
 This routes most work to Claude but uses a local Ollama model for garbage collection to reduce cost.
+
+---
+
+## Example: Full Token Optimization Setup
+
+```json
+{
+  "provider": {
+    "default": "claude",
+    "commands": {
+      "claude": ["claude", "--dangerously-skip-permissions"]
+    }
+  },
+  "context": {
+    "hierarchical": true,
+    "maxBranches": 3
+  },
+  "filter": {
+    "enabled": true,
+    "maxLines": 200,
+    "maxSuccessOccurrences": 2
+  },
+  "tokens": {
+    "provider": "anthropic",
+    "model": "claude-sonnet-4"
+  }
+}
+```
+
+With this config:
+- `STATIC_BLOCK` loads trunk + up to 3 matching domain branches instead of the full snapshot
+- `runtimeOutput` in `DYNAMIC_INPUT` is filtered to 200 lines with noisy success suppression
+- Token limits auto-scale to Anthropic Claude Sonnet 4 context window fractions
+
+After setting up, run:
+```bash
+pnpm sigmap              # generate .relay/sigmap.md
+relay context build      # scaffold .relay/context/ from docs
+```

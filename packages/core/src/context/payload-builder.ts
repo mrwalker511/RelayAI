@@ -15,8 +15,8 @@ export function buildZones(input: ZoneBuildInput): PromptZones {
       input.projectRules,
       "# Architecture Notes",
       input.architectureNotes,
-      "# Source Snapshot",
-      input.sourceSnapshot
+      input.domainContext ? "# Domain Context (Lazy-Loaded)" : "# Source Snapshot",
+      input.domainContext ?? input.sourceSnapshot,
     ].join("\n\n"),
     stateLayer: [
       "# Semantic State",

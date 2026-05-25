@@ -22,6 +22,8 @@ const baseConfig: RelayConfig = {
     requireConfirmationAbove: 75000,
   },
   files: { maxIndex: 200 },
+  context: { hierarchical: false, contextDir: ".relay/context", maxBranches: 3 },
+  filter: { enabled: true, maxLines: 300, maxSuccessOccurrences: 3, dedupConsecutive: true, collapseBlankLines: true },
 };
 
 test("createShellProvider resolves a configured provider command", () => {

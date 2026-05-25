@@ -1,0 +1,32 @@
+{
+  "version": 1,
+  "hooks": {
+    "sessionStart": [
+      {
+        "type": "command",
+        "bash": "relay session start 2>/dev/null || true"
+      },
+      {
+        "type": "command",
+        "bash": "pnpm --silent sigmap 2>/dev/null || true"
+      }
+    ],
+    "agentStop": [
+      {
+        "type": "command",
+        "bash": "relay gc run 2>/dev/null || true"
+      }
+    ],
+    "postToolUse": [
+      {
+        "matcher": "create_file|edit_file|write_file|apply_patch",
+        "hooks": [
+          {
+            "type": "command",
+            "bash": "pnpm --silent sigmap 2>/dev/null || true"
+          }
+        ]
+      }
+    ]
+  }
+}

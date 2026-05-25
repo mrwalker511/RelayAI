@@ -2,6 +2,7 @@
   "name": "relay-cli-monorepo",
   "private": true,
   "version": "0.1.0",
+  "license": "MIT",
   "description": "Local-first context and prompt-cache optimizer for coding CLIs.",
   "packageManager": "pnpm@9.12.0",
   "scripts": {

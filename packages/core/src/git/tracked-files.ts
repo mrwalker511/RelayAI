@@ -4,7 +4,8 @@ export function listTrackedFiles(cwd = process.cwd()): string[] {
   try {
     const output = execFileSync("git", ["ls-files"], { cwd, encoding: "utf8" });
     return output.split("\n").map((line) => line.trim()).filter(Boolean);
-  } catch {
+  } catch (err) {
+    process.stderr.write(`[relay] Warning: could not list git tracked files: ${(err as Error).message}\n`);
     return [];
   }
 }

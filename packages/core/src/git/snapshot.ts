@@ -17,7 +17,8 @@ export function getCurrentGitSha(cwd = process.cwd()): string {
       encoding: "utf8"
     }).trim();
     return sha;
-  } catch {
+  } catch (err) {
+    process.stderr.write(`[relay] Warning: could not resolve git HEAD: ${(err as Error).message}\n`);
     return "";
   }
 }

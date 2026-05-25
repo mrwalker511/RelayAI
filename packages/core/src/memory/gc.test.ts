@@ -91,3 +91,44 @@ test("compactHistoryToState extracts JSON embedded in prose output", async () =>
 
   assert.equal(result.semanticState.current_goal, "extract embedded json");
 });
+
+test("compactHistoryToState handles JSON wrapped in markdown json code fences", async () => {
+  const json = JSON.stringify({
+    active_target: "src/main.ts",
+    current_goal: "handle markdown fences",
+    runtime_errors: [],
+    verified_hypotheses: ["fences are common"],
+    rejected_hypotheses: [],
+    next_actions: [],
+    code_changes: [],
+  });
+
+  // Simulate a model that wraps JSON in ```json ... ``` despite instructions
+  const fencedOutput = "```json\n" + json + "\n```";
+  const result = await compactHistoryToState("history", createEmptySemanticState(), {
+    command: [process.execPath, "-e", `process.stdin.resume(); process.stdin.on('end', () => { process.stdout.write(${JSON.stringify(fencedOutput)}); });`],
+  });
+
+  assert.equal(result.semanticState.current_goal, "handle markdown fences");
+  assert.deepEqual(result.semanticState.verified_hypotheses, ["fences are common"]);
+});
+
+test("compactHistoryToState handles JSON wrapped in plain code fences (no language tag)", async () => {
+  const json = JSON.stringify({
+    active_target: null,
+    current_goal: "handle plain fences",
+    runtime_errors: [],
+    verified_hypotheses: [],
+    rejected_hypotheses: [],
+    next_actions: ["verify fence stripping"],
+    code_changes: [],
+  });
+
+  const fencedOutput = "```\n" + json + "\n```";
+  const result = await compactHistoryToState("history", createEmptySemanticState(), {
+    command: [process.execPath, "-e", `process.stdin.resume(); process.stdin.on('end', () => { process.stdout.write(${JSON.stringify(fencedOutput)}); });`],
+  });
+
+  assert.equal(result.semanticState.current_goal, "handle plain fences");
+  assert.deepEqual(result.semanticState.next_actions, ["verify fence stripping"]);
+});

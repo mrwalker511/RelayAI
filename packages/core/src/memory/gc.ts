@@ -52,6 +52,15 @@ async function shellCapture(command: string, args: string[], stdin: string): Pro
   });
 }
 
+function extractJsonFromModelOutput(raw: string): string {
+  // Models often wrap JSON in markdown fences despite instructions not to — strip them first
+  const fenceMatch = raw.match(/```(?:json)?\s*([\s\S]*?)```/);
+  const candidate = fenceMatch ? fenceMatch[1] : raw;
+  const jsonMatch = candidate.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) throw new Error(`GC model returned no valid JSON.\nRaw output:\n${raw.slice(0, 500)}`);
+  return jsonMatch[0];
+}
+
 async function compactViaCli(rawHistory: string, existingState: SemanticState, commandTemplate: string[]): Promise<RawExtracted> {
   if (commandTemplate.length === 0) throw new Error("GC command is empty.");
   const [command, ...args] = commandTemplate;
@@ -62,12 +71,11 @@ async function compactViaCli(rawHistory: string, existingState: SemanticState, c
     `Existing state:\n${JSON.stringify(existingState, null, 2)}\n\nSession history:\n${rawHistory}`;
 
   const raw = await shellCapture(command, args, prompt);
-  const jsonMatch = raw.match(/\{[\s\S]*\}/);
-  if (!jsonMatch) throw new Error(`GC model returned no valid JSON.\nRaw output:\n${raw.slice(0, 500)}`);
+  const jsonStr = extractJsonFromModelOutput(raw);
   try {
-    return JSON.parse(jsonMatch[0]) as RawExtracted;
+    return JSON.parse(jsonStr) as RawExtracted;
   } catch {
-    throw new Error(`GC model returned malformed JSON.\nMatched:\n${jsonMatch[0].slice(0, 500)}`);
+    throw new Error(`GC model returned malformed JSON.\nMatched:\n${jsonStr.slice(0, 500)}`);
   }
 }
 

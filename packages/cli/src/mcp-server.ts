@@ -251,6 +251,12 @@ export function createRelayMcpServer(cwd?: string): McpServer {
   return server;
 }
 
-export async function runMcpServer(): Promise<void> {
-  await createRelayMcpServer().connect(new StdioServerTransport());
+export async function runMcpServer(cwd?: string): Promise<void> {
+  process.stderr.write(`[relay-mcp] starting in ${cwd ?? process.cwd()}\n`);
+  try {
+    await createRelayMcpServer(cwd).connect(new StdioServerTransport());
+  } catch (err) {
+    process.stderr.write(`[relay-mcp] fatal: ${err instanceof Error ? err.message : String(err)}\n`);
+    process.exit(1);
+  }
 }

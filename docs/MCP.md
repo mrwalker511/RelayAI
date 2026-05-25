@@ -119,23 +119,48 @@ Add Relay as a subprocess MCP provider in your Continue config:
 }
 ```
 
+### Codex CLI
+
+Add Relay to your Codex CLI config at `~/.codex/config.toml`. The `--cwd` flag is required because Codex spawns the server from its own working directory — without it, Relay can't locate your project's `.relay/` workspace:
+
+```toml
+[mcp_servers.relay]
+command = "relay"
+args    = ["mcp", "--cwd", "/absolute/path/to/your/project"]
+```
+
+If `relay` is not on PATH when Codex spawns subprocesses, use the full Node path:
+
+```toml
+[mcp_servers.relay]
+command = "node"
+args    = ["/absolute/path/to/RelayAI/packages/cli/dist/index.js",
+           "mcp", "--cwd", "/absolute/path/to/your/project"]
+```
+
+To confirm the server started correctly, check the stderr output from Codex for a line like:
+
+```
+[relay-mcp] starting in /absolute/path/to/your/project
+```
+
 ### Generic MCP Host
 
-Any host that supports the MCP stdio transport can connect to Relay:
+Any host that supports the MCP stdio transport can connect to Relay. Use `--cwd` to point the server at the right project when the host spawns from a different directory:
 
 ```json
 {
   "mcpServers": {
     "relay": {
       "command": "relay",
-      "args": ["mcp"],
+      "args": ["mcp", "--cwd", "/absolute/path/to/your/project"],
       "transport": "stdio"
     }
   }
 }
 ```
 
-The process must be launched with the working directory set to the repository where `.relay/` lives, or the server will read no workspace state.
+If the host always spawns from the project root (like Claude Code), `--cwd` is optional.
 
 ---
 
@@ -327,6 +352,21 @@ This boundary is intentional — it ensures the MCP server cannot interfere with
 ---
 
 ## Troubleshooting
+
+### Server crashes immediately on startup
+
+The most common cause is the host spawning the server from the wrong working directory. Add `--cwd` to point it at your project:
+
+```json
+{ "args": ["mcp", "--cwd", "/absolute/path/to/your/project"] }
+```
+
+Confirm the server started by checking stderr for:
+```
+[relay-mcp] starting in /absolute/path/to/your/project
+```
+
+If you see `[relay-mcp] fatal: ...`, the error message will tell you exactly what went wrong.
 
 ### `relay: command not found`
 

@@ -221,10 +221,26 @@ program
 
 program.command("init").description("Initialize Relay in the current repository.").action(() => {
   ensureRelayDir();
-  writeFileSync(join(relayDir, "config.json"), JSON.stringify(DEFAULT_RELAY_CONFIG, null, 2));
-  writeFileSync(join(relayDir, "memory", "semantic-state.json"), serializeSemanticState(createEmptySemanticState()));
-  writeFileSync(join(relayDir, "memory", "session.raw.md"), "# Raw Session History\n");
-  writeFileSync(join(relayDir, "memory", "session.compacted.md"), "# Compacted Session History\n");
+  const configPath = join(relayDir, "config.json");
+  if (!existsSync(configPath)) {
+    writeFileSync(configPath, JSON.stringify(DEFAULT_RELAY_CONFIG, null, 2));
+  } else {
+    console.log("config.json already exists — skipping (existing configuration preserved).");
+  }
+  const semanticStatePath = join(relayDir, "memory", "semantic-state.json");
+  if (!existsSync(semanticStatePath)) {
+    writeFileSync(semanticStatePath, serializeSemanticState(createEmptySemanticState()));
+  } else {
+    console.log("memory/semantic-state.json already exists — skipping (existing state preserved).");
+  }
+  const rawHistoryPath = join(relayDir, "memory", "session.raw.md");
+  if (!existsSync(rawHistoryPath)) {
+    writeFileSync(rawHistoryPath, "# Raw Session History\n");
+  }
+  const compactedHistoryPath = join(relayDir, "memory", "session.compacted.md");
+  if (!existsSync(compactedHistoryPath)) {
+    writeFileSync(compactedHistoryPath, "# Compacted Session History\n");
+  }
   if (!existsSync(join(relayDir, "memory", "project-rules.md"))) {
     writeFileSync(join(relayDir, "memory", "project-rules.md"), "# Project Rules\n\nAdd project-specific coding conventions and rules here.\n");
   }

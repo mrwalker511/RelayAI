@@ -433,9 +433,13 @@ program.command("doctor").description("Check whether the current workspace is re
   }
 });
 
-program.command("mcp").description("Run Relay as a read-only MCP context server over stdio.").action(async () => {
-  await runMcpServer();
-});
+program
+  .command("mcp")
+  .description("Run Relay as a read-only MCP context server over stdio.")
+  .option("--cwd <path>", "Project directory for Relay workspace lookup. Defaults to process.cwd().")
+  .action(async (opts: { cwd?: string }) => {
+    await runMcpServer(opts.cwd);
+  });
 
 const cache = program.command("cache").description("Inspect deterministic prompt-cache metadata.");
 cache.command("fingerprint").description("Print current static/state prefix hash.").action(() => {

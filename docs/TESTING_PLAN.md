@@ -137,118 +137,183 @@ relay cache inspect
 
 ---
 
-## 3. Manual Integration Testing
+## 3. Manual Integration Testing (Codex vs. Codex + RelayAI)
 
-This phase validates RelayAI's effectiveness against a real project by comparing AI session quality, token usage, and context accuracy with and without Relay.
+This phase validates RelayAI's effectiveness by comparing a Codex session without Relay (Baseline) against a Codex session with Relay (Relay-Enabled). We use the live project [`AgentFlow`](https://github.com/mrwalker511/AgentFlow).
 
-**Interactive tools** (open in browser):
+---
 
-| Tool | File | Purpose |
+### Step 1: Initial Setup
+
+1. **Verify RelayAI CLI is functional**:
+   Make sure you are in the `RelayAI` directory:
+   ```bash
+   cd /home/matthew/projects/RelayAI
+   pnpm install
+   pnpm build
+   node packages/cli/dist/index.js --help
+   ```
+
+2. **Prepare the AgentFlow project**:
+   Ensure you have the `AgentFlow` project cloned and built:
+   ```bash
+   cd /home/matthew/projects
+   # If not already cloned:
+   # git clone https://github.com/mrwalker511/AgentFlow.git
+   cd AgentFlow
+   npm install
+   npm run build
+   npm test
+   ```
+   *Note: Ensure all tests pass before proceeding.*
+
+3. **Record the baseline git SHA**:
+   Record the current Git HEAD SHA of AgentFlow. This will act as the baseline anchor:
+   ```bash
+   git rev-parse HEAD
+   ```
+
+---
+
+### Step 2: Phase 1 — Baseline (Codex WITHOUT Relay)
+
+In this phase, we run Codex without any help from Relay to establish a baseline.
+
+1. **Open a fresh Codex session in AgentFlow**:
+   Make sure you are in the `AgentFlow` directory, and start Codex. Do **NOT** have Relay configured in your Codex MCP config yet.
+   ```bash
+   cd /home/matthew/projects/AgentFlow
+   codex
+   ```
+
+2. **Run the 5 test prompts**:
+   Enter the following 5 prompts in order. Wait for Codex to finish responding to each before entering the next.
+   - **P1**: `Explain the overall architecture of this project`
+   - **P2**: `Explain how the semantic-engine clusters events and determines risk levels`
+   - **P3**: `Add support for poetry run test to classifyCommand as a test_run`
+   - **P4**: `Summarize what has changed in the active diff`
+   - **P5**: `Write unit tests for the classifyCommand function in event-engine`
+
+3. **Locate and save the session file**:
+   Codex CLI automatically saves session JSON logs to `~/.codex/sessions/`.
+   - List files to find the latest session JSON:
+     ```bash
+     ls -lt ~/.codex/sessions/ | head -5
+     ```
+   - Copy and rename this file to a safe location:
+     ```bash
+     cp ~/.codex/sessions/<latest-uuid>.json ~/relay-test-baseline.json
+     ```
+
+---
+
+### Step 3: Phase 2 — Setup Relay in AgentFlow
+
+Now, initialize and configure Relay in the `AgentFlow` project directory to prepare for the Relay-enabled Codex run.
+
+1. **Initialize Relay**:
+   Run the `init` command in the `AgentFlow` directory using your locally built Relay CLI:
+   ```bash
+   cd /home/matthew/projects/AgentFlow
+   node /home/matthew/projects/RelayAI/packages/cli/dist/index.js init
+   ```
+
+2. **Verify Relay Health**:
+   Ensure all setup checks pass:
+   ```bash
+   node /home/matthew/projects/RelayAI/packages/cli/dist/index.js doctor
+   ```
+
+3. **Start the Relay session**:
+   Anchor Relay to the baseline Git SHA you recorded in Step 1:
+   ```bash
+   node /home/matthew/projects/RelayAI/packages/cli/dist/index.js session start
+   ```
+
+---
+
+### Step 4: Phase 3 — Configure Codex to use Relay MCP
+
+To allow Codex to communicate with Relay, register Relay as an MCP server.
+
+1. **Edit the Codex configuration**:
+   Open `~/.codex/config.json` (create it if it doesn't exist) and add the `relay` MCP server pointing to your local Relay CLI build:
+   ```json
+   {
+     "mcpServers": {
+       "relay": {
+         "command": "node",
+         "args": ["/home/matthew/projects/RelayAI/packages/cli/dist/index.js", "mcp"]
+       }
+     }
+   }
+   ```
+
+---
+
+### Step 5: Phase 4 — Relay-Enabled (Codex WITH Relay)
+
+In this phase, we run Codex with Relay active. Relay will automatically inject high-quality hierarchical context (trunk and domain branches), semantic memory state, and git delta diffs.
+
+1. **Open a fresh Codex session in AgentFlow**:
+   Start Codex. It will automatically detect the configuration in `~/.codex/config.json` and start the Relay MCP server:
+   ```bash
+   cd /home/matthew/projects/AgentFlow
+   codex
+   ```
+   *Verify: When Codex starts, ensure it lists the Relay MCP tools (such as `get_prompt_payload`).*
+
+2. **Run the same 5 prompts**:
+   Enter the exact same prompts as in the baseline phase, in the same order:
+   - **P1**: `Explain the overall architecture of this project`
+   - **P2**: `Explain how the semantic-engine clusters events and determines risk levels`
+   - **P3**: `Add support for poetry run test to classifyCommand as a test_run`
+   - **P4**: `Summarize what has changed in the active diff`
+   - **P5**: `Write unit tests for the classifyCommand function in event-engine`
+
+3. **Locate and save the session file**:
+   - List the latest sessions:
+     ```bash
+     ls -lt ~/.codex/sessions/ | head -5
+     ```
+   - Copy and rename this session file:
+     ```bash
+     cp ~/.codex/sessions/<latest-uuid>.json ~/relay-test-enabled.json
+     ```
+
+---
+
+### Step 6: Phase 5 — Comparison and Metrics Analysis
+
+1. **Open the Results Tracker**:
+   Open `docs/relay-test-results.html` in your browser. Fill in the baseline and Relay-enabled metrics manually, or use the comparison tool to parse logs automatically.
+
+2. **Open the Session Compare tool**:
+   Open `docs/session-compare.html` in your browser.
+   - Upload `~/relay-test-baseline.json` as the Baseline session.
+   - Upload `~/relay-test-enabled.json` as the Relay-Enabled session.
+
+3. **Observe the Metrics**:
+   Review the calculated fields:
+   - **Token Reduction %**: Relay's cache-friendly dynamic zone should produce significant token savings on follow-up prompts.
+   - **Quality Improvement**: Relay's hierarchical context (trunk + branches) and semantic memory should lead to more accurate answers.
+   - **Context Accuracy & Hallucination Rate**: Note whether Codex was able to correctly reference event clustering and risk engine files in AgentFlow without hallucinating paths.
+
+---
+
+### Step 7: Pass/Fail Verification Checklist
+
+All signals must pass before marking the Relay integration as successful:
+
+| Signal | Command | Pass Condition |
 |---|---|---|
-| Step-by-step guide | `docs/testing-plan.html` | Guided workflow with progress tracking and copy-paste commands |
-| Session comparison | `docs/session-compare.html` | Upload two Codex session JSON files; auto-calculates metrics |
-| Results tracker | `docs/relay-test-results.html` | Record per-prompt scores across baseline and Relay sessions |
-
-### Setup
-
-**Test project:** [`AgentFlow`](https://github.com/mrwalker511/AgentFlow)
-
-```bash
-# 1. Verify RelayAI CLI is functional
-node packages/cli/dist/index.js --help
-
-# 2. Clone the test project
-git clone https://github.com/mrwalker511/AgentFlow.git
-cd AgentFlow
-npm install && npm run build && npm test
-
-# 3. Record the current HEAD SHA (your baseline anchor)
-git rev-parse HEAD
-```
-
-### Test prompts
-
-Use the same 5 prompts in both the baseline and Relay-enabled rounds:
-
-| # | Prompt |
-|---|--------|
-| P1 | `Explain the overall architecture of this project` |
-| P2 | `Explain how the semantic-engine clusters events and determines risk levels` |
-| P3 | `Add support for poetry run test to classifyCommand as a test_run` |
-| P4 | `Summarize what has changed in the active diff` |
-| P5 | `Write unit tests for the classifyCommand function in event-engine` |
-
-### Phase 1 — Baseline (WITHOUT Relay)
-
-1. Open a fresh coding session in your AI CLI (Claude Code, Copilot, or Codex).
-2. Run each prompt directly — **do not use the `relay` CLI**.
-3. For each prompt record: tokens sent, quality score (1–5), context accuracy (Yes/No/Partial), hallucinations, response time.
-4. Repeat in a second fresh session for consistency.
-5. Enter results in `docs/relay-test-results.html` → Baseline tab.
-
-**Quality rubric:**
-
-| Score | Meaning |
-|---|---|
-| 5 | Accurate, complete, referenced correct code |
-| 4 | Mostly correct, minor gap |
-| 3 | Partially correct, missing context |
-| 2 | Wrong context, vague |
-| 1 | Hallucinated or completely wrong |
-
-### Phase 2 — Relay-Enabled (WITH Relay)
-
-```bash
-cd AgentFlow
-
-# Initialize Relay
-node /path/to/RelayAI/packages/cli/dist/index.js init
-relay doctor           # all checks must pass before proceeding
-
-# Start session (anchor to git HEAD)
-relay session start
-relay tokens inspect   # record initial zone breakdown
-
-# Run each prompt
-relay ask "<prompt>"
-relay tokens inspect   # record zone breakdown after each prompt
-relay cache inspect    # note prefix hash stability
-```
-
-After all prompts:
-
-```bash
-relay diff             # confirm only delta shown, not full files
-relay gc preview       # confirm GC entries listed without error
-```
-
-Repeat in a second Relay session. Enter results in `docs/relay-test-results.html` → Relay tab.
-
-### Phase 3 — Pass/Fail Verification
-
-All 7 signals must be green before marking Relay as working:
-
-| Signal | Command | Pass condition |
-|---|---|---|
-| CLI healthy | `relay doctor` | Exit 0, no errors |
-| Session anchored | `relay session start` | SHA recorded in `.relay/session.json` |
-| Token zones populated | `relay tokens inspect` | All 3 zones shown with counts |
-| Cache prefix stable | `relay cache inspect` | Same prefix hash on prompts 2+ |
-| Diff anchored | `relay diff` | Only delta shown, not full file contents |
-| Follow-up prompts smaller | `relay tokens inspect` | Dynamic zone shrinks after prompt 1 |
-| GC preview works | `relay gc preview` | Entries listed or empty, no error |
-
-### Phase 4 — Metrics
-
-The HTML tracker (`docs/relay-test-results.html`) calculates these automatically:
-
-| Metric | Formula |
-|---|---|
-| Token Reduction % | `((Baseline avg − Relay avg) / Baseline avg) × 100` |
-| Quality Improvement | `Relay avg quality − Baseline avg quality` |
-| Context Accuracy Rate | `Correct responses / 5 prompts × 100` |
-| Hallucination Rate | `Hallucination count / 5 prompts × 100` |
-| Session Consistency | Did session 2 benefit from session 1 memory? (Y/N) |
+| CLI healthy | `relay doctor` | Exits with code 0, all diagnostics are green. |
+| Session anchored | `relay session start` | Base git SHA is correctly recorded in `.relay/session.json`. |
+| Token zones populated | `relay tokens inspect` | `STATIC_BLOCK`, `STATE_LAYER`, and `DYNAMIC_INPUT` are all populated. |
+| Cache prefix stable | `relay cache inspect` | The prefix hash remains identical across prompts 2+. |
+| Diff anchored | `relay diff` | Only git delta/diff changes are shown in context, not full file contents. |
+| Follow-up prompts smaller | `relay tokens inspect` | The context size on prompts P2–P5 is smaller than prompt P1 due to cache optimization. |
+| GC preview works | `relay gc preview` | History compacted successfully into `.relay/memory/semantic-state.json`. |
 
 ---
 

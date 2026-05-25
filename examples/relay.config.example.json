@@ -1,13 +1,13 @@
 {
   "provider": {
-    "default": "local-llm",
+    "default": "codex",
     "commands": {
-      "local-llm": ["your-llm-cli"]
+      "local-llm": ["codex"]
     }
   },
   "gc": {
     "enabled": true,
-    "command": ["your-llm-cli"],
+    "command": ["codex"],
     "historyTokenLimit": 12000,
     "targetSummaryTokens": 500,
     "preserveErrors": true,
@@ -15,7 +15,7 @@
     "preserveCodeChanges": true
   },
   "tokens": {
-    "provider": "generic",
+    "provider": "codex",
     "model": "default",
     "hardLimit": 100000,
     "warningLimit": 50000,

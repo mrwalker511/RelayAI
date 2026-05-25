@@ -131,7 +131,7 @@ relay cache inspect
 | Symptom | Likely cause | Fix |
 |---|---|---|
 | `.relay/session.json` not created | `relay` not on PATH | Run `pnpm install -g @relay/cli` or use `node packages/cli/dist/index.js` |
-| `sigmap.md` not updated | `pnpm` not on PATH in hook shell | Use absolute path: `$(which pnpm) --silent sigmap` |
+| `sigmap.md` not updated | `pnpm` / `node` not on PATH in hook shell | Hooks now fall back to `npx tsx scripts/gen-sigmap.ts`. Alternatively, use absolute path: `$(which pnpm) --silent sigmap` |
 | `semantic-state.json` not updated | No GC command configured | Set `gc.command` in `.relay/config.json` |
 | Hook fires but errors silently | `2>/dev/null || true` suppresses output | Temporarily remove the suppression to see errors |
 

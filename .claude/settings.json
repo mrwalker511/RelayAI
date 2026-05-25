@@ -5,11 +5,11 @@
         "hooks": [
           {
             "type": "command",
-            "command": "relay session start 2>/dev/null || true"
+            "command": "relay session start 2>/dev/null || npx tsx packages/cli/src/index.ts session start 2>/dev/null || node packages/cli/dist/index.js session start 2>/dev/null || true"
           },
           {
             "type": "command",
-            "command": "pnpm --silent sigmap 2>/dev/null || true"
+            "command": "pnpm --silent sigmap 2>/dev/null || npx tsx scripts/gen-sigmap.ts 2>/dev/null || true"
           }
         ]
       }
@@ -19,7 +19,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "relay gc run 2>/dev/null || true"
+            "command": "relay gc run 2>/dev/null || npx tsx packages/cli/src/index.ts gc run 2>/dev/null || node packages/cli/dist/index.js gc run 2>/dev/null || true"
           }
         ]
       }
@@ -30,7 +30,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "pnpm --silent sigmap 2>/dev/null || true"
+            "command": "pnpm --silent sigmap 2>/dev/null || npx tsx scripts/gen-sigmap.ts 2>/dev/null || true"
           }
         ]
       }

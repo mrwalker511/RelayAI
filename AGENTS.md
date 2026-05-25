@@ -1,6 +1,24 @@
 # AGENTS.md
 
-This file provides guidance to coding agents when working with code in this repository.
+This file provides guidance to coding agents working with this repository. It serves as the primary instruction source for OpenAI Codex and is also referenced by other coding agents.
+
+---
+
+## Codex Integration
+
+This file is read automatically by OpenAI Codex as the repository's agent instruction source. The `.codex/hooks.json` file configures lifecycle automation that runs alongside Codex sessions:
+
+| Hook | Trigger | Commands |
+|------|---------|----------|
+| `SessionStart` | When a Codex session begins | `relay session start` — anchors context to the current git SHA<br>`pnpm sigmap` — regenerates the structural signature map |
+| `Stop` | When a Codex session ends | `relay gc run` — compacts verbose session history into `SemanticState` |
+| `PostToolUse` | After `write_file` or `apply_patch` | `pnpm sigmap` — keeps the signature map current after file changes |
+
+These hooks ensure Relay's context layer is always synchronized with the active Codex session. If you are adapting these hooks for a different agent, see `.claude/settings.json` for the Claude Code equivalent (which uses `Edit|Write|MultiEdit` as the PostToolUse matcher).
+
+For MCP integration — allowing an agent to request Relay context directly via tool calls — see [`docs/MCP.md`](docs/MCP.md).
+
+---
 
 ## Commands
 

@@ -4,12 +4,13 @@
 [![Node.js ≥ 20](https://img.shields.io/badge/node-%3E%3D20-brightgreen)](https://nodejs.org)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org)
 [![pnpm](https://img.shields.io/badge/pnpm-9-F69220?logo=pnpm&logoColor=white)](https://pnpm.io)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 > Local-first context and prompt-cache optimizer for coding agents and model CLIs.
 
-Relay wraps your existing provider command, builds deterministic prompt payloads from your repository state, and keeps volatile details at the end of the prompt so provider-side caching can work more effectively.
+Relay wraps your existing provider command, builds deterministic prompt payloads from your repository state, and structures content into stable zones so provider-side caching can work more effectively across sessions.
 
-Relay does **not** replace your model or coding agent. It gives them cleaner, repeatable context.
+Relay does **not** replace your model or coding agent. It gives them cleaner, repeatable, cache-optimized context.
 
 ---
 
@@ -22,6 +23,7 @@ Relay does **not** replace your model or coding agent. It gives them cleaner, re
 | Smaller follow-up prompts | Git-anchored diffs instead of resending full files |
 | Safer large-context usage | Local token estimates, budget checks, and anomaly detection |
 | Provider flexibility | Shell-based adapters for any CLI that reads stdin |
+| Native agent integration | Read-only MCP server gives agents deterministic context via standard tool calls |
 
 ---
 
@@ -144,13 +146,15 @@ See [`docs/COMMANDS.md`](docs/COMMANDS.md) for the full command reference.
 
 ## MCP Integration
 
-Relay can run as a read-only MCP context server so any MCP-compatible agent (Claude Code, Cursor, etc.) can request deterministic project context without leaving its normal workflow.
+Relay can run as a local, read-only MCP context server so any MCP-compatible agent (Claude Code, Cursor, Windsurf, Continue, etc.) can request deterministic, cache-optimized project context without leaving its normal workflow.
 
 ```bash
-relay mcp   # starts the MCP stdio server
+relay mcp   # starts the MCP stdio server over stdio transport
 ```
 
-See [`docs/MCP.md`](docs/MCP.md) for setup instructions and the full tool contract.
+Once connected, the agent has access to six read-only tools: `get_prompt_payload`, `get_project_context`, `get_git_delta`, `get_semantic_state`, `get_token_budget`, and `inspect_context_health`. The payload tool returns content blocks with `cache_control` hints so Anthropic-hosted models can cache stable context across repeated calls.
+
+See [`docs/MCP.md`](docs/MCP.md) for host configuration, the full tool reference, recommended agent workflow, and troubleshooting.
 
 ---
 
@@ -163,8 +167,10 @@ See [`docs/MCP.md`](docs/MCP.md) for setup instructions and the full tool contra
 | [`docs/COMMANDS.md`](docs/COMMANDS.md) | Full CLI command reference |
 | [`docs/CONFIGURATION.md`](docs/CONFIGURATION.md) | `.relay/config.json` schema reference |
 | [`docs/PROVIDER_ADAPTERS.md`](docs/PROVIDER_ADAPTERS.md) | Provider command examples and adapter design |
-| [`docs/MCP.md`](docs/MCP.md) | MCP setup and tool contract for agent integrations |
+| [`docs/MCP.md`](docs/MCP.md) | MCP server setup, tool reference, agent workflow, and troubleshooting |
 | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Context construction architecture and module reference |
+| [`AGENTS.md`](AGENTS.md) | Coding agent guidance, Codex integration, and hook documentation |
+| [`.github/copilot-instructions.md`](.github/copilot-instructions.md) | GitHub Copilot workspace instructions |
 
 ---
 
@@ -174,10 +180,16 @@ See [`docs/MCP.md`](docs/MCP.md) for setup instructions and the full tool contra
 RelayAI/
 ├── packages/
 │   ├── core/       # Context engine, token guardrails, git delta logic, semantic memory
-│   └── cli/        # Terminal interface and MCP server
-├── docs/           # Product, architecture, and implementation docs
+│   └── cli/        # Commander.js router and MCP stdio server
+├── docs/           # Architecture, command reference, MCP guide, configuration reference
 ├── examples/       # Example config and semantic state files
-├── AGENTS.md       # Guidance for coding agents working with this repo
+├── .github/
+│   └── copilot-instructions.md   # GitHub Copilot workspace instructions
+├── .codex/
+│   └── hooks.json                # OpenAI Codex lifecycle hooks
+├── .claude/
+│   └── settings.json             # Claude Code lifecycle hooks
+├── AGENTS.md       # Coding agent guidance (also serves as Codex AGENTS.md)
 └── README.md
 ```
 

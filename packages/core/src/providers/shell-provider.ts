@@ -30,7 +30,8 @@ export class ShellProvider implements ProviderAdapter {
   constructor(
     public name: string,
     public readonly command: string,
-    private args: string[] = []
+    private args: string[] = [],
+    private timeoutMs: number = 300_000
   ) {}
 
   get commandLine(): string {
@@ -44,22 +45,35 @@ export class ShellProvider implements ProviderAdapter {
   async sendPrompt(payload: string): Promise<number> {
     return new Promise((resolve, reject) => {
       const child = spawn(this.command, this.args, { stdio: ["pipe", "inherit", "inherit"] });
+      let settled = false;
+      const timer = setTimeout(() => {
+        if (settled) return;
+        settled = true;
+        child.kill("SIGTERM");
+        reject(new Error(`Provider '${this.command}' timed out after ${this.timeoutMs / 1000}s.`));
+      }, this.timeoutMs);
+      const finish = (fn: () => void) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        fn();
+      };
       child.stdin.on("error", (err: NodeJS.ErrnoException) => {
-        if (err.code !== "EPIPE") reject(err);
+        if (err.code !== "EPIPE") finish(() => reject(err));
       });
       child.stdin.write(payload);
       child.stdin.end();
       child.on("exit", (code) => {
         if (code === null) {
-          reject(new Error(`Provider '${this.command}' was terminated by a signal before it could exit.`));
+          finish(() => reject(new Error(`Provider '${this.command}' was terminated by a signal before it could exit.`)));
         } else {
-          resolve(code);
+          finish(() => resolve(code));
         }
       });
       child.on("error", (err: NodeJS.ErrnoException) => {
         if (err.code === "ENOENT")
-          reject(new Error(`'${this.command}' not found in PATH.`));
-        else reject(err);
+          finish(() => reject(new Error(`'${this.command}' not found in PATH.`)));
+        else finish(() => reject(err));
       });
     });
   }

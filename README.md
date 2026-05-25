@@ -60,7 +60,27 @@ The stable zones come first so provider caches hit on repeat calls. Volatile dat
 
 ## Installation
 
-Clone this repository, install dependencies, and build:
+```bash
+npm install -g @relay/cli
+```
+
+After installing, the `relay` command is available globally:
+
+```bash
+relay --help
+```
+
+Or run without installing using `npx`:
+
+```bash
+npx @relay/cli --help
+```
+
+---
+
+## Local Development
+
+To work on Relay itself, clone the repository and build from source:
 
 ```bash
 git clone https://github.com/mrwalker511/relayai.git RelayAI

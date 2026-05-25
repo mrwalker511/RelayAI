@@ -529,19 +529,82 @@
 
   // ── Parse Codex session ──
   function parseSession(text) {
-    const lines = text.trim().split('\n');
+    const lines = text.split('\n');
+    const objs = [];
+    let isJsonl = false;
 
-    // Try JSONL first (multiple JSON lines)
-    if (lines.length > 1) {
+    for (let line of lines) {
+      line = line.trim();
+      if (!line) continue;
       try {
-        const objs = lines.map(l => JSON.parse(l));
-        if (objs.every(o => o.role)) return normalizeMessages(objs);
-      } catch(e) {}
+        objs.push(JSON.parse(line));
+        isJsonl = true;
+      } catch(e) {
+        // Skip malformed lines or if it's a multi-line formatted JSON
+      }
+    }
+
+    if (isJsonl && objs.length > 0) {
+      // Check if it is a Codex log session (JSONL with event_msg/response_item)
+      const isCodexLog = objs.some(o => o && (o.type === 'response_item' || o.type === 'event_msg'));
+      if (isCodexLog) {
+        const exchanges = [];
+        let currentTurn = null;
+        for (const obj of objs) {
+          if (!obj) continue;
+          if (obj.type === 'response_item' && obj.payload && obj.payload.role === 'user') {
+            const userText = extractText(obj.payload.content);
+            currentTurn = {
+              prompt: userText,
+              response: '',
+              inputTokens: 0,
+              outputTokens: 0,
+              ts: obj.timestamp || null,
+              hasTokens: false
+            };
+            exchanges.push(currentTurn);
+          } else if (obj.type === 'response_item' && obj.payload && obj.payload.role === 'assistant') {
+            const assistantText = extractText(obj.payload.content);
+            if (currentTurn) {
+              if (currentTurn.response) {
+                currentTurn.response += '\n' + assistantText;
+              } else {
+                currentTurn.response = assistantText;
+              }
+            }
+          } else if (obj.type === 'event_msg' && obj.payload && obj.payload.type === 'token_count') {
+            const info = obj.payload.info;
+            if (info && info.last_token_usage && currentTurn) {
+              const last = info.last_token_usage;
+              currentTurn.inputTokens += (last.input_tokens || 0);
+              currentTurn.outputTokens += (last.output_tokens || 0);
+              currentTurn.hasTokens = true;
+            }
+          }
+        }
+        // Normalize token count values (set to null if no tokens were recorded)
+        for (const turn of exchanges) {
+          if (!turn.hasTokens) {
+            turn.inputTokens = null;
+            turn.outputTokens = null;
+            turn.estimated = true;
+          } else {
+            turn.estimated = false;
+          }
+          delete turn.hasTokens;
+        }
+        return exchanges;
+      }
+
+      // Check if it's flat message JSONL (each line has role/type)
+      if (objs.every(o => o && (o.role || o.type))) {
+        return normalizeMessages(objs);
+      }
     }
 
     // Try single JSON
     let data;
-    try { data = JSON.parse(text); } catch(e) { throw new Error('Could not parse JSON: ' + e.message); }
+    try { data = JSON.parse(text.trim()); } catch(e) { throw new Error('Could not parse JSON: ' + e.message); }
 
     // Array at root
     if (Array.isArray(data)) return normalizeMessages(data);

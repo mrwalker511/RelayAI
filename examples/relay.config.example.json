@@ -2,9 +2,10 @@
   "provider": {
     "default": "codex",
     "commands": {
-      "local-llm": ["codex"]
+      "codex": ["codex"]
     }
   },
+  "routing": {},
   "gc": {
     "enabled": true,
     "command": ["codex"],
@@ -15,10 +16,25 @@
     "preserveCodeChanges": true
   },
   "tokens": {
-    "provider": "codex",
+    "provider": "openai",
     "model": "default",
     "hardLimit": 100000,
     "warningLimit": 50000,
     "requireConfirmationAbove": 75000
+  },
+  "files": {
+    "maxIndex": 200
+  },
+  "context": {
+    "hierarchical": false,
+    "contextDir": ".relay/context",
+    "maxBranches": 3
+  },
+  "filter": {
+    "enabled": true,
+    "maxLines": 300,
+    "maxSuccessOccurrences": 3,
+    "dedupConsecutive": true,
+    "collapseBlankLines": true
   }
 }

@@ -1,23 +1,16 @@
-# RelayAI Testing Plan
+# RelayAI Testing Guide
 
-> **This plan has moved to an interactive HTML guide.**
->
-> Open **`docs/testing-plan.html`** in your browser for the step-by-step Codex CLI workflow with progress tracking and copy-paste commands.
->
-> After testing, upload your two Codex session files to **`docs/session-compare.html`** to get automatic comparison metrics — no manual recording required.
+This guide covers three testing levels in order of scope:
 
----
-
-**Test Project:** [`matt-mcp`](https://github.com/mrwalker511/matt-mcp)  
-**Purpose:** Validate RelayAI effectiveness for leadership reporting — compare AI coding session quality, token usage, and context accuracy with and without Relay.  
-**Primary tool:** Open `docs/testing-plan.html` in your browser.  
-**Results tool:** Open `docs/session-compare.html` to upload Codex session files and view the comparison.
+1. [Automated Tests](#1-automated-tests) — unit + integration via `pnpm run ci`
+2. [Hook Verification](#2-hook-verification) — confirm lifecycle hooks fire in each supported agent
+3. [Manual Integration Testing](#3-manual-integration-testing) — end-to-end validation against a real project
 
 ---
 
-## Pre-Test Setup
+## 1. Automated Tests
 
-### Step 1 — Prepare RelayAI
+### Prerequisites
 
 ```bash
 # In the RelayAI repo
@@ -25,32 +18,150 @@ pnpm install
 pnpm build
 ```
 
-Verify the CLI is functional:
+### Run the full local CI pipeline
 
 ```bash
-node packages/cli/dist/index.js --help
+pnpm run ci
 ```
 
-### Step 2 — Prepare the Test Project
+This runs four steps in order:
+
+| Step | Command | What it checks |
+|---|---|---|
+| Build | `pnpm build` | TypeScript compiles without errors |
+| Typecheck | `pnpm typecheck` | Strict type checking (no `any` leaks, no missing types) |
+| Test | `pnpm test` | All 133 unit + integration tests pass |
+| Pack check | `pnpm pack:check` | Both packages are publishable (no missing files) |
+
+**Expected result:** All steps exit 0. Test output should show `# pass 133, # fail 0`.
+
+### Run a single test file
 
 ```bash
-# In matt-mcp repo
+# Build first, then run one file
+pnpm --filter @relay/core build
+node --test packages/core/dist/tokens/budget.test.js
+```
+
+### Test inventory
+
+| Package | Test files | Test count | Focus areas |
+|---|---|---|---|
+| `@relay/core` | 17 files | 90 | Config, context zones, git delta, tokens, GC, providers, output filter |
+| `@relay/cli` | 1 file | 43 | E2E: init, session, ask, diff, cache, tokens, gc, MCP server |
+| **Total** | **18 files** | **133** | — |
+
+---
+
+## 2. Hook Verification
+
+RelayAI ships lifecycle hooks for three coding agents. Each hook set automates:
+
+- **Session start** — `relay session start` (records base git SHA) + `pnpm sigmap` (builds structural skeleton)
+- **Turn end / agent stop** — `relay gc run` (compacts session history into semantic state)
+- **After file edits** — `pnpm sigmap` (keeps structural skeleton current)
+
+### 2a. Claude Code — `.claude/settings.json`
+
+**Trigger:** Open a Claude Code session in the RelayAI repo.
+
+**Verification checklist:**
+
+```
+[ ] .relay/session.json created (sessionStart hook: relay session start)
+[ ] .relay/sigmap.md written or updated (sessionStart hook: pnpm sigmap)
+[ ] Edit any source file via Claude → .relay/sigmap.md timestamp updates (PostToolUse hook)
+[ ] After Claude ends its turn → .relay/memory/semantic-state.json updated (Stop hook)
+```
+
+**Check session anchoring:**
+
+```bash
+cat .relay/session.json | grep base_git_sha
+# Should match current git HEAD
+git rev-parse HEAD
+```
+
+**Check prefix stability across prompts:**
+
+```bash
+relay cache inspect
+# Run relay ask "..." twice and compare prefix_hash — should be identical
+```
+
+### 2b. Codex CLI — `.codex/hooks.json`
+
+**Trigger:** Open a Codex CLI session in the RelayAI repo.
+
+**Verification checklist:**
+
+```
+[ ] .relay/session.json created (SessionStart hook: relay session start)
+[ ] .relay/sigmap.md written or updated (SessionStart hook: pnpm sigmap)
+[ ] Edit any file via Codex → .relay/sigmap.md timestamp updates (PostToolUse hook)
+[ ] After Codex ends its turn → .relay/memory/semantic-state.json updated (Stop hook)
+```
+
+**PostToolUse matcher:** `write_file|apply_patch` — if your Codex version uses different tool names for file writes, update the `matcher` field in `.codex/hooks.json`.
+
+### 2c. GitHub Copilot — `.github/hooks/relay-lifecycle.json`
+
+**Trigger:** Open a GitHub Copilot coding agent session on this repo.
+
+**Verification checklist:**
+
+```
+[ ] .relay/session.json created (sessionStart hook: relay session start)
+[ ] .relay/sigmap.md written or updated (sessionStart hook: pnpm sigmap)
+[ ] Ask Copilot to edit a file → .relay/sigmap.md timestamp updates (postToolUse hook)
+[ ] After Copilot ends its turn → .relay/memory/semantic-state.json updated (agentStop hook)
+```
+
+**PostToolUse matcher:** `create_file|edit_file|write_file|apply_patch` — update if needed to match actual Copilot tool names.
+
+### Common hook troubleshooting
+
+| Symptom | Likely cause | Fix |
+|---|---|---|
+| `.relay/session.json` not created | `relay` not on PATH | Run `pnpm install -g @relay/cli` or use `node packages/cli/dist/index.js` |
+| `sigmap.md` not updated | `pnpm` not on PATH in hook shell | Use absolute path: `$(which pnpm) --silent sigmap` |
+| `semantic-state.json` not updated | No GC command configured | Set `gc.command` in `.relay/config.json` |
+| Hook fires but errors silently | `2>/dev/null || true` suppresses output | Temporarily remove the suppression to see errors |
+
+---
+
+## 3. Manual Integration Testing
+
+This phase validates RelayAI's effectiveness against a real project by comparing AI session quality, token usage, and context accuracy with and without Relay.
+
+**Interactive tools** (open in browser):
+
+| Tool | File | Purpose |
+|---|---|---|
+| Step-by-step guide | `docs/testing-plan.html` | Guided workflow with progress tracking and copy-paste commands |
+| Session comparison | `docs/session-compare.html` | Upload two Codex session JSON files; auto-calculates metrics |
+| Results tracker | `docs/relay-test-results.html` | Record per-prompt scores across baseline and Relay sessions |
+
+### Setup
+
+**Test project:** [`matt-mcp`](https://github.com/mrwalker511/matt-mcp)
+
+```bash
+# 1. Verify RelayAI CLI is functional
+node packages/cli/dist/index.js --help
+
+# 2. Clone the test project
 git clone https://github.com/mrwalker511/matt-mcp.git
 cd matt-mcp
-npm install
-npm run build
-```
+npm install && npm run build && npm test
 
-Confirm it builds cleanly and `npm test` passes before any testing begins. Record the current HEAD SHA:
-
-```bash
+# 3. Record the current HEAD SHA (your baseline anchor)
 git rev-parse HEAD
-# Save this as your Baseline SHA
 ```
 
-### Step 3 — Define Your 5 Test Prompts
+### Test prompts
 
-Use the same prompts for BOTH baseline and Relay-enabled rounds. Suggested prompts for matt-mcp:
+Use the same 5 prompts in both the baseline and Relay-enabled rounds:
 
 | # | Prompt |
 |---|--------|
@@ -60,142 +171,72 @@ Use the same prompts for BOTH baseline and Relay-enabled rounds. Suggested promp
 | P4 | `Summarize what has changed in the active diff` |
 | P5 | `Write unit tests for the register command` |
 
-You may substitute your own prompts — just keep them identical across both test rounds.
+### Phase 1 — Baseline (WITHOUT Relay)
 
----
+1. Open a fresh coding session in your AI CLI (Claude Code, Copilot, or Codex).
+2. Run each prompt directly — **do not use the `relay` CLI**.
+3. For each prompt record: tokens sent, quality score (1–5), context accuracy (Yes/No/Partial), hallucinations, response time.
+4. Repeat in a second fresh session for consistency.
+5. Enter results in `docs/relay-test-results.html` → Baseline tab.
 
-## Phase 1 — Baseline (WITHOUT RelayAI)
-
-> Run these steps first. Do NOT use the `relay` CLI in this phase.
-
-### Step 4 — Open a fresh coding session in your AI CLI (Claude Code, Copilot, etc.)
-
-Do not carry context from any prior session.
-
-### Step 5 — Run each prompt and record results
-
-For each of the 5 prompts:
-
-1. Send the prompt to your AI coding CLI directly
-2. Record the **total tokens sent** (check CLI output or provider usage dashboard)
-3. Score **response quality** (1–5 scale, see rubric below)
-4. Mark **context accuracy** — did the model reference the correct files/functions? (Yes / No / Partial)
-5. Note any **hallucinations** — wrong filenames, nonexistent functions, fabricated behavior
-6. Record **response time** (rough estimate in seconds)
-
-**Quality Rubric:**
+**Quality rubric:**
 
 | Score | Meaning |
-|-------|---------|
-| 5 | Accurate, complete, referenced the right code |
+|---|---|
+| 5 | Accurate, complete, referenced correct code |
 | 4 | Mostly correct, minor gap |
-| 3 | Partially correct, missing important context |
-| 2 | Wrong context, vague answer |
+| 3 | Partially correct, missing context |
+| 2 | Wrong context, vague |
 | 1 | Hallucinated or completely wrong |
 
-### Step 6 — Repeat in a second fresh session
-
-Run all 5 prompts again in a brand-new session (close and reopen the CLI). This captures **session-to-session consistency**.
-
-Enter all results into `docs/relay-test-results.html` under the **Baseline** section.
-
----
-
-## Phase 2 — Relay-Enabled (WITH RelayAI)
-
-### Step 7 — Initialize Relay in the matt-mcp directory
+### Phase 2 — Relay-Enabled (WITH Relay)
 
 ```bash
 cd matt-mcp
+
+# Initialize Relay
 node /path/to/RelayAI/packages/cli/dist/index.js init
-```
+relay doctor           # all checks must pass before proceeding
 
-Verify Relay is ready:
-
-```bash
-relay doctor
-```
-
-✅ All checks must pass before proceeding. Fix any errors reported.
-
-### Step 8 — Start a Relay session
-
-```bash
+# Start session (anchor to git HEAD)
 relay session start
+relay tokens inspect   # record initial zone breakdown
+
+# Run each prompt
+relay ask "<prompt>"
+relay tokens inspect   # record zone breakdown after each prompt
+relay cache inspect    # note prefix hash stability
 ```
 
-Record the **Session Base SHA** that Relay anchors to. It should match your Baseline SHA from Step 2.
-
-### Step 9 — Inspect token baseline before sending any prompt
+After all prompts:
 
 ```bash
-relay tokens inspect
+relay diff             # confirm only delta shown, not full files
+relay gc preview       # confirm GC entries listed without error
 ```
 
-Record the **initial zone breakdown**: Static Block tokens, State Layer tokens, Dynamic Input tokens.
+Repeat in a second Relay session. Enter results in `docs/relay-test-results.html` → Relay tab.
 
-### Step 10 — Run each prompt through Relay
+### Phase 3 — Pass/Fail Verification
 
-For each of the 5 prompts:
+All 7 signals must be green before marking Relay as working:
 
-```bash
-relay ask "<your prompt here>"
-```
-
-After each prompt:
-
-```bash
-relay tokens inspect     # Record zone breakdown
-relay cache inspect      # Note whether cache prefix is stable
-```
-
-Record the same metrics as Phase 1: total tokens, quality score, context accuracy, hallucinations, response time.
-
-**Also record Relay-specific signals:**
-- Cache prefix stable? (Yes / No)
-- Correct zone separation seen in token output? (Yes / No)
-- Dynamic zone smaller on prompt 2+ vs prompt 1? (Yes / No)
-
-### Step 11 — Inspect session diff after prompts
-
-```bash
-relay diff
-```
-
-Confirm it shows only the delta from the base SHA — not full file contents. Record: **Diff Anchored?** (Yes / No)
-
-### Step 12 — Repeat in a second Relay session
-
-Close and restart. Run `relay session start` again, then repeat all 5 prompts. This measures **Relay's cross-session continuity**.
-
-Enter all results into `docs/relay-test-results.html` under the **Relay-Enabled** section.
-
----
-
-## Phase 3 — Pass / Fail Verification
-
-After completing both phases, run through each signal below. All signals must be **green** to confirm Relay is working correctly.
-
-| Signal | Command | Pass Condition |
-|--------|---------|----------------|
+| Signal | Command | Pass condition |
+|---|---|---|
 | CLI healthy | `relay doctor` | Exit 0, no errors |
-| Session anchored | `relay session start` | SHA recorded |
+| Session anchored | `relay session start` | SHA recorded in `.relay/session.json` |
 | Token zones populated | `relay tokens inspect` | All 3 zones shown with counts |
-| Cache prefix stable | `relay cache inspect` | Same prefix hash on prompt 2+ |
-| Diff anchored (not full files) | `relay diff` | Only delta shown |
-| Follow-up prompts smaller | `relay tokens inspect` | Dynamic zone shrinks |
-| GC preview works | `relay gc preview` | Entries listed or empty without error |
+| Cache prefix stable | `relay cache inspect` | Same prefix hash on prompts 2+ |
+| Diff anchored | `relay diff` | Only delta shown, not full file contents |
+| Follow-up prompts smaller | `relay tokens inspect` | Dynamic zone shrinks after prompt 1 |
+| GC preview works | `relay gc preview` | Entries listed or empty, no error |
 
-**If any signal fails:** Note it in the HTML tracker. Do NOT mark Relay as working until all 7 pass.
+### Phase 4 — Metrics
 
----
-
-## Phase 4 — Calculate Metrics
-
-Compute these for the leadership report. The HTML tracker calculates these automatically.
+The HTML tracker (`docs/relay-test-results.html`) calculates these automatically:
 
 | Metric | Formula |
-|--------|---------|
+|---|---|
 | Token Reduction % | `((Baseline avg − Relay avg) / Baseline avg) × 100` |
 | Quality Improvement | `Relay avg quality − Baseline avg quality` |
 | Context Accuracy Rate | `Correct responses / 5 prompts × 100` |
@@ -204,30 +245,20 @@ Compute these for the leadership report. The HTML tracker calculates these autom
 
 ---
 
-## Phase 5 — Leadership Summary
-
-Once results are recorded in the HTML tracker, export or screenshot the **Summary Dashboard** tab and include in your report.
-
-Key points to cover:
-
-1. **Token Cost Delta** — % reduction with dollar estimate at your provider rate
-2. **Context Accuracy Improvement** — before vs. after scores
-3. **Session Continuity** — does Relay maintain memory across restarts?
-4. **Pass/Fail Signal Results** — confirm all 7 checks passed
-5. **Recommendation** — based on results, proceed to broader rollout / continue tuning / not ready
-
----
-
-## Quick Reference — Is It Working?
+## Quick Reference
 
 ```
-relay doctor           → errors?          → Fix before proceeding
-relay session start    → SHA captured?    → If no, check git repo init
-relay tokens inspect   → zones populated? → If no, context engine not loading files
-relay cache inspect    → prefix stable?   → If no, check AGENTS.md/static config
-relay diff             → only delta?      → If full files shown, session not anchored
-follow-up smaller?     → No?             → Session memory not persisting
-relay gc preview       → works?          → If error, semantic store corrupted
-```
+# Automated tests (run this first)
+pnpm run ci                  → all 133 tests must pass
 
-**All green = RelayAI is working. Proceed to metrics and reporting.**
+# Hook verification (for each agent)
+cat .relay/session.json      → base_git_sha should match git rev-parse HEAD
+ls -la .relay/sigmap.md      → modified timestamp should be recent
+cat .relay/memory/semantic-state.json  → non-empty after first Stop/agentStop
+
+# Integration health check
+relay doctor                 → all checks green
+relay tokens inspect         → all 3 zones populated
+relay cache inspect          → prefix hash stable across prompts
+relay diff                   → only delta, not full files
+```

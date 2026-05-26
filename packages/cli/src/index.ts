@@ -31,13 +31,26 @@ import {
   readOptional,
   resolveTokenBudget,
   runRelayDoctor,
-  serializeSemanticState
+  serializeSemanticState,
+  appendAuditEvent,
+  readAuditLog,
+  filterAuditLog
 } from "@relay/core";
 import type { RelayConfig, StaticBlockInput } from "@relay/core";
 
 const program = new Command();
 const relayDir = join(process.cwd(), ".relay");
 const callLogPath = join(relayDir, "calls.json");
+const auditLogPath = join(relayDir, "audit.log");
+
+function auditAppend(cfg: RelayConfig, fields: { event: string; session_id: string | null; [key: string]: unknown }): void {
+  if (!cfg.audit.enabled) return;
+  try {
+    appendAuditEvent(auditLogPath, fields, cfg.audit.maxLines);
+  } catch {
+    // Audit log write failures are non-fatal
+  }
+}
 
 function ensureRelayDir(): void {
   mkdirSync(join(relayDir, "memory"), { recursive: true });
@@ -256,7 +269,7 @@ program.command("init").description("Initialize Relay in the current repository.
     gitignoreContent.includes(".relay/memory/session.raw.md") ||
     gitignoreContent.split("\n").some((line) => line.trim() === ".relay");
   if (!alreadyCovered) {
-    const gitignoreEntry = "# Relay session data\n.relay/memory/session.raw.md\n.relay/memory/session.compacted.md\n.relay/memory/semantic-state.json\n.relay/memory/semantic-state.snapshot.json\n.relay/session.json\n.relay/calls.json\n";
+    const gitignoreEntry = "# Relay session data\n.relay/memory/session.raw.md\n.relay/memory/session.compacted.md\n.relay/memory/semantic-state.json\n.relay/memory/semantic-state.snapshot.json\n.relay/session.json\n.relay/calls.json\n.relay/audit.log\n";
     appendFileSync(gitignorePath, gitignoreContent.endsWith("\n") || gitignoreContent === "" ? gitignoreEntry : `\n${gitignoreEntry}`);
     console.log("Updated .gitignore to exclude Relay session data.");
   }
@@ -280,6 +293,13 @@ session.command("start").description("Start a git-anchored Relay session.").acti
     stateLayerHash: getPrefixHash(stateLayer, "")
   });
   writeFileSync(join(relayDir, "session.json"), JSON.stringify(snapshot, null, 2));
+  auditAppend(cfg, {
+    event: "session_start",
+    session_id: snapshot.session_id,
+    base_git_sha: snapshot.base_git_sha,
+    prefix_hash: snapshot.prefix_hash ?? null,
+    tracked_path_count: snapshot.tracked_paths.length
+  });
   console.log(`Started Relay session ${snapshot.session_id}.`);
   console.log(`Base git SHA: ${snapshot.base_git_sha}`);
   console.log(`Prefix hash: ${snapshot.prefix_hash}`);
@@ -296,7 +316,14 @@ session.command("end")
       console.log("No active session to end.");
       return;
     }
+    const cfg = readRelayConfig();
+    const sessionData = parseSessionJson(readFileSync(sessionPath, "utf8"));
     unlinkSync(sessionPath);
+    auditAppend(cfg, {
+      event: "session_end",
+      session_id: (sessionData.session_id as string | undefined) ?? null,
+      reset_memory: options.resetMemory ?? false
+    });
     console.log("Relay session ended.");
     if (options.resetMemory) {
       writeFileSync(join(relayDir, "memory", "session.raw.md"), "# Raw Session History\n");
@@ -327,10 +354,21 @@ program.command("ask")
     }
 
     const cfg = readRelayConfig();
+    const activeSessionText = readOptional(join(relayDir, "session.json"), "{}");
+    const activeSessionData = parseSessionJson(activeSessionText);
+    const activeSessionId = (activeSessionData.session_id as string | undefined) ?? null;
+
+    if (anomaly.anomalous) {
+      auditAppend(cfg, {
+        event: "anomaly",
+        session_id: activeSessionId,
+        event_count: updatedLog.length,
+        window_ms: 60_000
+      });
+    }
     const semanticState = readOptional(join(relayDir, "memory", "semantic-state.json"), serializeSemanticState(createEmptySemanticState()));
     const files = buildPrioritizedFileIndex(process.cwd(), { limit: cfg.files.maxIndex }).join("\n");
-    const sessionText = readOptional(join(relayDir, "session.json"), "{}");
-    const sessionData = parseSessionJson(sessionText);
+    const sessionData = activeSessionData;
     const baseRef = (sessionData.base_git_sha as string | undefined) ?? "HEAD";
 
     const diffOverride = options.staged ? safeGetStagedDiff() : undefined;
@@ -344,6 +382,12 @@ program.command("ask")
     printZoneBreakdown(zones);
 
     if (budget.status === "blocked") {
+      auditAppend(cfg, {
+        event: "budget_blocked",
+        session_id: activeSessionId,
+        budget_tokens: budget.tokens,
+        hard_limit: resolvedTokens.hardLimit
+      });
       process.stderr.write(`Error: ${budget.message} Run \`relay gc run\` to compact context.\n`);
       process.exit(1);
     }
@@ -357,6 +401,12 @@ program.command("ask")
         process.exit(0);
       }
     } else if (budget.status === "warning") {
+      auditAppend(cfg, {
+        event: "budget_warning",
+        session_id: activeSessionId,
+        budget_tokens: budget.tokens,
+        warning_limit: resolvedTokens.warningLimit
+      });
       process.stderr.write(`Warning: ${budget.message} (${budget.tokens.toLocaleString()} tokens)\n`);
     }
 
@@ -373,6 +423,16 @@ program.command("ask")
         route: "dry-run",
         provider: name,
         model: options.model
+      });
+      auditAppend(cfg, {
+        event: "ask",
+        session_id: activeSessionId,
+        route: "dry-run",
+        provider: name,
+        model: options.model ?? null,
+        budget_status: budget.status,
+        budget_tokens: budget.tokens,
+        prompt_chars: prompt.length
       });
       process.stderr.write(`[dry-run] ${provider.commandLine} < <relay-payload>\n`);
       console.log("---BEGIN RELAY PAYLOAD---");
@@ -396,6 +456,17 @@ program.command("ask")
         model: options.model,
         providerExitCode: exitCode
       });
+      auditAppend(cfg, {
+        event: "ask",
+        session_id: activeSessionId,
+        route: "provider",
+        provider: options.provider,
+        model: options.model ?? null,
+        budget_status: budget.status,
+        budget_tokens: budget.tokens,
+        prompt_chars: prompt.length,
+        provider_exit_code: exitCode
+      });
       process.exit(exitCode);
     }
 
@@ -406,6 +477,16 @@ program.command("ask")
       baseRef,
       route: "stdout",
       model: options.model
+    });
+    auditAppend(cfg, {
+      event: "ask",
+      session_id: activeSessionId,
+      route: "stdout",
+      provider: null,
+      model: options.model ?? null,
+      budget_status: budget.status,
+      budget_tokens: budget.tokens,
+      prompt_chars: prompt.length
     });
     console.log("---BEGIN RELAY PAYLOAD---");
     console.log(payload);
@@ -641,6 +722,16 @@ gc.command("run").description("Compact session history into semantic state using
     writeFileSync(statePath, serializeSemanticState(result.semanticState));
     writeFileSync(join(relayDir, "memory", "session.compacted.md"), result.compactedMarkdown);
     writeFileSync(rawPath, "# Raw Session History\n");
+    const gcSessionText = readOptional(join(relayDir, "session.json"), "{}");
+    const gcSessionData = parseSessionJson(gcSessionText);
+    auditAppend(cfg, {
+      event: "gc_run",
+      session_id: (gcSessionData.session_id as string | undefined) ?? null,
+      command: gcCommand[0],
+      original_tokens: result.originalApproxTokens,
+      compacted_tokens: result.compactedApproxTokens,
+      ok: true
+    });
     console.log(`Compacted: ${result.originalApproxTokens.toLocaleString()} → ${result.compactedApproxTokens.toLocaleString()} tokens.`);
     console.log("Snapshot saved to semantic-state.snapshot.json. Run `relay gc restore` to roll back.");
   } catch (err) {
@@ -826,6 +917,49 @@ context.command("build")
 
     console.log(`Generated .relay/context/trunk.md and ${branchCount} branch files.`);
     console.log("Enable with: set context.hierarchical = true in .relay/config.json");
+  });
+
+program.command("audit")
+  .description("Inspect the structured audit log.")
+  .option("--tail <n>", "Show last N entries", "20")
+  .option("--event <type>", "Filter by event type (ask, session_start, session_end, gc_run, anomaly, budget_warning, budget_blocked)")
+  .option("--session <id>", "Filter by session ID")
+  .option("--json", "Output raw NDJSON instead of a formatted table")
+  .action((options: { tail?: string; event?: string; session?: string; json?: boolean }) => {
+    const tail = Math.max(1, parseInt(options.tail ?? "20", 10));
+    const all = readAuditLog(auditLogPath);
+    const filtered = filterAuditLog(all, {
+      event: options.event,
+      session_id: options.session,
+      tail
+    });
+
+    if (filtered.length === 0) {
+      process.stderr.write("No audit events found.\n");
+      return;
+    }
+
+    if (options.json) {
+      for (const event of filtered) {
+        console.log(JSON.stringify(event));
+      }
+      return;
+    }
+
+    // Formatted table: timestamp | event | session | details
+    const col = (s: string, width: number) => s.slice(0, width).padEnd(width);
+    const header = `${col("timestamp", 24)} ${col("event", 16)} ${col("session", 16)} details`;
+    const divider = "-".repeat(header.length);
+    process.stdout.write(`${header}\n${divider}\n`);
+    for (const e of filtered) {
+      const ts = (e.ts as string).replace("T", " ").replace("Z", "").slice(0, 23);
+      const session = (e.session_id as string | null) ?? "-";
+      const details = Object.entries(e)
+        .filter(([k]) => !["ts", "event", "session_id", "v"].includes(k))
+        .map(([k, v]) => `${k}=${JSON.stringify(v)}`)
+        .join(" ");
+      process.stdout.write(`${col(ts, 24)} ${col(e.event as string, 16)} ${col(session, 16)} ${details}\n`);
+    }
   });
 
 await program.parseAsync();

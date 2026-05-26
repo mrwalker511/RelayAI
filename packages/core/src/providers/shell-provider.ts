@@ -79,7 +79,26 @@ export class ShellProvider implements ProviderAdapter {
   }
 }
 
+const SHELL_METACHARACTERS = /[;&|><`$\\]/;
+
+function validateProviderCommand(template: string[], providerName: string): void {
+  if (template.length === 0) return;
+  const [command, ...args] = template;
+  if (SHELL_METACHARACTERS.test(command)) {
+    throw new Error(
+      `Provider '${providerName}' command contains forbidden shell characters: ${command}\n` +
+      `Only simple command names and paths are allowed in provider.commands.`
+    );
+  }
+  for (const arg of args) {
+    if (typeof arg !== "string") {
+      throw new Error(`Provider '${providerName}' command args must all be strings.`);
+    }
+  }
+}
+
 export function createShellProvider(name: string, config: RelayConfig): ShellProvider {
+  const isBuiltin = name in PROVIDER_DEFAULTS && !config.provider.commands?.[name];
   const template = config.provider.commands?.[name] ?? PROVIDER_DEFAULTS[name];
   if (!template || template.length === 0) {
     const known = Object.keys(PROVIDER_DEFAULTS);
@@ -87,6 +106,10 @@ export function createShellProvider(name: string, config: RelayConfig): ShellPro
       `Unknown provider '${name}'. Built-in providers: ${known.join(", ")}. ` +
       `To add a custom provider, set provider.commands["${name}"] in .relay/config.json.`
     );
+  }
+  // Validate user-configured commands; built-in defaults are pre-vetted
+  if (!isBuiltin) {
+    validateProviderCommand(template, name);
   }
   const [command, ...args] = template;
   return new ShellProvider(name, command, args);

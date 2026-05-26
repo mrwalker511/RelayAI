@@ -72,3 +72,47 @@ test("ShellProvider.sendPrompt rejects when command is not found", async () => {
   const provider = new ShellProvider("nonexistent", "relay-nonexistent-command-xyz", []);
   await assert.rejects(() => provider.sendPrompt("test"), /not found in PATH/);
 });
+
+test("createShellProvider rejects user-configured command with shell metacharacters", () => {
+  assert.throws(
+    () => createShellProvider("evil", {
+      ...baseConfig,
+      provider: {
+        default: "evil",
+        commands: { evil: ["sh; rm -rf /"] },
+      },
+    }),
+    /forbidden shell characters/
+  );
+});
+
+test("createShellProvider rejects user-configured command with pipe character", () => {
+  assert.throws(
+    () => createShellProvider("piped", {
+      ...baseConfig,
+      provider: {
+        default: "piped",
+        commands: { piped: ["cmd | malicious"] },
+      },
+    }),
+    /forbidden shell characters/
+  );
+});
+
+test("createShellProvider allows user-configured command without metacharacters", () => {
+  const provider = createShellProvider("safe", {
+    ...baseConfig,
+    provider: {
+      default: "safe",
+      commands: { safe: ["my-llm-cli", "--model", "fast"] },
+    },
+  });
+  assert.equal(provider.name, "safe");
+  assert.equal(provider.commandLine, "my-llm-cli --model fast");
+});
+
+test("createShellProvider does not validate built-in defaults for metacharacters", () => {
+  // Built-in defaults like "ollama" with args are pre-vetted — must not throw
+  const provider = createShellProvider("local", baseConfig);
+  assert.equal(provider.name, "local");
+});

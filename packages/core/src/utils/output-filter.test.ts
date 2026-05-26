@@ -62,3 +62,37 @@ test("enabled: false returns raw input unchanged", () => {
   const raw = "\x1b[32mno filtering\x1b[0m";
   assert.equal(filterOutput(raw, { enabled: false }), raw);
 });
+
+test("preserves failure lines even when they fall in the truncated middle", () => {
+  // Build 500 lines where failure lines are buried in the middle (lines 200-210)
+  const lines: string[] = [];
+  for (let i = 0; i < 500; i++) {
+    if (i >= 200 && i < 210) {
+      lines.push(`Error: assertion failed at line ${i}`);
+    } else {
+      lines.push(`line ${i}`);
+    }
+  }
+  const raw = lines.join("\n");
+  const out = filterOutput(raw, { maxLines: 100 });
+
+  // All error lines must survive truncation
+  for (let i = 200; i < 210; i++) {
+    assert.ok(out.includes(`Error: assertion failed at line ${i}`), `failure line ${i} must be preserved`);
+  }
+  assert.ok(out.includes("truncated"), "should still mention truncation");
+});
+
+test("preserves FAILED and AssertionError lines from truncation", () => {
+  const lines: string[] = [];
+  for (let i = 0; i < 400; i++) {
+    lines.push(`pass line ${i}`);
+  }
+  lines[150] = "FAILED: test suite blew up";
+  lines[151] = "AssertionError: expected 1 to equal 2";
+  const raw = lines.join("\n");
+  const out = filterOutput(raw, { maxLines: 50 });
+
+  assert.ok(out.includes("FAILED: test suite blew up"), "FAILED line must survive");
+  assert.ok(out.includes("AssertionError: expected 1 to equal 2"), "AssertionError line must survive");
+});

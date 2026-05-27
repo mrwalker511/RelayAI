@@ -41,6 +41,10 @@ export const RelayConfigSchema = z.object({
     maxSuccessOccurrences: z.number().int().nonnegative().default(3),
     dedupConsecutive: z.boolean().default(true),
     collapseBlankLines: z.boolean().default(true)
+  }).default({}),
+  audit: z.object({
+    enabled: z.boolean().default(true),
+    maxLines: z.number().int().positive().default(10_000)
   }).default({})
 });
 

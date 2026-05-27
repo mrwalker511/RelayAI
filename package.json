@@ -18,7 +18,7 @@
     "clean": "rm -rf packages/*/dist"
   },
   "devDependencies": {
-    "@types/node": "^22.10.1",
+    "@types/node": "^25.9.1",
     "tsx": "^4.22.3",
     "typescript": "^5.7.2"
   }

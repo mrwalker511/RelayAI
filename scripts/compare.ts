@@ -10,7 +10,7 @@
 
 import { readFileSync, existsSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { listTrackedFiles, estimateTokens, readRelayWorkspace, RelayConfigSchema } from "@relay/core";
+import { listTrackedFiles, estimateTokens, readRelayWorkspace, RelayConfigSchema, estimateZoneAwareInputCost } from "@relay/core";
 import type { TokenEstimateOptions } from "@relay/core";
 
 // ── Argument parsing ──────────────────────────────────────────────────────────
@@ -137,11 +137,25 @@ void (async () => {
     console.log(`  ${BOLD}Total input tokens:  ${fmt(relayZones.total)}${RESET}`);
     console.log();
 
-    console.log(`${BOLD}Comparison${RESET}`);
+    // Amortized repeat-call view: on a warm cache the cache-eligible prefix is
+    // billed at the cached rate (assume 0.1× input, Anthropic's cache-read price).
+    // estimateZoneAwareInputCost with hit-rate 1 and unit pricing yields cost in
+    // "$ per $1/M input", i.e. ×1e6 gives a full-price-token-equivalent.
+    const repeat = estimateZoneAwareInputCost({
+      staticBlockTokens: relayZones.static_block,
+      stateLayerTokens: relayZones.state_layer,
+      dynamicInputTokens: relayZones.dynamic_input,
+      inputCostPerMillion: 1,
+      cachedInputCostPerMillion: 0.1,
+      expectedCacheHitRate: 1
+    });
+    const repeatEffective = Math.round(repeat.cacheAdjustedCost * 1_000_000);
+
+    console.log(`${BOLD}Comparison (per call)${RESET}`);
     const color = isPositive ? GREEN : YELLOW;
-    console.log(`  Total reduction:     ${color}${fmt(Math.abs(reduction))} tokens (${pct(relayZones.total, baselineTokens)})${RESET}`);
-    console.log(`  Cache-eligible:      ${CYAN}${fmt(cacheEligible)} tokens${RESET}  ${DIM}(priced as cached input after first call)${RESET}`);
-    console.log(`  Per-call overhead:   ${DIM}${fmt(relayZones.dynamic_input)} tokens at full input price${RESET}`);
+    console.log(`  First call (cold cache):  Relay ${fmt(relayZones.total)} vs baseline ${fmt(baselineTokens)} tokens  ${color}(${pct(relayZones.total, baselineTokens)})${RESET}`);
+    console.log(`  Repeat call (warm cache): ${CYAN}~${fmt(repeatEffective)} effective tokens${RESET} vs baseline ${fmt(baselineTokens)}  ${GREEN}(${pct(repeatEffective, baselineTokens)})${RESET}`);
+    console.log(`    ${DIM}cache-eligible ${fmt(cacheEligible)} tok @ ~0.1× + dynamic ${fmt(relayZones.dynamic_input)} tok @ full; baseline pays full every call${RESET}`);
     console.log();
 
     if (!relayInitialized) {
@@ -149,10 +163,10 @@ void (async () => {
     }
 
     if (isPositive) {
-      console.log(`${GREEN}${BOLD}Result: Relay reduces payload size. Cache-eligible zones grow the savings further on repeat calls.${RESET}`);
+      console.log(`${GREEN}${BOLD}Result: Relay is smaller on the first call AND cheaper on repeats once the prefix is cached.${RESET}`);
     } else {
-      console.log(`${YELLOW}${BOLD}Result: Relay payload is larger than the naive baseline — typical for small repos with a full source snapshot in STATIC_BLOCK.${RESET}`);
-      console.log(`${DIM}Consider 'relay context build' with hierarchical: true for large codebases.${RESET}`);
+      console.log(`${YELLOW}${BOLD}Result: On the FIRST call Relay's payload is larger than the naive baseline (typical for small repos). The win is on REPEAT calls — see the warm-cache line above — and grows with repo size.${RESET}`);
+      console.log(`${DIM}Consider 'relay context build' with hierarchical: true for large codebases. For real billed numbers use 'relay ask --measure' + 'relay savings'.${RESET}`);
     }
   }
 

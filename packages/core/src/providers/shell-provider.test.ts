@@ -59,14 +59,38 @@ test("createShellProvider error message lists built-in provider names", () => {
 test("ShellProvider.sendPrompt pipes payload to stdin and returns exit code 0", async () => {
   // cat reads stdin and exits 0 — verifies payload is written without hanging
   const provider = new ShellProvider("cat", "cat", []);
-  const code = await provider.sendPrompt("hello relay");
-  assert.equal(code, 0);
+  const result = await provider.sendPrompt("hello relay");
+  assert.equal(result.exitCode, 0);
 });
 
 test("ShellProvider.sendPrompt returns non-zero exit code from process", async () => {
   const provider = new ShellProvider("false", "/bin/sh", ["-c", "cat >/dev/null; exit 42"]);
-  const code = await provider.sendPrompt("test payload");
-  assert.equal(code, 42);
+  const result = await provider.sendPrompt("test payload");
+  assert.equal(result.exitCode, 42);
+});
+
+test("ShellProvider.sendPrompt captures stdout when capture is enabled", async () => {
+  const provider = new ShellProvider("printer", "/bin/sh", ["-c", "cat >/dev/null; printf 'hello-out'"]);
+  const result = await provider.sendPrompt("x", { capture: true });
+  assert.equal(result.exitCode, 0);
+  assert.equal(result.capturedOutput, "hello-out");
+});
+
+test("ShellProvider.sendPrompt does not capture stdout by default", async () => {
+  const provider = new ShellProvider("printer", "/bin/sh", ["-c", "cat >/dev/null; printf 'hi'"]);
+  const result = await provider.sendPrompt("x");
+  assert.equal(result.capturedOutput, undefined);
+});
+
+test("withMeasure appends --output-format json for the claude builtin and is a no-op otherwise", () => {
+  const claude = new ShellProvider("claude", "claude", []);
+  assert.equal(claude.withMeasure().commandLine, "claude --output-format json");
+  // already configured → unchanged
+  const preset = new ShellProvider("claude", "claude", ["--output-format", "stream-json"]);
+  assert.equal(preset.withMeasure().commandLine, "claude --output-format stream-json");
+  // non-claude → unchanged
+  const other = new ShellProvider("llm", "llm", ["--model", "dev"]);
+  assert.equal(other.withMeasure().commandLine, "llm --model dev");
 });
 
 test("ShellProvider.sendPrompt rejects when command is not found", async () => {

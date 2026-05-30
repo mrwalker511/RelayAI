@@ -47,6 +47,28 @@ Without a provider, Relay prints the assembled payload between `---BEGIN RELAY P
 | `--staged` | Use staged diff instead of the full session diff. |
 | `--diff-mode <mode>` | Diff rendering: `full`, `summarized`, or `auto` (default). `auto` summarizes diffs above 8 000 tokens. |
 | `--include-timestamp` | Include ISO timestamp in the `DYNAMIC_INPUT` zone. |
+| `--measure` | Capture the provider's reported token usage into the audit ledger for **measured** savings. Tees provider stdout (you still see it) and parses usage; for the `claude` builtin it auto-adds `--output-format json`. Providers that don't emit usage: record it with `relay usage record`. |
+
+Every `relay ask` also writes per-call ledger fields to the audit log — `prefix_hash`, per-zone token counts, the `tokenizer` used, and `prefix_stable` (whether the cacheable prefix matched the previous call). These power `relay savings`.
+
+---
+
+## `relay usage record`
+
+Manually record measured provider token usage (for providers whose CLI doesn't emit a parseable usage envelope).
+
+**Options:** `--input <n>` (required), `--cached-input <n>`, `--cache-creation <n>`, `--output <n>`, `--session <id>`. Appends a `usage` audit event with `usage_source: "manual"`.
+
+---
+
+## `relay savings`
+
+Reports prompt-cache savings from the audit log in two clearly-labeled sections:
+
+- **MEASURED** — actual cost vs a no-cache baseline, computed from recorded provider/manual usage (includes the cache-creation surcharge and output). A single first/cache-creating call can show negative savings; the session aggregate is the honest figure.
+- **PROJECTED FROM HISTORY** — the **measured** prefix-stability rate (fraction of repeat calls whose cacheable prefix was unchanged) fed into the zone estimator. A projection, not a measurement.
+
+**Options:** `--input-cost-per-million <n>`, `--cached-input-cost-per-million <n>`, `--cache-creation-cost-per-million <n>` (default: input × 1.25), `--output-cost-per-million <n>` (default: 0), `--session <id>`, `--json`.
 
 ---
 
@@ -99,9 +121,10 @@ Prints cache-relevant prefix diagnostics: prefix hash, static and state zone tok
 | --- | --- |
 | `--input-cost-per-million <number>` | Per-million-token cost for uncached input (e.g. `3.00`) |
 | `--cached-input-cost-per-million <number>` | Per-million-token cost for cached input (e.g. `0.30`) |
-| `--expected-cache-hit-rate <number>` | Expected cache hit rate as a decimal (e.g. `0.8` for 80%) |
+| `--expected-cache-hit-rate <number>` | Expected cache hit rate as a decimal (e.g. `0.8` for 80%) — a guess |
+| `--use-recorded-history` | Use the **measured** prefix-stability rate from the audit log instead of guessing `--expected-cache-hit-rate`. The output reports `recorded_stability_rate` and `cache_hit_rate_source`. |
 
-Relay only calculates cost estimates from explicit inputs and does not infer provider pricing.
+Relay only calculates cost estimates from explicit inputs and does not infer provider pricing. For ground-truth numbers, prefer `relay ask --measure` + `relay savings`.
 
 ## `relay cache warm`
 

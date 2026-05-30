@@ -28,6 +28,7 @@ import {
   inspectZoneTokens,
   listTrackedFiles,
   loadHierarchicalContext,
+  renderBranchSections,
   readOptional,
   resolveTokenBudget,
   runRelayDoctor,
@@ -36,7 +37,7 @@ import {
   readAuditLog,
   filterAuditLog
 } from "@relay/core";
-import type { RelayConfig, StaticBlockInput } from "@relay/core";
+import type { RelayConfig, StaticBlockInput, TokenEstimateOptions } from "@relay/core";
 
 const program = new Command();
 const relayDir = join(process.cwd(), ".relay");
@@ -110,10 +111,19 @@ function writeCallLog(timestamps: number[]): void {
   writeFileSync(callLogPath, JSON.stringify(pruned));
 }
 
-function readStaticBlockInput(
+function tokenizerOptionsFor(cfg?: RelayConfig): TokenEstimateOptions | undefined {
+  return cfg ? { provider: cfg.tokens.provider, model: cfg.tokens.model } : undefined;
+}
+
+/**
+ * Reads the static-block inputs plus the volatile, prompt-selected hierarchical
+ * branches. The stable trunk goes into the static block (cacheable prefix); the
+ * branches are returned separately so callers can place them in DYNAMIC_INPUT.
+ */
+function readContextInputs(
   dir: string,
   opts?: { cfg?: RelayConfig; prompt?: string; gitDiff?: string }
-): StaticBlockInput {
+): { staticBlockInput: StaticBlockInput; relevantContext?: string } {
   const projectRules = readOptional(join(dir, "memory", "project-rules.md")) || undefined;
   const architectureNotes = readOptional(join(dir, "memory", "architecture-notes.md")) || undefined;
 
@@ -125,17 +135,30 @@ function readStaticBlockInput(
       : existsSync(sigemapPath) ? readFileSync(sigemapPath, "utf8") : snapshotRaw;
 
   let domainContext: string | undefined;
+  let relevantContext: string | undefined;
   if (opts?.cfg?.context.hierarchical) {
     const contextDir = join(process.cwd(), opts.cfg.context.contextDir);
-    domainContext = loadHierarchicalContext({
+    const hc = loadHierarchicalContext({
       contextDir,
       prompt: opts.prompt,
       gitDiff: opts.gitDiff,
       maxBranches: opts.cfg.context.maxBranches,
-    }).loaded;
+    });
+    domainContext = hc.trunk;
+    relevantContext = renderBranchSections(hc.branches) || undefined;
   }
 
-  return { projectRules, architectureNotes, sourceSnapshot, domainContext };
+  return {
+    staticBlockInput: { projectRules, architectureNotes, sourceSnapshot, domainContext },
+    relevantContext,
+  };
+}
+
+function readStaticBlockInput(
+  dir: string,
+  opts?: { cfg?: RelayConfig; prompt?: string; gitDiff?: string }
+): StaticBlockInput {
+  return readContextInputs(dir, opts).staticBlockInput;
 }
 
 function safeGetGitDiff(baseRef: string): string {
@@ -164,7 +187,9 @@ function buildZonesForAsk(
   staticBlockInput: StaticBlockInput = {},
   diffOverride?: string,
   diffMode?: "full" | "summarized" | "auto",
-  includeTimestamp?: boolean
+  includeTimestamp?: boolean,
+  relevantContext?: string,
+  tokenizerOptions?: TokenEstimateOptions
 ) {
   return {
     staticBlock: buildStaticBlock(staticBlockInput),
@@ -173,13 +198,15 @@ function buildZonesForAsk(
       prompt,
       gitDiff: diffOverride ?? safeGetGitDiff(baseRef),
       diffMode,
-      includeTimestamp
+      includeTimestamp,
+      relevantContext,
+      tokenizerOptions
     })
   };
 }
 
-function printZoneBreakdown(zones: ReturnType<typeof buildZonesForAsk>): void {
-  const report = inspectZoneTokens(zones);
+function printZoneBreakdown(zones: ReturnType<typeof buildZonesForAsk>, tokenizerOptions?: TokenEstimateOptions): void {
+  const report = inspectZoneTokens(zones, tokenizerOptions);
   process.stderr.write(
     `Token breakdown:\n` +
     `  static_block  ${report.staticBlock.toLocaleString()}\n` +
@@ -373,13 +400,14 @@ program.command("ask")
 
     const diffOverride = options.staged ? safeGetStagedDiff() : undefined;
     const activeDiff = diffOverride ?? safeGetGitDiff(baseRef);
-    const staticInput = readStaticBlockInput(relayDir, { cfg, prompt, gitDiff: activeDiff });
-    const zones = buildZonesForAsk(prompt, baseRef, semanticState, files, staticInput, diffOverride, options.diffMode, options.includeTimestamp);
+    const { staticBlockInput: staticInput, relevantContext } = readContextInputs(relayDir, { cfg, prompt, gitDiff: activeDiff });
+    const tokenizerOptions = tokenizerOptionsFor(cfg);
+    const zones = buildZonesForAsk(prompt, baseRef, semanticState, files, staticInput, diffOverride, options.diffMode, options.includeTimestamp, relevantContext, tokenizerOptions);
     const payload = buildPromptPayload(zones);
     const resolvedTokens = resolveTokenBudget(cfg);
-    const budget = checkTokenBudget(payload, resolvedTokens);
+    const budget = checkTokenBudget(payload, resolvedTokens, tokenizerOptions);
 
-    printZoneBreakdown(zones);
+    printZoneBreakdown(zones, tokenizerOptions);
 
     if (budget.status === "blocked") {
       auditAppend(cfg, {
@@ -545,10 +573,14 @@ cache.command("inspect")
     const sessionExists = existsSync(sessionPath);
     const sessionData = sessionExists ? parseSessionJson(readFileSync(sessionPath, "utf8")) : {};
     const baseRef = (sessionData.base_git_sha as string | undefined) ?? "HEAD";
-    const files = buildPrioritizedFileIndex(process.cwd(), { limit: readRelayConfig().files.maxIndex }).join("\n");
-    const staticBlock = buildStaticBlock(readStaticBlockInput(relayDir));
+    const cfg = readRelayConfig();
+    const files = buildPrioritizedFileIndex(process.cwd(), { limit: cfg.files.maxIndex }).join("\n");
+    const gitDiff = safeGetGitDiff(baseRef);
+    const tokenizerOptions = tokenizerOptionsFor(cfg);
+    const { staticBlockInput, relevantContext } = readContextInputs(relayDir, { cfg, prompt: "(cache inspect)", gitDiff });
+    const staticBlock = buildStaticBlock(staticBlockInput);
     const stateLayer = buildStateLayer({ semanticStateJson: semanticState, fileIndex: files });
-    const dynamicInput = buildDynamicInput({ prompt: "(cache inspect)", gitDiff: safeGetGitDiff(baseRef) });
+    const dynamicInput = buildDynamicInput({ prompt: "(cache inspect)", gitDiff, relevantContext, tokenizerOptions });
     const savedPrefixHash = sessionData.prefix_hash as string | undefined;
     const savedStaticBlockHash = sessionData.static_block_hash as string | undefined;
     const savedStateLayerHash = sessionData.state_layer_hash as string | undefined;
@@ -561,6 +593,7 @@ cache.command("inspect")
       sessionPrefixHash: savedPrefixHash,
       sessionStaticBlockHash: savedStaticBlockHash,
       sessionStateLayerHash: savedStateLayerHash,
+      tokenizerOptions,
       session: {
         exists: sessionExists,
         session_id: sessionData.session_id ?? null,
@@ -595,18 +628,20 @@ cache.command("warm")
     const cfg = readRelayConfig();
     const semanticState = readOptional(join(relayDir, "memory", "semantic-state.json"), serializeSemanticState(createEmptySemanticState()));
     const files = buildPrioritizedFileIndex(process.cwd(), { limit: cfg.files.maxIndex }).join("\n");
+    const tokenizerOptions = tokenizerOptionsFor(cfg);
+    const { staticBlockInput, relevantContext } = readContextInputs(relayDir, { cfg, prompt: "(cache warm)", gitDiff: "" });
     const zones = {
-      staticBlock: buildStaticBlock(readStaticBlockInput(relayDir)),
+      staticBlock: buildStaticBlock(staticBlockInput),
       stateLayer: buildStateLayer({ semanticStateJson: semanticState, fileIndex: files }),
-      dynamicInput: buildDynamicInput({ prompt: "(cache warm)", gitDiff: "" })
+      dynamicInput: buildDynamicInput({ prompt: "(cache warm)", gitDiff: "", relevantContext, tokenizerOptions })
     };
     const payload = buildPromptPayload(zones);
     const resolvedTokens = resolveTokenBudget(cfg);
-    const budget = checkTokenBudget(payload, resolvedTokens);
+    const budget = checkTokenBudget(payload, resolvedTokens, tokenizerOptions);
     const name = options.provider ?? cfg.provider.default;
 
     process.stderr.write(`Prefix hash: ${getPrefixHash(zones.staticBlock, zones.stateLayer)}\n`);
-    printZoneBreakdown(zones);
+    printZoneBreakdown(zones, tokenizerOptions);
 
     if (budget.status === "blocked") {
       process.stderr.write(`Error: ${budget.message} Run \`relay gc run\` to compact context.\n`);
@@ -642,7 +677,7 @@ cache.command("warm")
 
 const tokens = program.command("tokens").description("Estimate and inspect local token usage.");
 tokens.command("estimate").argument("[text...]", "Text to estimate.").action((text: string[] = []) => {
-  console.log(estimateTokens(text.join(" ")));
+  console.log(estimateTokens(text.join(" "), tokenizerOptionsFor(readRelayConfig())));
 });
 tokens.command("budget").description("Show current token budget.").action(() => {
   console.log(JSON.stringify(readRelayConfig().tokens, null, 2));
@@ -655,8 +690,10 @@ tokens.command("inspect").description("Show zone-by-zone token breakdown for the
   const sessionText = readOptional(join(relayDir, "session.json"), "{}");
   const sessionData = parseSessionJson(sessionText);
   const baseRef = (sessionData.base_git_sha as string | undefined) ?? "HEAD";
-  const zones = buildZonesForAsk("(inspect)", baseRef, semanticState, files);
-  const report = inspectZoneTokens(zones);
+  const tokenizerOptions = tokenizerOptionsFor(cfg);
+  const { staticBlockInput, relevantContext } = readContextInputs(relayDir, { cfg, prompt: "(inspect)", gitDiff: safeGetGitDiff(baseRef) });
+  const zones = buildZonesForAsk("(inspect)", baseRef, semanticState, files, staticBlockInput, undefined, undefined, undefined, relevantContext, tokenizerOptions);
+  const report = inspectZoneTokens(zones, tokenizerOptions);
   const resolvedTokens = resolveTokenBudget(cfg);
   console.log(JSON.stringify({
     zones: {
@@ -669,7 +706,7 @@ tokens.command("inspect").description("Show zone-by-zone token breakdown for the
       warning_limit: resolvedTokens.warningLimit,
       confirmation_threshold: resolvedTokens.requireConfirmationAbove,
       hard_limit: resolvedTokens.hardLimit,
-      status: checkTokenBudget(buildPromptPayload(zones), resolvedTokens).status
+      status: checkTokenBudget(buildPromptPayload(zones), resolvedTokens, tokenizerOptions).status
     }
   }, null, 2));
 });
@@ -815,16 +852,18 @@ context.command("inspect").description("Print current context construction diagn
   const baseRef = (sessionData.base_git_sha as string | undefined) ?? "HEAD";
   const files = buildPrioritizedFileIndex(process.cwd(), { limit: cfg.files.maxIndex }).join("\n");
   const gitDiff = safeGetGitDiff(baseRef);
+  const tokenizerOptions = tokenizerOptionsFor(cfg);
+  const { staticBlockInput, relevantContext } = readContextInputs(relayDir, { cfg, prompt: "(inspect)", gitDiff });
   const zones = {
-    staticBlock: buildStaticBlock(readStaticBlockInput(relayDir, { cfg, prompt: "(inspect)", gitDiff })),
+    staticBlock: buildStaticBlock(staticBlockInput),
     stateLayer: buildStateLayer({ semanticStateJson: semanticState, fileIndex: files }),
-    dynamicInput: buildDynamicInput({ prompt: "(inspect)", gitDiff })
+    dynamicInput: buildDynamicInput({ prompt: "(inspect)", gitDiff, relevantContext, tokenizerOptions })
   };
-  const zoneTokens = inspectZoneTokens(zones);
+  const zoneTokens = inspectZoneTokens(zones, tokenizerOptions);
   const currentPrefixHash = getPrefixHash(zones.staticBlock, zones.stateLayer);
   const savedPrefixHash = sessionData.prefix_hash as string | undefined;
   const resolvedTokens = resolveTokenBudget(cfg);
-  const budget = checkTokenBudget(buildPromptPayload(zones), resolvedTokens);
+  const budget = checkTokenBudget(buildPromptPayload(zones), resolvedTokens, tokenizerOptions);
 
   console.log(JSON.stringify({
     session: {
@@ -860,7 +899,7 @@ context.command("inspect").description("Print current context construction diagn
     git: {
       base_ref: baseRef,
       diff_present: gitDiff.trim().length > 0,
-      diff_tokens: estimateTokens(gitDiff).tokens
+      diff_tokens: estimateTokens(gitDiff, tokenizerOptions).tokens
     }
   }, null, 2));
 });

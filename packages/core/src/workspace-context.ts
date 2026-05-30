@@ -2,7 +2,7 @@ import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { DEFAULT_RELAY_CONFIG, RelayConfigSchema, resolveTokenBudget } from "./config/relay-config.js";
 import type { RelayConfig } from "./config/relay-config.js";
-import { loadHierarchicalContext } from "./context/hierarchical-loader.js";
+import { loadHierarchicalContext, renderBranchSections } from "./context/hierarchical-loader.js";
 import { buildDynamicInput } from "./context/dynamic-input.js";
 import { buildPromptPayload } from "./context/payload-builder.js";
 import { getPrefixHash } from "./context/prefix-hash.js";
@@ -239,10 +239,18 @@ export function readRelayWorkspace(options: RelayWorkspaceOptions = {}): RelayWo
       ? sourceSnapshotRaw
       : existsSync(sigemapPath) ? readOptional(sigemapPath) : sourceSnapshotRaw;
 
+  const tokenizerOptions = { provider: config.value.tokens.provider, model: config.value.tokens.model };
+
+  // The trunk is stable and belongs in the cacheable STATIC_BLOCK; the
+  // prompt-selected branches are volatile and go into DYNAMIC_INPUT so they
+  // never bust the cached prefix.
   let domainContext: string | undefined;
+  let relevantContext: string | undefined;
   if (config.value.context.hierarchical) {
     const contextDir = join(cwd, config.value.context.contextDir);
-    domainContext = loadHierarchicalContext({ contextDir, prompt, gitDiff, maxBranches: config.value.context.maxBranches }).loaded;
+    const hc = loadHierarchicalContext({ contextDir, prompt, gitDiff, maxBranches: config.value.context.maxBranches });
+    domainContext = hc.trunk;
+    relevantContext = renderBranchSections(hc.branches) || undefined;
   }
 
   const zones = {
@@ -253,12 +261,12 @@ export function readRelayWorkspace(options: RelayWorkspaceOptions = {}): RelayWo
       domainContext,
     }),
     stateLayer: buildStateLayer({ semanticStateJson: serializeSemanticState(trimmedState), fileIndex: includedPaths.join("\n") }),
-    dynamicInput: buildDynamicInput({ prompt, gitDiff })
+    dynamicInput: buildDynamicInput({ prompt, gitDiff, relevantContext, tokenizerOptions })
   };
   const payload = buildPromptPayload(zones);
-  const zoneTokens = inspectZoneTokens(zones);
+  const zoneTokens = inspectZoneTokens(zones, tokenizerOptions);
   const resolvedTokens = resolveTokenBudget(config.value);
-  const budget = checkTokenBudget(payload, resolvedTokens);
+  const budget = checkTokenBudget(payload, resolvedTokens, tokenizerOptions);
 
   return {
     cwd,
@@ -270,7 +278,7 @@ export function readRelayWorkspace(options: RelayWorkspaceOptions = {}): RelayWo
       base_ref: baseRef,
       diff: gitDiff,
       diff_present: gitDiff.trim().length > 0,
-      diff_tokens: estimateTokens(gitDiff).tokens
+      diff_tokens: estimateTokens(gitDiff, tokenizerOptions).tokens
     },
     files: {
       tracked_paths: trackedPaths,

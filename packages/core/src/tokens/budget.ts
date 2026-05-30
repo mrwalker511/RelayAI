@@ -1,4 +1,5 @@
 import { estimateTokens } from "./tokenizer.js";
+import type { TokenEstimateOptions } from "./tokenizer.js";
 import type { PromptZones } from "../context/zones.js";
 
 export interface TokenBudgetConfig {
@@ -20,15 +21,15 @@ export interface ZoneTokenReport {
   total: number;
 }
 
-export function inspectZoneTokens(zones: PromptZones): ZoneTokenReport {
-  const staticBlock = estimateTokens(zones.staticBlock).tokens;
-  const stateLayer = estimateTokens(zones.stateLayer).tokens;
-  const dynamicInput = estimateTokens(zones.dynamicInput).tokens;
+export function inspectZoneTokens(zones: PromptZones, opts?: TokenEstimateOptions): ZoneTokenReport {
+  const staticBlock = estimateTokens(zones.staticBlock, opts).tokens;
+  const stateLayer = estimateTokens(zones.stateLayer, opts).tokens;
+  const dynamicInput = estimateTokens(zones.dynamicInput, opts).tokens;
   return { staticBlock, stateLayer, dynamicInput, total: staticBlock + stateLayer + dynamicInput };
 }
 
-export function checkTokenBudget(payload: string, config: TokenBudgetConfig): BudgetCheckResult {
-  const { tokens } = estimateTokens(payload);
+export function checkTokenBudget(payload: string, config: TokenBudgetConfig, opts?: TokenEstimateOptions): BudgetCheckResult {
+  const { tokens } = estimateTokens(payload, opts);
 
   if (tokens > config.hardLimit) {
     return { tokens, status: "blocked", message: `Payload exceeds hard limit of ${config.hardLimit} tokens.` };

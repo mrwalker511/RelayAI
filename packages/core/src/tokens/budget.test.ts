@@ -42,3 +42,23 @@ test("inspectZoneTokens reports each zone and total", () => {
   assert.ok(report.dynamicInput > 0);
   assert.equal(report.total, report.staticBlock + report.stateLayer + report.dynamicInput);
 });
+
+test("inspectZoneTokens totals stay consistent with provider/model options", () => {
+  const report = inspectZoneTokens({
+    staticBlock: "static tokens",
+    stateLayer: "state tokens",
+    dynamicInput: "dynamic tokens",
+  }, { provider: "anthropic", model: "claude-sonnet-4" });
+
+  assert.equal(report.total, report.staticBlock + report.stateLayer + report.dynamicInput);
+});
+
+test("checkTokenBudget inflates token count for Claude vs the default tokenizer", () => {
+  const payload = "the quick brown fox jumps over the lazy dog repeatedly and verbosely";
+  const config = { warningLimit: 100, requireConfirmationAbove: 150, hardLimit: 200 };
+
+  const base = checkTokenBudget(payload, config);
+  const claude = checkTokenBudget(payload, config, { provider: "anthropic", model: "claude-sonnet-4" });
+
+  assert.ok(claude.tokens > base.tokens, "Claude correction factor should raise the estimate");
+});

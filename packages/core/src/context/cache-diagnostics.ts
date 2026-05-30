@@ -1,17 +1,19 @@
 import { getPrefixHash } from "./prefix-hash.js";
 import type { PromptZones } from "./zones.js";
 import { inspectZoneTokens } from "../tokens/budget.js";
+import type { TokenEstimateOptions } from "../tokens/tokenizer.js";
 
 export interface CacheDiagnosticsInput extends PromptZones {
   sessionPrefixHash?: string;
   sessionStaticBlockHash?: string;
   sessionStateLayerHash?: string;
   session?: Record<string, unknown>;
+  tokenizerOptions?: TokenEstimateOptions;
 }
 
 export interface PrefixVolatilityFinding {
   zone: "static_block" | "state_layer";
-  kind: "iso_timestamp" | "git_diff" | "runtime_output";
+  kind: "iso_timestamp" | "git_diff" | "runtime_output" | "hierarchical_branch";
   match: string;
 }
 
@@ -58,6 +60,13 @@ const VOLATILE_PATTERNS: Array<{
   {
     kind: "runtime_output",
     pattern: /(?:^\s+at\s+\S+|^(?:Error:|AssertionError|Test Results|FAIL|PASS)\b)/gm
+  },
+  {
+    // Prompt-selected hierarchical branches are volatile and must live in
+    // DYNAMIC_INPUT. If a "## Branch:" marker shows up in a prefix zone, the
+    // cache-breaking regression has returned.
+    kind: "hierarchical_branch",
+    pattern: /^## Branch: /gm
   }
 ];
 
@@ -121,7 +130,7 @@ export function inspectCacheDiagnostics(input: CacheDiagnosticsInput): CacheDiag
   if (sessionZoneHashes.state_layer && currentZoneHashes.state_layer !== sessionZoneHashes.state_layer) {
     changedZones.push("state_layer");
   }
-  const zoneTokens = inspectZoneTokens(input);
+  const zoneTokens = inspectZoneTokens(input, input.tokenizerOptions);
   const findings = [
     ...findVolatilePrefixContent("static_block", input.staticBlock),
     ...findVolatilePrefixContent("state_layer", input.stateLayer)

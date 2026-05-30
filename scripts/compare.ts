@@ -10,7 +10,8 @@
 
 import { readFileSync, existsSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { listTrackedFiles, estimateTokens, readRelayWorkspace } from "@relay/core";
+import { listTrackedFiles, estimateTokens, readRelayWorkspace, RelayConfigSchema } from "@relay/core";
+import type { TokenEstimateOptions } from "@relay/core";
 
 // ── Argument parsing ──────────────────────────────────────────────────────────
 
@@ -80,7 +81,17 @@ void (async () => {
     }
   }
 
-  const baselineTokens = estimateTokens(prompt + "\n" + baselineText).tokens;
+  // Use the same tokenizer (provider/model) the Relay side uses, so the
+  // baseline vs Relay comparison is apples-to-apples.
+  let tokenizerOptions: TokenEstimateOptions | undefined;
+  try {
+    const cfg = RelayConfigSchema.parse(JSON.parse(readFileSync(join(cwd, ".relay", "config.json"), "utf8")));
+    tokenizerOptions = { provider: cfg.tokens.provider, model: cfg.tokens.model };
+  } catch {
+    // No (valid) config — fall back to the default tokenizer.
+  }
+
+  const baselineTokens = estimateTokens(prompt + "\n" + baselineText, tokenizerOptions).tokens;
 
   // Relay side: zone_tokens from workspace context
   let relayZones: { static_block: number; state_layer: number; dynamic_input: number; total: number } | null = null;

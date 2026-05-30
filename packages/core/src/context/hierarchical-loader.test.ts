@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { mkdirSync, writeFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import { loadHierarchicalContext } from "./hierarchical-loader.js";
+import { loadHierarchicalContext, renderBranchSections } from "./hierarchical-loader.js";
 
 function makeTempContextDir(): string {
   const dir = join(tmpdir(), `relay-hc-test-${Date.now()}`);
@@ -85,6 +85,16 @@ test("respects maxBranches cap", () => {
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
+});
+
+test("renderBranchSections renders one labeled section per branch", () => {
+  const rendered = renderBranchSections({ tokens: "Token Details", git: "Git Details" });
+  assert.ok(rendered.includes("## Branch: tokens\nToken Details"));
+  assert.ok(rendered.includes("## Branch: git\nGit Details"));
+});
+
+test("renderBranchSections returns empty string for no branches", () => {
+  assert.equal(renderBranchSections({}), "");
 });
 
 test("returns trunk only when no branches match", () => {

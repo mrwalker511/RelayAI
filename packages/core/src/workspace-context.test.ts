@@ -109,6 +109,36 @@ test("readRelayWorkspace returns zones with non-empty dynamicInput for a prompt"
   assert.ok(snapshot.zones.dynamicInput.includes("test prompt"));
 });
 
+test("hierarchical context keeps the static-block prefix stable across different prompts", () => {
+  const cwd = tempGitWorkspace();
+  mkdirSync(join(cwd, ".relay", "memory"), { recursive: true });
+  mkdirSync(join(cwd, ".relay", "context", "branches"), { recursive: true });
+  writeFileSync(join(cwd, ".relay", "config.json"), JSON.stringify({
+    context: { hierarchical: true, contextDir: ".relay/context", maxBranches: 3 }
+  }));
+  writeFileSync(join(cwd, ".relay", "context", "trunk.md"), "# Project Trunk Map\nStable high-level overview.");
+  writeFileSync(join(cwd, ".relay", "context", "branches", "tokens.md"), "# Token Budget Branch");
+  writeFileSync(join(cwd, ".relay", "context", "branches", "git.md"), "# Git Delta Branch");
+
+  const tokenPrompt = readRelayWorkspace({ cwd, prompt: "how does the token budget and cache limit work?" });
+  const gitPrompt = readRelayWorkspace({ cwd, prompt: "explain the git diff and commit delta handling" });
+
+  // The cacheable prefix (static block) must NOT change between prompts.
+  assert.equal(tokenPrompt.zones.staticBlock, gitPrompt.zones.staticBlock);
+  assert.equal(
+    tokenPrompt.prefix.current_zone_hashes.static_block,
+    gitPrompt.prefix.current_zone_hashes.static_block
+  );
+
+  // Stable trunk lives in the static block; volatile branches do not.
+  assert.ok(tokenPrompt.zones.staticBlock.includes("Stable high-level overview."));
+  assert.ok(!tokenPrompt.zones.staticBlock.includes("## Branch:"));
+
+  // Prompt-selected branches land in the dynamic input instead.
+  assert.ok(tokenPrompt.zones.dynamicInput.includes("## Branch: tokens"));
+  assert.ok(gitPrompt.zones.dynamicInput.includes("## Branch: git"));
+});
+
 test("summarizeContextHealth returns ok for a valid initialized workspace", () => {
   const cwd = tempGitWorkspace();
   mkdirSync(join(cwd, ".relay", "memory"), { recursive: true });

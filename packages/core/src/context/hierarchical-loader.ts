@@ -35,6 +35,18 @@ function detectRelevantDomains(probe: string, maxBranches: number): string[] {
     .map(([domain]) => domain);
 }
 
+/**
+ * Render the prompt-selected branch map into a single string. This content is
+ * VOLATILE (the selected branches depend on the prompt + git diff), so callers
+ * must place it in the DYNAMIC_INPUT zone — never in the cacheable STATIC_BLOCK
+ * prefix.
+ */
+export function renderBranchSections(branches: Record<string, string>): string {
+  return Object.entries(branches)
+    .map(([domain, content]) => `## Branch: ${domain}\n${content}`)
+    .join("\n\n");
+}
+
 export function loadHierarchicalContext(opts: LoadContextOptions): HierarchicalContext {
   const { contextDir, prompt = "", gitDiff = "", maxBranches = 3 } = opts;
   const trunkPath = join(contextDir, "trunk.md");
@@ -58,9 +70,7 @@ export function loadHierarchicalContext(opts: LoadContextOptions): HierarchicalC
     }
   }
 
-  const branchSections = Object.entries(branches)
-    .map(([domain, content]) => `## Branch: ${domain}\n${content}`)
-    .join("\n\n");
+  const branchSections = renderBranchSections(branches);
 
   const loaded = branchSections ? `${trunk}\n\n${branchSections}` : trunk;
 

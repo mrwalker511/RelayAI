@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { estimateTokens } from "./tokenizer.js";
+import { estimateTokens, CLAUDE_TOKEN_CORRECTION_FACTOR } from "./tokenizer.js";
 
 test("estimateTokens returns zero tokens for empty string", () => {
   const result = estimateTokens("");
@@ -30,4 +30,36 @@ test("estimateTokens result is consistent across repeated calls", () => {
   const second = estimateTokens(text);
   assert.equal(first.tokens, second.tokens);
   assert.equal(first.tokenizer, second.tokenizer);
+});
+
+test("default path labels cl100k_base", () => {
+  const result = estimateTokens("some sample text for tokenizing");
+  assert.equal(result.tokenizer, "cl100k_base");
+});
+
+test("no-opts count equals a generic provider", () => {
+  const text = "the quick brown fox jumps over the lazy dog";
+  assert.equal(estimateTokens(text).tokens, estimateTokens(text, { provider: "generic" }).tokens);
+});
+
+test("newer OpenAI models use o200k_base", () => {
+  const result = estimateTokens("some sample text", { provider: "openai", model: "gpt-4o" });
+  assert.equal(result.tokenizer, "o200k_base");
+  assert.ok(result.tokens > 0);
+});
+
+test("Claude applies the correction factor over the base count", () => {
+  const text = "summarize the architecture of this repository in detail";
+  const base = estimateTokens(text, { provider: "openai", model: "gpt-4-turbo" });
+  const claude = estimateTokens(text, { provider: "anthropic", model: "claude-sonnet-4" });
+  assert.equal(claude.tokenizer, "cl100k_base*claude_factor");
+  assert.equal(claude.tokens, Math.ceil(base.tokens * CLAUDE_TOKEN_CORRECTION_FACTOR));
+  assert.ok(claude.tokens > base.tokens);
+});
+
+test("explicit correctionFactor overrides the default", () => {
+  const text = "some text to estimate";
+  const base = estimateTokens(text);
+  const doubled = estimateTokens(text, { provider: "anthropic", model: "claude-sonnet-4", correctionFactor: 2 });
+  assert.equal(doubled.tokens, Math.ceil(base.tokens * 2));
 });

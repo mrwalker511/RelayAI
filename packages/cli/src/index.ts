@@ -35,9 +35,13 @@ import {
   serializeSemanticState,
   appendAuditEvent,
   readAuditLog,
-  filterAuditLog
+  filterAuditLog,
+  parseProviderUsage,
+  computeMeasuredSavings,
+  summarizePrefixStability,
+  projectSavingsFromHistory
 } from "@relay/core";
-import type { RelayConfig, StaticBlockInput, TokenEstimateOptions } from "@relay/core";
+import type { RelayConfig, StaticBlockInput, TokenEstimateOptions, ProviderUsage } from "@relay/core";
 
 const program = new Command();
 const relayDir = join(process.cwd(), ".relay");
@@ -51,6 +55,18 @@ function auditAppend(cfg: RelayConfig, fields: { event: string; session_id: stri
   } catch {
     // Audit log write failures are non-fatal
   }
+}
+
+/** Prefix hash of the most recent prior `ask` event for the same session (null-session matches null-session). */
+function previousAskPrefixHash(sessionId: string | null): string | undefined {
+  const events = readAuditLog(auditLogPath).filter(
+    (e) => e.event === "ask" && (e.session_id ?? null) === sessionId
+  );
+  for (let i = events.length - 1; i >= 0; i--) {
+    const h = events[i].prefix_hash;
+    if (typeof h === "string") return h;
+  }
+  return undefined;
 }
 
 function ensureRelayDir(): void {
@@ -368,7 +384,8 @@ program.command("ask")
   .option("--staged", "Use staged diff instead of full session diff")
   .option("--diff-mode <mode>", "Diff rendering mode: full | summarized | auto (default: auto)")
   .option("--include-timestamp", "Include ISO timestamp in dynamic input zone")
-  .action(async (prompt: string, options: { provider?: string; model?: string; dryRun?: boolean; staged?: boolean; diffMode?: "full" | "summarized" | "auto"; includeTimestamp?: boolean }) => {
+  .option("--measure", "Capture provider usage for measured savings (auto-adds --output-format json for the claude builtin)")
+  .action(async (prompt: string, options: { provider?: string; model?: string; dryRun?: boolean; staged?: boolean; diffMode?: "full" | "summarized" | "auto"; includeTimestamp?: boolean; measure?: boolean }) => {
     ensureRelayDir();
 
     // Anomaly detection — include current call before checking threshold
@@ -408,6 +425,21 @@ program.command("ask")
     const budget = checkTokenBudget(payload, resolvedTokens, tokenizerOptions);
 
     printZoneBreakdown(zones, tokenizerOptions);
+
+    // Per-call ledger fields — computed before any audit write (previousAskPrefixHash reads the log).
+    const zoneReport = inspectZoneTokens(zones, tokenizerOptions);
+    const askPrefixHash = getPrefixHash(zones.staticBlock, zones.stateLayer);
+    const prevPrefixHash = previousAskPrefixHash(activeSessionId);
+    const ledgerFields = {
+      prefix_hash: askPrefixHash,
+      static_block_hash: getPrefixHash(zones.staticBlock, ""),
+      state_layer_hash: getPrefixHash(zones.stateLayer, ""),
+      static_block_tokens: zoneReport.staticBlock,
+      state_layer_tokens: zoneReport.stateLayer,
+      dynamic_input_tokens: zoneReport.dynamicInput,
+      tokenizer: estimateTokens(zones.staticBlock, tokenizerOptions).tokenizer,
+      prefix_stable: prevPrefixHash !== undefined && prevPrefixHash === askPrefixHash
+    };
 
     if (budget.status === "blocked") {
       auditAppend(cfg, {
@@ -460,7 +492,8 @@ program.command("ask")
         model: options.model ?? null,
         budget_status: budget.status,
         budget_tokens: budget.tokens,
-        prompt_chars: prompt.length
+        prompt_chars: prompt.length,
+        ...ledgerFields
       });
       process.stderr.write(`[dry-run] ${provider.commandLine} < <relay-payload>\n`);
       console.log("---BEGIN RELAY PAYLOAD---");
@@ -473,7 +506,18 @@ program.command("ask")
       let provider;
       try { provider = createShellProvider(options.provider, cfg); }
       catch (err) { process.stderr.write(`${(err as Error).message}\n`); process.exit(1); }
-      const exitCode = await provider.sendPrompt(payload);
+      if (options.measure) provider = provider.withMeasure();
+      const result = await provider.sendPrompt(payload, { capture: options.measure });
+      const exitCode = result.exitCode;
+
+      let usage: ProviderUsage | null = null;
+      if (options.measure) {
+        usage = result.capturedOutput ? parseProviderUsage(provider.name, result.capturedOutput) : null;
+        if (!usage) {
+          process.stderr.write("[relay] --measure: could not parse provider usage; record it with `relay usage record`.\n");
+        }
+      }
+
       appendAskHistory({
         prompt,
         budgetTokens: budget.tokens,
@@ -493,7 +537,15 @@ program.command("ask")
         budget_status: budget.status,
         budget_tokens: budget.tokens,
         prompt_chars: prompt.length,
-        provider_exit_code: exitCode
+        provider_exit_code: exitCode,
+        ...ledgerFields,
+        ...(usage ? {
+          usage_source: "provider",
+          usage_input_tokens: usage.inputTokens ?? 0,
+          usage_cached_input_tokens: usage.cachedInputTokens ?? 0,
+          usage_cache_creation_tokens: usage.cacheCreationTokens ?? 0,
+          usage_output_tokens: usage.outputTokens ?? 0
+        } : {})
       });
       process.exit(exitCode);
     }
@@ -514,7 +566,8 @@ program.command("ask")
       model: options.model ?? null,
       budget_status: budget.status,
       budget_tokens: budget.tokens,
-      prompt_chars: prompt.length
+      prompt_chars: prompt.length,
+      ...ledgerFields
     });
     console.log("---BEGIN RELAY PAYLOAD---");
     console.log(payload);
@@ -562,10 +615,12 @@ cache.command("inspect")
   .option("--input-cost-per-million <number>", "Input token cost per million tokens", parseNonNegativeNumber)
   .option("--cached-input-cost-per-million <number>", "Cached input token cost per million tokens", parseNonNegativeNumber)
   .option("--expected-cache-hit-rate <number>", "Expected prefix cache hit rate from 0 to 1", parseCacheHitRate)
+  .option("--use-recorded-history", "Use the measured prefix-stability rate from the audit log instead of --expected-cache-hit-rate")
   .action((options: {
     inputCostPerMillion?: number;
     cachedInputCostPerMillion?: number;
     expectedCacheHitRate?: number;
+    useRecordedHistory?: boolean;
   }) => {
     ensureRelayDir();
     const semanticState = readOptional(join(relayDir, "memory", "semantic-state.json"), serializeSemanticState(createEmptySemanticState()));
@@ -586,6 +641,8 @@ cache.command("inspect")
     const savedStateLayerHash = sessionData.state_layer_hash as string | undefined;
     const report: ReturnType<typeof inspectCacheDiagnostics> & {
       cost?: ReturnType<typeof estimateZoneAwareInputCost>;
+      recorded_stability_rate?: number;
+      cache_hit_rate_source?: "recorded" | "flag" | "default";
     } = inspectCacheDiagnostics({
       staticBlock,
       stateLayer,
@@ -606,6 +663,17 @@ cache.command("inspect")
       }
     });
 
+    let cacheHitRate = options.expectedCacheHitRate;
+    let hitRateSource: "recorded" | "flag" | "default" =
+      options.expectedCacheHitRate !== undefined ? "flag" : "default";
+    if (options.useRecordedHistory) {
+      const stability = summarizePrefixStability(readAuditLog(auditLogPath), sessionData.session_id as string | undefined);
+      cacheHitRate = stability.stabilityRate;
+      hitRateSource = "recorded";
+      report.recorded_stability_rate = stability.stabilityRate;
+    }
+    report.cache_hit_rate_source = hitRateSource;
+
     if (options.inputCostPerMillion !== undefined) {
       report.cost = estimateZoneAwareInputCost({
         staticBlockTokens: report.zones.static_block,
@@ -613,7 +681,7 @@ cache.command("inspect")
         dynamicInputTokens: report.zones.dynamic_input,
         inputCostPerMillion: options.inputCostPerMillion,
         cachedInputCostPerMillion: options.cachedInputCostPerMillion,
-        expectedCacheHitRate: options.expectedCacheHitRate
+        expectedCacheHitRate: cacheHitRate
       });
     }
 
@@ -672,7 +740,8 @@ cache.command("warm")
       return;
     }
 
-    process.exit(await provider.sendPrompt(payload));
+    const warmResult = await provider.sendPrompt(payload);
+    process.exit(warmResult.exitCode);
   });
 
 const tokens = program.command("tokens").description("Estimate and inspect local token usage.");
@@ -765,8 +834,8 @@ gc.command("run").description("Compact session history into semantic state using
       event: "gc_run",
       session_id: (gcSessionData.session_id as string | undefined) ?? null,
       command: gcCommand[0],
-      original_tokens: result.originalApproxTokens,
-      compacted_tokens: result.compactedApproxTokens,
+      original_approx_tokens: result.originalApproxTokens,
+      compacted_approx_tokens: result.compactedApproxTokens,
       ok: true
     });
     console.log(`Compacted: ${result.originalApproxTokens.toLocaleString()} → ${result.compactedApproxTokens.toLocaleString()} tokens.`);
@@ -999,6 +1068,93 @@ program.command("audit")
         .join(" ");
       process.stdout.write(`${col(ts, 24)} ${col(e.event as string, 16)} ${col(session, 16)} ${details}\n`);
     }
+  });
+
+const usage = program.command("usage").description("Record and inspect provider token usage.");
+usage.command("record")
+  .description("Manually record measured provider token usage for savings reporting.")
+  .requiredOption("--input <n>", "Full-price input tokens billed", parseNonNegativeNumber)
+  .option("--cached-input <n>", "Cache-read input tokens", parseNonNegativeNumber)
+  .option("--cache-creation <n>", "Cache-creation (write) tokens", parseNonNegativeNumber)
+  .option("--output <n>", "Output tokens", parseNonNegativeNumber)
+  .option("--session <id>", "Session id to attribute the usage to")
+  .action((opts: { input: number; cachedInput?: number; cacheCreation?: number; output?: number; session?: string }) => {
+    ensureRelayDir();
+    const cfg = readRelayConfig();
+    const sessionFromFile = parseSessionJson(readOptional(join(relayDir, "session.json"), "{}")).session_id as string | undefined;
+    auditAppend(cfg, {
+      event: "usage",
+      session_id: opts.session ?? sessionFromFile ?? null,
+      usage_source: "manual",
+      usage_input_tokens: opts.input,
+      usage_cached_input_tokens: opts.cachedInput ?? 0,
+      usage_cache_creation_tokens: opts.cacheCreation ?? 0,
+      usage_output_tokens: opts.output ?? 0
+    });
+    console.log("Recorded manual usage.");
+  });
+
+program.command("savings")
+  .description("Report measured and projected prompt-cache savings from the audit log.")
+  .option("--input-cost-per-million <n>", "Full-price input token cost per million", parseNonNegativeNumber)
+  .option("--cached-input-cost-per-million <n>", "Cache-read input token cost per million", parseNonNegativeNumber)
+  .option("--cache-creation-cost-per-million <n>", "Cache-write token cost per million (default: input × 1.25)", parseNonNegativeNumber)
+  .option("--output-cost-per-million <n>", "Output token cost per million (default: 0)", parseNonNegativeNumber)
+  .option("--session <id>", "Limit the report to one session")
+  .option("--json", "Emit JSON")
+  .action((opts: {
+    inputCostPerMillion?: number;
+    cachedInputCostPerMillion?: number;
+    cacheCreationCostPerMillion?: number;
+    outputCostPerMillion?: number;
+    session?: string;
+    json?: boolean;
+  }) => {
+    const events = readAuditLog(auditLogPath);
+    const stability = summarizePrefixStability(events, opts.session);
+    const pricingDefined = opts.inputCostPerMillion !== undefined;
+    const cachedInputCostPerMillion = opts.cachedInputCostPerMillion ?? (opts.inputCostPerMillion ?? 0) * 0.1;
+    const measured = pricingDefined ? computeMeasuredSavings(events, {
+      inputCostPerMillion: opts.inputCostPerMillion!,
+      cachedInputCostPerMillion,
+      cacheCreationCostPerMillion: opts.cacheCreationCostPerMillion,
+      outputCostPerMillion: opts.outputCostPerMillion
+    }, opts.session) : null;
+    const projected = pricingDefined ? projectSavingsFromHistory(events, {
+      inputCostPerMillion: opts.inputCostPerMillion!,
+      cachedInputCostPerMillion
+    }, opts.session) : null;
+
+    if (opts.json) {
+      console.log(JSON.stringify({ stability, measured, projected }, null, 2));
+      return;
+    }
+
+    const money = (n: number) => `$${n.toFixed(4)}`;
+    const out: string[] = [];
+    out.push("MEASURED (from recorded provider/manual usage)");
+    if (measured && measured.callsWithUsage > 0) {
+      out.push(`  calls with usage:    ${measured.callsWithUsage}`);
+      out.push(`  input / cache-read:  ${measured.totalInputTokens.toLocaleString()} / ${measured.totalCachedInputTokens.toLocaleString()} tokens`);
+      out.push(`  cache-write / output:${measured.totalCacheCreationTokens.toLocaleString()} / ${measured.totalOutputTokens.toLocaleString()} tokens`);
+      out.push(`  actual vs baseline:  ${money(measured.actualCost)} vs ${money(measured.baselineCost)}`);
+      out.push(`  saved:               ${money(measured.savings)}  (negative on a first/cache-creating call is expected; aggregate is the honest figure)`);
+    } else {
+      out.push("  (no recorded usage yet — run `relay ask --measure` or `relay usage record`)");
+    }
+    out.push("");
+    out.push("PROJECTED FROM HISTORY (measured prefix-stability rate × zone estimator)");
+    out.push(`  prefix-stability:    ${(stability.stabilityRate * 100).toFixed(1)}% over ${stability.asks} ask(s)`);
+    if (projected) {
+      out.push(`  avg zones (S/St/D):  ${projected.avgStaticBlockTokens} / ${projected.avgStateLayerTokens} / ${projected.avgDynamicInputTokens} tokens`);
+      out.push(`  projected/call saved:${money(projected.estimate.estimatedSavings)}  (PROJECTION, not measured)`);
+    }
+    out.push("");
+    out.push("NOTES");
+    if (!pricingDefined) out.push("  Pass --input-cost-per-million (and optionally --cached/--cache-creation/--output) for cost figures.");
+    if (pricingDefined) out.push(`  Pricing used: input ${money(opts.inputCostPerMillion!)}/M, cache-read ${money(cachedInputCostPerMillion)}/M.`);
+    if (!measured || measured.callsWithUsage === 0) out.push("  No measured usage recorded — projection above is grounded in real prefix stability but uses the estimator for tokens.");
+    process.stdout.write(out.join("\n") + "\n");
   });
 
 await program.parseAsync();

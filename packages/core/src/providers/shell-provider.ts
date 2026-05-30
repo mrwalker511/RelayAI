@@ -1,6 +1,7 @@
 import { spawn } from "node:child_process";
+import { basename } from "node:path";
 import type { RelayConfig } from "../config/relay-config.js";
-import type { ProviderAdapter } from "./provider.js";
+import type { ProviderAdapter, ProviderResult, SendPromptOptions } from "./provider.js";
 
 const PROVIDER_DEFAULTS: Record<string, string[]> = {
   claude: ["claude"],
@@ -42,9 +43,31 @@ export class ShellProvider implements ProviderAdapter {
     return [this.command, ...this.args];
   }
 
-  async sendPrompt(payload: string): Promise<number> {
+  /**
+   * Returns a provider that emits machine-readable usage. For the `claude`
+   * builtin this appends `--output-format json` (unless already configured);
+   * for any other provider it is a no-op.
+   */
+  withMeasure(): ShellProvider {
+    if (basename(this.command) !== "claude") return this;
+    if (this.args.includes("--output-format")) return this;
+    return new ShellProvider(this.name, this.command, [...this.args, "--output-format", "json"], this.timeoutMs);
+  }
+
+  async sendPrompt(payload: string, opts: SendPromptOptions = {}): Promise<ProviderResult> {
     return new Promise((resolve, reject) => {
-      const child = spawn(this.command, this.args, { stdio: ["pipe", "inherit", "inherit"] });
+      const child = spawn(this.command, this.args, {
+        stdio: ["pipe", opts.capture ? "pipe" : "inherit", "inherit"]
+      });
+      const chunks: Buffer[] = [];
+      // Tee captured stdout: the user still sees it in real time, and we buffer
+      // it so usage metadata can be parsed after the process exits.
+      if (opts.capture && child.stdout) {
+        child.stdout.on("data", (chunk: Buffer) => {
+          process.stdout.write(chunk);
+          chunks.push(chunk);
+        });
+      }
       let settled = false;
       const timer = setTimeout(() => {
         if (settled) return;
@@ -58,16 +81,24 @@ export class ShellProvider implements ProviderAdapter {
         clearTimeout(timer);
         fn();
       };
-      child.stdin.on("error", (err: NodeJS.ErrnoException) => {
+      const stdin = child.stdin;
+      if (!stdin) {
+        finish(() => reject(new Error(`Provider '${this.command}' did not expose stdin.`)));
+        return;
+      }
+      stdin.on("error", (err: NodeJS.ErrnoException) => {
         if (err.code !== "EPIPE") finish(() => reject(err));
       });
-      child.stdin.write(payload);
-      child.stdin.end();
+      stdin.write(payload);
+      stdin.end();
       child.on("exit", (code) => {
         if (code === null) {
           finish(() => reject(new Error(`Provider '${this.command}' was terminated by a signal before it could exit.`)));
         } else {
-          finish(() => resolve(code));
+          finish(() => resolve({
+            exitCode: code,
+            capturedOutput: opts.capture ? Buffer.concat(chunks).toString("utf8") : undefined
+          }));
         }
       });
       child.on("error", (err: NodeJS.ErrnoException) => {

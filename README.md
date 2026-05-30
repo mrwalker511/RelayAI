@@ -135,12 +135,21 @@ relay diff                                        # inspect the session delta
 relay context inspect                             # inspect prompt-construction state
 relay tokens inspect                              # inspect token usage by zone
 relay cache inspect                               # inspect cache-relevant prefix metadata
+relay ask "..." --provider claude --measure       # capture the provider's real token usage
+relay savings --input-cost-per-million 3          # report measured + projected cache savings
 relay gc preview                                  # preview semantic memory compaction
 relay gc run                                      # compact session history
 relay mcp                                         # expose Relay context to MCP agents
 ```
 
 See [`docs/COMMANDS.md`](docs/COMMANDS.md) for the full command reference.
+
+### Estimated vs. measured savings
+
+Relay distinguishes two kinds of numbers, and labels them as such:
+
+- **Estimated** — local token math from the bundled tokenizer (`relay tokens inspect`, `relay cache inspect`, `pnpm run compare`). Useful and offline, but a model of cost, not a bill. `compare` shows both the first-call (cold-cache) size and the amortized repeat-call (warm-cache) cost, because savings accrue on repeat calls — a single call on a small repo can cost *more*.
+- **Measured** — the provider's actual reported usage. `relay ask --measure` captures it (e.g. Claude's `cache_read_input_tokens`) into the audit ledger; `relay usage record` ingests it for providers that don't emit it; `relay savings` then reports real cost vs a no-cache baseline (cache-creation surcharge and output included). Even without measured usage, `relay savings` grounds its projection in the **measured prefix-stability rate** from your call history rather than a guess.
 
 ---
 

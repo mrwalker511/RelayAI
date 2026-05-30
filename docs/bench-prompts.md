@@ -77,4 +77,36 @@ To compare token counts directly without a live provider, run:
 pnpm run compare -- --prompt "Summarize this codebase..."
 ```
 
-This prints the Relay payload size vs the naive file-dump baseline without making any API call.
+This prints the Relay payload size vs the naive file-dump baseline (first-call and amortized repeat-call) without making any API call.
+
+## Automated measured bench (no manual transcription)
+
+Instead of copying usage numbers into HTML by hand, let Relay record them:
+
+```bash
+# 1. Capture real provider usage on each prompt (Claude shown; auto-adds --output-format json)
+relay ask --provider claude --measure "Give a one-paragraph overview of this repository."
+relay ask --provider claude --measure "Where are the entry points and how does data flow?"
+# ...repeat for the five prompts...
+
+# 2. Read measured + projected savings straight from the audit ledger
+relay savings --input-cost-per-million 3 --cached-input-cost-per-million 0.3 --output-cost-per-million 15
+```
+
+For a provider whose CLI does not emit a usage envelope, capture the numbers from its output and ingest them:
+
+```bash
+relay usage record --input 1200 --cached-input 8000 --cache-creation 300 --output 450
+```
+
+The MEASURED section is real billed cost vs a no-cache baseline; the PROJECTED section uses your **measured** prefix-stability rate. Run the prompts in a session (`relay session start`) so repeat calls share a stable cached prefix — that is where the savings show up.
+
+### Prove it locally without an API
+
+Configure a fake `claude` provider that prints a Claude-style usage envelope, then run the flow above:
+
+```bash
+node -e 'const fs=require("fs"),f=".relay/config.json",c=JSON.parse(fs.readFileSync(f));c.provider={default:"claude",commands:{claude:[process.execPath,"-e","process.stdin.resume();process.stdin.on(\"end\",()=>{process.stdout.write(JSON.stringify({type:\"result\",usage:{input_tokens:1200,cache_read_input_tokens:8000,cache_creation_input_tokens:300,output_tokens:450}}));process.exit(0)})"]}};fs.writeFileSync(f,JSON.stringify(c,null,2))'
+relay ask --provider claude --measure "summarize"
+relay savings --input-cost-per-million 3 --cached-input-cost-per-million 0.3 --output-cost-per-million 15
+```

@@ -751,3 +751,81 @@ test("relay mcp get_semantic_state reports state path and valid json", { skip: c
     assert.ok((result.semantic_state_path as string).endsWith("semantic-state.json"));
   });
 });
+
+function readAuditEvents(cwd: string): Array<Record<string, unknown>> {
+  const path = join(cwd, ".relay", "audit.log");
+  if (!existsSync(path)) return [];
+  return readFileSync(path, "utf8").split("\n").filter(Boolean).map((l) => JSON.parse(l));
+}
+
+test("relay ask enriches the audit ledger with prefix hash and zone tokens; prefix_stable goes false then true", { skip: canSpawnNode ? false : "nested Node execution is unavailable in this sandbox" }, () => {
+  const cwd = tempGitWorkspace();
+  assert.equal(runRelay(["init"], cwd).result.status, 0);
+  assert.equal(runRelay(["session", "start"], cwd).result.status, 0);
+
+  assert.equal(runRelay(["ask", "same prompt"], cwd).result.status, 0);
+  assert.equal(runRelay(["ask", "same prompt"], cwd).result.status, 0);
+
+  const asks = readAuditEvents(cwd).filter((e) => e.event === "ask");
+  assert.ok(asks.length >= 2);
+  const [first, second] = asks.slice(-2);
+  assert.equal(typeof first.prefix_hash, "string");
+  assert.equal(typeof first.static_block_tokens, "number");
+  assert.equal(typeof first.tokenizer, "string");
+  assert.equal(first.prefix_stable, false, "first ask has no predecessor");
+  assert.equal(second.prefix_stable, true, "second identical ask is prefix-stable");
+});
+
+test("relay ask --measure parses provider usage into the audit ledger", { skip: canSpawnNode ? false : "nested Node execution is unavailable in this sandbox" }, () => {
+  const cwd = tempGitWorkspace();
+  assert.equal(runRelay(["init"], cwd).result.status, 0);
+  assert.equal(runRelay(["session", "start"], cwd).result.status, 0);
+  const configPath = join(cwd, ".relay", "config.json");
+  const config = JSON.parse(readFileSync(configPath, "utf8"));
+  const envelope = JSON.stringify({ type: "result", usage: { input_tokens: 10, cache_read_input_tokens: 90, cache_creation_input_tokens: 5, output_tokens: 20 } });
+  config.provider.commands = {
+    claude: [process.execPath, "-e", `process.stdin.resume(); process.stdin.on('end', () => { process.stdout.write(${JSON.stringify(envelope)}); process.exit(0); });`]
+  };
+  writeFileSync(configPath, JSON.stringify(config, null, 2));
+
+  const result = runRelay(["ask", "--provider", "claude", "--measure", "measure me"], cwd).result;
+  assert.equal(result.status, 0);
+
+  const asks = readAuditEvents(cwd).filter((e) => e.event === "ask" && e.usage_source === "provider");
+  assert.equal(asks.length, 1);
+  const ev = asks[0];
+  assert.equal(ev.usage_input_tokens, 10);
+  assert.equal(ev.usage_cached_input_tokens, 90);
+  assert.equal(ev.usage_cache_creation_tokens, 5);
+  assert.equal(ev.usage_output_tokens, 20);
+  assert.equal(typeof ev.prefix_hash, "string");
+});
+
+test("relay usage record writes a manual usage event", { skip: canSpawnNode ? false : "nested Node execution is unavailable in this sandbox" }, () => {
+  const cwd = tempGitWorkspace();
+  assert.equal(runRelay(["init"], cwd).result.status, 0);
+  const result = runRelay(["usage", "record", "--input", "100", "--cached-input", "900", "--cache-creation", "50", "--output", "200"], cwd).result;
+  assert.equal(result.status, 0);
+
+  const usage = readAuditEvents(cwd).filter((e) => e.event === "usage");
+  assert.equal(usage.length, 1);
+  assert.equal(usage[0].usage_source, "manual");
+  assert.equal(usage[0].usage_input_tokens, 100);
+  assert.equal(usage[0].usage_cached_input_tokens, 900);
+});
+
+test("relay savings --json reports measured and projected sections", { skip: canSpawnNode ? false : "nested Node execution is unavailable in this sandbox" }, () => {
+  const cwd = tempGitWorkspace();
+  assert.equal(runRelay(["init"], cwd).result.status, 0);
+  assert.equal(runRelay(["session", "start"], cwd).result.status, 0);
+  assert.equal(runRelay(["ask", "warm the ledger"], cwd).result.status, 0);
+  assert.equal(runRelay(["usage", "record", "--input", "100", "--cached-input", "900", "--cache-creation", "50", "--output", "200"], cwd).result.status, 0);
+
+  const result = runRelay(["savings", "--input-cost-per-million", "3", "--cached-input-cost-per-million", "0.3", "--json"], cwd).result;
+  assert.equal(result.status, 0);
+  const report = JSON.parse(result.stdout);
+  assert.equal(report.measured.callsWithUsage, 1);
+  assert.equal(typeof report.measured.savings, "number");
+  assert.ok(report.projected.estimate);
+  assert.equal(typeof report.stability.stabilityRate, "number");
+});

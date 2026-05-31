@@ -1,0 +1,44 @@
+{
+  "provider": {
+    "default": "mock",
+    "commands": {
+      "mock": ["node", "mock-provider.js"]
+    }
+  },
+  "routing": {},
+  "gc": {
+    "enabled": true,
+    "command": ["node", "mock-provider.js"],
+    "historyTokenLimit": 12000,
+    "targetSummaryTokens": 500,
+    "preserveErrors": true,
+    "preserveDecisions": true,
+    "preserveCodeChanges": true
+  },
+  "tokens": {
+    "provider": "anthropic",
+    "model": "claude-sonnet-4-6",
+    "hardLimit": 100000,
+    "warningLimit": 50000,
+    "requireConfirmationAbove": 75000
+  },
+  "files": {
+    "maxIndex": 200
+  },
+  "context": {
+    "hierarchical": false,
+    "contextDir": ".relay/context",
+    "maxBranches": 3
+  },
+  "filter": {
+    "enabled": true,
+    "maxLines": 300,
+    "maxSuccessOccurrences": 3,
+    "dedupConsecutive": true,
+    "collapseBlankLines": true
+  },
+  "audit": {
+    "enabled": true,
+    "maxLines": 10000
+  }
+}

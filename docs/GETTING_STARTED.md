@@ -2,6 +2,10 @@
 
 This guide walks through installing, building, and running Relay locally for development. For a complete user-facing installation guide covering provider setup, daily workflow, and troubleshooting, see [`USER_INSTALLATION_GUIDE.md`](USER_INSTALLATION_GUIDE.md).
 
+> **Just want to see it work?** Run `./examples/sample-project/try-relay.sh` for a
+> zero-config, no-API-key demo of measured token savings, then read
+> [`WALKTHROUGH.md`](WALKTHROUGH.md) for what each number means.
+
 ---
 
 ## Prerequisites
@@ -82,6 +86,19 @@ Without a provider, Relay prints the assembled payload. With `--provider <name>`
 
 ---
 
+## Measure Real Savings
+
+Add `--measure` to capture the provider's actual reported token usage into the audit ledger, then report it:
+
+```bash
+relay ask --provider claude --measure "Fix the failing auth middleware test"
+relay savings --input-cost-per-million 3 --cached-input-cost-per-million 0.3
+```
+
+`relay savings` prints **MEASURED** cost vs. a no-cache baseline and a **PROJECTED** figure grounded in your measured prefix-stability rate. For providers that don't emit usage, record it with `relay usage record`. See [`WALKTHROUGH.md`](WALKTHROUGH.md) for a full no-API-key run.
+
+---
+
 ## Check Workspace Readiness
 
 ```bash
@@ -116,6 +133,7 @@ relay context inspect
 
 ## Next Steps
 
+- **Try it end to end (no API key)**: [`WALKTHROUGH.md`](WALKTHROUGH.md)
 - **Set up a provider**: [`USER_INSTALLATION_GUIDE.md`](USER_INSTALLATION_GUIDE.md)
 - **Full command reference**: [`COMMANDS.md`](COMMANDS.md)
 - **Configuration options**: [`CONFIGURATION.md`](CONFIGURATION.md)

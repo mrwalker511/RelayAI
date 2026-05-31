@@ -1,0 +1,11 @@
+{
+  "name": "task-tracker",
+  "version": "0.1.0",
+  "description": "A tiny in-memory task tracker — the sample project for trying RelayAI end to end.",
+  "type": "module",
+  "main": "src/index.ts",
+  "scripts": {
+    "demo": "tsx src/index.ts"
+  },
+  "license": "MIT"
+}

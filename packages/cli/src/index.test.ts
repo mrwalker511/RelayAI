@@ -801,6 +801,56 @@ test("relay ask --measure parses provider usage into the audit ledger", { skip: 
   assert.equal(typeof ev.prefix_hash, "string");
 });
 
+test("relay ask --provider codex --measure normalizes Codex usage and feeds savings", { skip: canSpawnNode ? false : "nested Node execution is unavailable in this sandbox" }, () => {
+  const cwd = tempGitWorkspace();
+  assert.equal(runRelay(["init"], cwd).result.status, 0);
+  assert.equal(runRelay(["session", "start"], cwd).result.status, 0);
+  const configPath = join(cwd, ".relay", "config.json");
+  const config = JSON.parse(readFileSync(configPath, "utf8"));
+  // Fixture mimics `codex exec --json -`: drains stdin, prints a turn.completed JSONL line.
+  const envelope = JSON.stringify({ type: "turn.completed", usage: { input_tokens: 24763, cached_input_tokens: 24448, output_tokens: 122, reasoning_output_tokens: 0 } });
+  config.provider.commands = {
+    codex: [process.execPath, "-e", `process.stdin.resume(); process.stdin.on('end', () => { process.stdout.write(${JSON.stringify(envelope)} + "\\n"); process.exit(0); });`]
+  };
+  writeFileSync(configPath, JSON.stringify(config, null, 2));
+
+  const result = runRelay(["ask", "--provider", "codex", "--measure", "explain the priority sort"], cwd).result;
+  assert.equal(result.status, 0);
+
+  const asks = readAuditEvents(cwd).filter((e) => e.event === "ask" && e.usage_source === "provider");
+  assert.equal(asks.length, 1);
+  const ev = asks[0];
+  assert.equal(ev.usage_input_tokens, 315); // 24763 - 24448 (Codex input includes cached)
+  assert.equal(ev.usage_cached_input_tokens, 24448);
+  assert.equal(ev.usage_cache_creation_tokens, 0); // Codex has no cache-creation
+  assert.equal(ev.usage_output_tokens, 122);
+
+  const savings = runRelay(["savings", "--input-cost-per-million", "3", "--json"], cwd).result;
+  assert.equal(savings.status, 0);
+  const report = JSON.parse(savings.stdout);
+  assert.equal(report.measured.callsWithUsage, 1);
+  assert.equal(typeof report.measured.savings, "number");
+});
+
+test("relay ask --provider copilot delivers the prompt as a CLI argument via {prompt}", { skip: canSpawnNode ? false : "nested Node execution is unavailable in this sandbox" }, () => {
+  const cwd = tempGitWorkspace();
+  assert.equal(runRelay(["init"], cwd).result.status, 0);
+  assert.equal(runRelay(["session", "start"], cwd).result.status, 0);
+  const configPath = join(cwd, ".relay", "config.json");
+  const config = JSON.parse(readFileSync(configPath, "utf8"));
+  // Fixture echoes its last argv element (the substituted {prompt}) to stdout.
+  config.provider.commands = {
+    copilot: [process.execPath, "-e", "process.stdout.write(process.argv.at(-1)); process.exit(0);", "{prompt}"]
+  };
+  writeFileSync(configPath, JSON.stringify(config, null, 2));
+
+  const result = runRelay(["ask", "--provider", "copilot", "route via argument"], cwd).result;
+  assert.equal(result.status, 0);
+  // The assembled Relay payload was substituted into {prompt} and echoed back.
+  assert.match(result.stdout, /route via argument/);
+  assert.match(result.stdout, /DYNAMIC_INPUT/);
+});
+
 test("relay usage record writes a manual usage event", { skip: canSpawnNode ? false : "nested Node execution is unavailable in this sandbox" }, () => {
   const cwd = tempGitWorkspace();
   assert.equal(runRelay(["init"], cwd).result.status, 0);

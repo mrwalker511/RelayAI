@@ -41,7 +41,8 @@ function getEncoder(name: EncodingName): ReturnType<typeof getEncoding> | null {
 }
 
 function isNewerOpenAiModel(model: string): boolean {
-  return /^(gpt-4o|gpt-4\.1|o1|o3|o4)/.test(model);
+  // gpt-5 covers gpt-5 and gpt-5-codex (Codex CLI's default family).
+  return /^(gpt-4o|gpt-4\.1|gpt-5|o1|o3|o4)/.test(model);
 }
 
 function isClaudeModel(model: string): boolean {

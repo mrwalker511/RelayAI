@@ -1,10 +1,13 @@
 #!/usr/bin/env bash
 #
-# One-command RelayAI demo. No API key, no network.
+# One-command RelayAI demo against the REAL OpenAI Codex CLI.
 #
-# Copies this sample project into a fresh temporary git repo, wires up a mock
-# provider that emits real Claude-style usage envelopes, and runs the full
-# RelayAI flow so you can SEE measured token savings build up across calls.
+# Copies this sample project into a fresh temporary git repo, wires up Codex as
+# the measured provider, and runs the full RelayAI flow so you can SEE measured
+# token savings build up across real Codex calls.
+#
+# Requires: `codex` on PATH and an authenticated session (`codex login`).
+# Note: this makes REAL Codex calls (network + tokens against your account).
 #
 # Usage:   ./try-relay.sh
 #
@@ -16,6 +19,15 @@ RELAY_DIST="$REPO_ROOT/packages/cli/dist/index.js"
 
 bold() { printf "\033[1m%s\033[0m\n" "$1"; }
 rule() { printf "\033[2m%s\033[0m\n" "----------------------------------------------------------------------"; }
+
+# 0. Preflight: this demo drives the real Codex CLI.
+if ! command -v codex >/dev/null 2>&1; then
+  bold "This demo makes REAL OpenAI Codex calls, but 'codex' was not found in PATH."
+  echo "  Install it:     npm i -g @openai/codex   (see https://github.com/openai/codex)"
+  echo "  Authenticate:   codex login"
+  echo "  Then re-run:    ./try-relay.sh"
+  exit 1
+fi
 
 # 1. Build the RelayAI CLI if it isn't built yet.
 if [ ! -f "$RELAY_DIST" ]; then
@@ -38,7 +50,7 @@ bold "Sample project ready in a fresh git repo:"
 echo "  $WORK"
 echo
 
-# 3. Initialize Relay and install the mock-provider config.
+# 3. Initialize Relay and install the Codex config.
 "${RELAY[@]}" init >/dev/null
 cp relay.config.json .relay/config.json
 "${RELAY[@]}" session start >/dev/null
@@ -49,11 +61,12 @@ run() { echo; printf "\033[36m$ relay %s\033[0m\n" "$*"; "${RELAY[@]}" "$@"; }
 echo; rule; bold "1) What Relay assembled — three zones, stable prefix first"; rule
 run cache inspect --input-cost-per-million 3 --cached-input-cost-per-million 0.3
 
-echo; rule; bold "2) Ask through the mock provider WITH --measure (3 calls)"; rule
-echo "   First call writes the cache (a MISS); later calls read it (HITs)."
-run ask --provider mock --measure "Explain how the priority sort works."
-run ask --provider mock --measure "Add a dueDate field to the Task type."
-run ask --provider mock --measure "Write a test for TaskStore.complete()."
+echo; rule; bold "2) Ask Codex WITH --measure (3 real calls)"; rule
+echo "   --measure runs 'codex exec --json -' and parses the turn.completed usage."
+echo "   The first call writes Codex's prompt cache; later calls read it back."
+run ask --provider codex --measure "Explain how the priority sort works."
+run ask --provider codex --measure "Add a dueDate field to the Task type."
+run ask --provider codex --measure "Write a test for TaskStore.complete()."
 
 echo; rule; bold "3) Measured savings, straight from the audit ledger"; rule
 run savings --input-cost-per-million 3 --cached-input-cost-per-million 0.3 --output-cost-per-million 15
@@ -63,8 +76,9 @@ run audit --event ask --tail 3
 
 echo; rule
 bold "Done. What you just saw:"
-echo "  - Call 1 was a cache MISS (wrote the cache); calls 2-3 were HITs."
-echo "  - prefix_stable flipped false -> true once the cached prefix held steady."
+echo "  - Codex reports input_tokens INCLUSIVE of cached_input_tokens; Relay"
+echo "    normalizes uncached input = input - cached for accurate accounting."
+echo "  - As Codex's cache warmed, cached_input_tokens climbed across calls."
 echo "  - 'relay savings' aggregated the REAL provider usage into dollars saved."
 echo
 bold "Poke around the working copy if you like:"

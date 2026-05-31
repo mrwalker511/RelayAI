@@ -1,14 +1,15 @@
 {
   "provider": {
-    "default": "mock",
+    "default": "codex",
     "commands": {
-      "mock": ["node", "mock-provider.js"]
+      "codex": ["codex", "exec", "-"],
+      "copilot": ["copilot", "-p", "{prompt}"]
     }
   },
   "routing": {},
   "gc": {
     "enabled": true,
-    "command": ["node", "mock-provider.js"],
+    "command": ["codex", "exec", "-"],
     "historyTokenLimit": 12000,
     "targetSummaryTokens": 500,
     "preserveErrors": true,
@@ -16,8 +17,8 @@
     "preserveCodeChanges": true
   },
   "tokens": {
-    "provider": "anthropic",
-    "model": "claude-sonnet-4-6",
+    "provider": "openai",
+    "model": "gpt-5-codex",
     "hardLimit": 100000,
     "warningLimit": 50000,
     "requireConfirmationAbove": 75000

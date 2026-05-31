@@ -2,13 +2,14 @@
   "provider": {
     "default": "codex",
     "commands": {
-      "codex": ["codex"]
+      "codex": ["codex", "exec", "-"],
+      "copilot": ["copilot", "-p", "{prompt}"]
     }
   },
   "routing": {},
   "gc": {
     "enabled": true,
-    "command": ["codex"],
+    "command": ["codex", "exec", "-"],
     "historyTokenLimit": 12000,
     "targetSummaryTokens": 500,
     "preserveErrors": true,
@@ -17,7 +18,7 @@
   },
   "tokens": {
     "provider": "openai",
-    "model": "default",
+    "model": "gpt-5-codex",
     "hardLimit": 100000,
     "warningLimit": 50000,
     "requireConfirmationAbove": 75000

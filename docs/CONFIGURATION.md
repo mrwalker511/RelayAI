@@ -70,9 +70,18 @@ Controls which provider commands Relay uses when routing prompts.
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
 | `default` | string | `"default"` | Name of the provider used when `--provider` is omitted |
-| `commands` | `{ [name]: string[] }` | `{}` | Shell command arrays for named providers. Relay writes the prompt payload to the process stdin. |
+| `commands` | `{ [name]: string[] }` | `{}` | Shell command arrays for named providers. By default Relay writes the prompt payload to the process stdin. |
 
 Provider commands are arrays of arguments, not shell strings. Relay does not invoke a shell; it spawns the process directly.
+
+**Prompt delivery.** By default the assembled payload is written to the provider's stdin. If any element of the command array contains the literal token `{prompt}`, Relay instead substitutes the payload into those elements and leaves stdin empty — use this for CLIs that take the prompt as an argument. Substitution happens after the array is spawned directly (no shell), so the prompt is injection-safe regardless of its contents.
+
+```json
+"commands": {
+  "codex": ["codex", "exec", "-"],
+  "copilot": ["copilot", "-p", "{prompt}"]
+}
+```
 
 ---
 

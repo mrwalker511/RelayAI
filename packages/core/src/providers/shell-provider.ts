@@ -6,12 +6,16 @@ import type { ProviderAdapter, ProviderResult, SendPromptOptions } from "./provi
 const PROVIDER_DEFAULTS: Record<string, string[]> = {
   claude: ["claude"],
   openai: ["sgpt"],
+  codex: ["codex", "exec", "-"],
   aider: ["aider", "--no-git"],
   llm: ["llm"],
-  copilot: ["gh", "copilot", "suggest", "-t", "shell"],
+  copilot: ["copilot", "-p", "{prompt}"],
   local: ["ollama", "run", "--nowordwrap", "qwen2.5-coder:7b"],
   "ollama-local": ["ollama", "run", "--nowordwrap", "qwen2.5-coder:7b"],
 };
+
+/** Providers whose command template injects the payload as an argv element instead of stdin. */
+export const PROMPT_PLACEHOLDER = "{prompt}";
 
 const DISALLOWED_GENERATION_MODELS = new Set([
   "nomic-embed-text",
@@ -44,19 +48,38 @@ export class ShellProvider implements ProviderAdapter {
   }
 
   /**
-   * Returns a provider that emits machine-readable usage. For the `claude`
-   * builtin this appends `--output-format json` (unless already configured);
-   * for any other provider it is a no-op.
+   * Returns a provider that emits machine-readable usage:
+   *   - claude -> append ["--output-format","json"] unless already configured.
+   *   - codex  -> ensure "--json" is present, inserted right AFTER the "exec"
+   *               sub-command (so `codex exec --json -`, not after a trailing "-").
+   * Any other provider is a no-op.
    */
   withMeasure(): ShellProvider {
-    if (basename(this.command) !== "claude") return this;
-    if (this.args.includes("--output-format")) return this;
-    return new ShellProvider(this.name, this.command, [...this.args, "--output-format", "json"], this.timeoutMs);
+    const bin = basename(this.command);
+    if (bin === "claude") {
+      if (this.args.includes("--output-format")) return this;
+      return new ShellProvider(this.name, this.command, [...this.args, "--output-format", "json"], this.timeoutMs);
+    }
+    if (bin === "codex") {
+      if (this.args.includes("--json")) return this;
+      const nextArgs = [...this.args];
+      const execIdx = nextArgs.indexOf("exec");
+      if (execIdx >= 0) nextArgs.splice(execIdx + 1, 0, "--json");
+      else nextArgs.unshift("--json");
+      return new ShellProvider(this.name, this.command, nextArgs, this.timeoutMs);
+    }
+    return this;
   }
 
   async sendPrompt(payload: string, opts: SendPromptOptions = {}): Promise<ProviderResult> {
+    // Providers with a {prompt} placeholder receive the payload as an argv
+    // element (no shell -> injection-safe); stdin is then left empty.
+    const usesPlaceholder = this.args.some((a) => a.includes(PROMPT_PLACEHOLDER));
+    const args = usesPlaceholder
+      ? this.args.map((a) => a.split(PROMPT_PLACEHOLDER).join(payload))
+      : this.args;
     return new Promise((resolve, reject) => {
-      const child = spawn(this.command, this.args, {
+      const child = spawn(this.command, args, {
         stdio: ["pipe", opts.capture ? "pipe" : "inherit", "inherit"]
       });
       const chunks: Buffer[] = [];
@@ -89,7 +112,8 @@ export class ShellProvider implements ProviderAdapter {
       stdin.on("error", (err: NodeJS.ErrnoException) => {
         if (err.code !== "EPIPE") finish(() => reject(err));
       });
-      stdin.write(payload);
+      // When the prompt is delivered as an argv element, don't also pipe it to stdin.
+      if (!usesPlaceholder) stdin.write(payload);
       stdin.end();
       child.on("exit", (code) => {
         if (code === null) {

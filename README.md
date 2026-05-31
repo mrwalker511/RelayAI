@@ -109,6 +109,17 @@ Replace `/absolute/path/to/RelayAI` with your actual clone path. Add the alias t
 
 ## Quick Start
 
+### See it work in 60 seconds (no API key)
+
+```bash
+pnpm install && pnpm build
+./examples/sample-project/try-relay.sh
+```
+
+This runs RelayAI against the bundled [sample project](examples/sample-project) with a mock provider and prints **measured** token savings building up across calls. The annotated version is in [`docs/WALKTHROUGH.md`](docs/WALKTHROUGH.md).
+
+### Use it on your own repo
+
 Run these commands inside the repository you want Relay to manage:
 
 ```bash
@@ -171,6 +182,7 @@ See [`docs/MCP.md`](docs/MCP.md) for host configuration, the full tool reference
 
 | Document | Purpose |
 | --- | --- |
+| [`docs/WALKTHROUGH.md`](docs/WALKTHROUGH.md) | Hands-on, no-API-key walkthrough proving measured savings on the sample project |
 | [`docs/USER_INSTALLATION_GUIDE.md`](docs/USER_INSTALLATION_GUIDE.md) | Setup, provider configuration, daily workflow, and troubleshooting |
 | [`docs/GETTING_STARTED.md`](docs/GETTING_STARTED.md) | Short local development quick start |
 | [`docs/COMMANDS.md`](docs/COMMANDS.md) | Full CLI command reference |
@@ -190,8 +202,10 @@ RelayAI/
 ├── packages/
 │   ├── core/       # Context engine, token guardrails, git delta logic, semantic memory
 │   └── cli/        # Commander.js router and MCP stdio server
-├── docs/           # Architecture, command reference, MCP guide, configuration reference
-├── examples/       # Example config and semantic state files
+├── docs/           # Architecture, command reference, MCP guide, walkthrough
+├── examples/
+│   ├── sample-project/   # Runnable demo project + try-relay.sh (no API key needed)
+│   └── *.example.json    # Example config and semantic state files
 ├── .github/
 │   └── copilot-instructions.md   # GitHub Copilot workspace instructions
 ├── .codex/

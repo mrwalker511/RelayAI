@@ -37,10 +37,10 @@ This runs four steps in order:
 |---|---|---|
 | Build | `pnpm build` | TypeScript compiles without errors |
 | Typecheck | `pnpm typecheck` | Strict type checking (no `any` leaks, no missing types) |
-| Test | `pnpm test` | All 133 unit + integration tests pass |
+| Test | `pnpm test` | All 181 unit + integration tests pass |
 | Pack check | `pnpm pack:check` | Both packages are publishable (no missing files) |
 
-**Expected result:** All steps exit 0. Test output should show `# pass 133, # fail 0`.
+**Expected result:** All steps exit 0. Test output should show `# pass 134` (core) and `# pass 47` (cli), `# fail 0`.
 
 ### Run a single test file
 
@@ -54,9 +54,25 @@ node --test packages/core/dist/tokens/budget.test.js
 
 | Package | Test files | Test count | Focus areas |
 |---|---|---|---|
-| `@relay/core` | 17 files | 90 | Config, context zones, git delta, tokens, GC, providers, output filter |
-| `@relay/cli` | 1 file | 43 | E2E: init, session, ask, diff, cache, tokens, gc, MCP server |
-| **Total** | **18 files** | **133** | — |
+| `@relay/core` | 20 files | 134 | Config, context zones, git delta, tokens, GC, providers, usage parser, savings, output filter |
+| `@relay/cli` | 1 file | 47 | E2E: init, session, ask, `--measure`, usage record, savings, diff, cache, tokens, gc, MCP server |
+| **Total** | **21 files** | **181** | — |
+
+### No-API-key end-to-end smoke test
+
+To validate the full assemble → ask → measure → report loop without a provider
+account, run the bundled sample project:
+
+```bash
+./examples/sample-project/try-relay.sh
+```
+
+**Expected:** exit 0, and the output shows
+- the first `ask --measure` reporting a cache **MISS** (cache creation) and the next two reporting cache **HITs** (cache reads),
+- `prefix_stable` flipping `false → true` in the audit ledger,
+- a `relay savings` **MEASURED** section with `calls with usage: 3` and a **PROJECTED** section at `100.0%` prefix-stability.
+
+This exercises `--measure` capture, the usage parser, the per-call ledger, and the `savings` math. See [`WALKTHROUGH.md`](WALKTHROUGH.md) for the annotated manual version.
 
 ---
 

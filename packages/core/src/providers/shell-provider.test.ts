@@ -82,15 +82,33 @@ test("ShellProvider.sendPrompt does not capture stdout by default", async () => 
   assert.equal(result.capturedOutput, undefined);
 });
 
-test("withMeasure appends --output-format json for the claude builtin and is a no-op otherwise", () => {
+test("withMeasure: claude appends json, codex inserts --json after exec, others are no-ops", () => {
   const claude = new ShellProvider("claude", "claude", []);
   assert.equal(claude.withMeasure().commandLine, "claude --output-format json");
   // already configured → unchanged
   const preset = new ShellProvider("claude", "claude", ["--output-format", "stream-json"]);
   assert.equal(preset.withMeasure().commandLine, "claude --output-format stream-json");
-  // non-claude → unchanged
+
+  // codex → --json inserted right after exec, idempotent
+  const codex = new ShellProvider("codex", "codex", ["exec", "-"]);
+  assert.equal(codex.withMeasure().commandLine, "codex exec --json -");
+  assert.equal(codex.withMeasure().withMeasure().commandLine, "codex exec --json -");
+  const codexPreset = new ShellProvider("codex", "codex", ["exec", "--json", "-"]);
+  assert.equal(codexPreset.withMeasure().commandLine, "codex exec --json -");
+
+  // non-claude/codex → unchanged
   const other = new ShellProvider("llm", "llm", ["--model", "dev"]);
   assert.equal(other.withMeasure().commandLine, "llm --model dev");
+});
+
+test("ShellProvider delivers {prompt} as a substituted argv element, not via stdin", async () => {
+  // printf %s "<payload>" — the payload arrives as an argument, printed verbatim;
+  // printf never reads stdin, so this also proves stdin delivery was not required.
+  const provider = new ShellProvider("printf", "printf", ["%s", "{prompt}"]);
+  const payload = "hello relay placeholder";
+  const result = await provider.sendPrompt(payload, { capture: true });
+  assert.equal(result.exitCode, 0);
+  assert.equal(result.capturedOutput, payload);
 });
 
 test("ShellProvider.sendPrompt rejects when command is not found", async () => {

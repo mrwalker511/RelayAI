@@ -45,6 +45,26 @@ function collectJsonObjects(stdout: string): Record<string, unknown>[] {
 
 function readUsage(usage: Record<string, unknown>): ProviderUsage | null {
   const result: ProviderUsage = {};
+
+  // Codex schema: `input_tokens` INCLUDES `cached_input_tokens`, and reasoning
+  // output is reported separately. Detect by the Codex-only `cached_input_tokens`.
+  if ("cached_input_tokens" in usage) {
+    const totalInput = num(usage.input_tokens) ?? 0;
+    const cached = num(usage.cached_input_tokens) ?? 0;
+    const output = num(usage.output_tokens);
+    const reasoning = num(usage.reasoning_output_tokens);
+    result.inputTokens = Math.max(0, totalInput - cached);
+    result.cachedInputTokens = cached;
+    // Codex has no cache-creation concept.
+    if (reasoning !== undefined) result.outputTokens = (output ?? 0) + reasoning;
+    else if (output !== undefined) result.outputTokens = output;
+    return result.inputTokens !== undefined || result.cachedInputTokens !== undefined || result.outputTokens !== undefined
+      ? result
+      : null;
+  }
+
+  // Claude schema: `input_tokens` EXCLUDES cached; cache read/creation are
+  // reported in dedicated fields.
   const input = num(usage.input_tokens);
   const cacheRead = num(usage.cache_read_input_tokens);
   const cacheCreation = num(usage.cache_creation_input_tokens);

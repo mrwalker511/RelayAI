@@ -109,14 +109,14 @@ Replace `/absolute/path/to/RelayAI` with your actual clone path. Add the alias t
 
 ## Quick Start
 
-### See it work in 60 seconds (no API key)
+### See it work (real OpenAI Codex)
 
 ```bash
 pnpm install && pnpm build
 ./examples/sample-project/try-relay.sh
 ```
 
-This runs RelayAI against the bundled [sample project](examples/sample-project) with a mock provider and prints **measured** token savings building up across calls. The annotated version is in [`docs/WALKTHROUGH.md`](docs/WALKTHROUGH.md).
+This runs RelayAI against the bundled [sample project](examples/sample-project) using the real OpenAI Codex CLI as the measured provider, and prints **measured** token savings building up across calls. It requires the [`codex`](https://github.com/openai/codex) CLI on your PATH and `codex login` (it makes real Codex calls). The annotated version is in [`docs/WALKTHROUGH.md`](docs/WALKTHROUGH.md).
 
 ### Use it on your own repo
 
@@ -146,7 +146,7 @@ relay diff                                        # inspect the session delta
 relay context inspect                             # inspect prompt-construction state
 relay tokens inspect                              # inspect token usage by zone
 relay cache inspect                               # inspect cache-relevant prefix metadata
-relay ask "..." --provider claude --measure       # capture the provider's real token usage
+relay ask "..." --provider codex --measure        # capture the provider's real token usage
 relay savings --input-cost-per-million 3          # report measured + projected cache savings
 relay gc preview                                  # preview semantic memory compaction
 relay gc run                                      # compact session history
@@ -182,7 +182,7 @@ See [`docs/MCP.md`](docs/MCP.md) for host configuration, the full tool reference
 
 | Document | Purpose |
 | --- | --- |
-| [`docs/WALKTHROUGH.md`](docs/WALKTHROUGH.md) | Hands-on, no-API-key walkthrough proving measured savings on the sample project |
+| [`docs/WALKTHROUGH.md`](docs/WALKTHROUGH.md) | Hands-on walkthrough proving measured savings on the sample project with real OpenAI Codex |
 | [`docs/USER_INSTALLATION_GUIDE.md`](docs/USER_INSTALLATION_GUIDE.md) | Setup, provider configuration, daily workflow, and troubleshooting |
 | [`docs/GETTING_STARTED.md`](docs/GETTING_STARTED.md) | Short local development quick start |
 | [`docs/COMMANDS.md`](docs/COMMANDS.md) | Full CLI command reference |
@@ -204,7 +204,7 @@ RelayAI/
 │   └── cli/        # Commander.js router and MCP stdio server
 ├── docs/           # Architecture, command reference, MCP guide, walkthrough
 ├── examples/
-│   ├── sample-project/   # Runnable demo project + try-relay.sh (no API key needed)
+│   ├── sample-project/   # Runnable demo project + try-relay.sh (real OpenAI Codex)
 │   └── *.example.json    # Example config and semantic state files
 ├── .github/
 │   └── copilot-instructions.md   # GitHub Copilot workspace instructions

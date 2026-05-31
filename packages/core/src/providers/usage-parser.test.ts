@@ -40,6 +40,31 @@ test("parses stream-json and prefers the final object with usage", () => {
   });
 });
 
+test("parses a Codex turn.completed JSONL envelope (cached-inclusive normalization)", () => {
+  const stdout = JSON.stringify({
+    type: "turn.completed",
+    usage: { input_tokens: 24763, cached_input_tokens: 24448, output_tokens: 122, reasoning_output_tokens: 0 }
+  });
+  assert.deepEqual(parseProviderUsage("codex", stdout), {
+    inputTokens: 315, // 24763 - 24448
+    cachedInputTokens: 24448,
+    outputTokens: 122 // 122 + 0 reasoning
+  });
+});
+
+test("Codex multi-line JSONL: skips thread.started and selects turn.completed usage", () => {
+  const stdout = [
+    JSON.stringify({ type: "thread.started", thread_id: "t_1" }),
+    JSON.stringify({ type: "turn.started" }),
+    JSON.stringify({ type: "turn.completed", usage: { input_tokens: 100, cached_input_tokens: 40, output_tokens: 10, reasoning_output_tokens: 5 } })
+  ].join("\n");
+  assert.deepEqual(parseProviderUsage("codex", stdout), {
+    inputTokens: 60, // 100 - 40
+    cachedInputTokens: 40,
+    outputTokens: 15 // 10 + 5
+  });
+});
+
 test("returns null for non-JSON output", () => {
   assert.equal(parseProviderUsage("claude", "just some plain text reply"), null);
 });

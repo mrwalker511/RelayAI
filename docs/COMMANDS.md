@@ -42,12 +42,12 @@ Without a provider, Relay prints the assembled payload between `---BEGIN RELAY P
 
 | Flag | Description |
 | --- | --- |
-| `--provider <name>` | Route the payload to the named provider command. Relay writes the payload to stdin and propagates the exit code. |
+| `--provider <name>` | Route the payload to the named provider command and propagate the exit code. The payload is written to stdin, or substituted into a `{prompt}` argv placeholder if the command template uses one. |
 | `--dry-run` | Print the resolved provider command and payload without executing the provider. |
 | `--staged` | Use staged diff instead of the full session diff. |
 | `--diff-mode <mode>` | Diff rendering: `full`, `summarized`, or `auto` (default). `auto` summarizes diffs above 8 000 tokens. |
 | `--include-timestamp` | Include ISO timestamp in the `DYNAMIC_INPUT` zone. |
-| `--measure` | Capture the provider's reported token usage into the audit ledger for **measured** savings. Tees provider stdout (you still see it) and parses usage; for the `claude` builtin it auto-adds `--output-format json`. Providers that don't emit usage: record it with `relay usage record`. |
+| `--measure` | Capture the provider's reported token usage into the audit ledger for **measured** savings. Tees provider stdout (you still see it) and parses usage; the `claude` builtin auto-adds `--output-format json` and the `codex` builtin auto-adds `--json`. Codex reports `input_tokens` inclusive of cached, which Relay normalizes to uncached input. Providers that don't emit parseable usage (e.g. Copilot): record it with `relay usage record`. |
 
 Every `relay ask` also writes per-call ledger fields to the audit log — `prefix_hash`, per-zone token counts, the `tokenizer` used, and `prefix_stable` (whether the cacheable prefix matched the previous call). These power `relay savings`.
 

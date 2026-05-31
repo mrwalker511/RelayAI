@@ -29,11 +29,26 @@ Relay does not switch providers silently to optimize cost. That would undermine 
 ```ts
 export interface ProviderAdapter {
   name: string;
-  sendPrompt(payload: string): Promise<number>;
+  sendPrompt(payload: string, opts?: SendPromptOptions): Promise<ProviderResult>;
 }
 ```
 
-`ShellProvider` implements this interface by spawning the configured command array and writing the assembled payload to stdin. The provider's exit code is propagated back to the caller.
+`ShellProvider` implements this interface by spawning the configured command array and delivering the assembled payload — by default on **stdin**, or as an argv element when the command template contains a `{prompt}` placeholder (see below). The result carries the provider's exit code and, when `--measure` is used, its captured stdout.
+
+### Prompt delivery: stdin vs. `{prompt}` placeholder
+
+Most CLIs read the prompt from stdin, which is the default. If any element of a provider's command array contains the literal token `{prompt}`, Relay instead substitutes the assembled payload into those elements and leaves stdin empty. Because Relay spawns the process directly (no shell), an argv-delivered prompt is injection-safe regardless of its contents.
+
+```json
+{
+  "provider": {
+    "commands": {
+      "codex": ["codex", "exec", "-"],
+      "copilot": ["copilot", "-p", "{prompt}"]
+    }
+  }
+}
+```
 
 ---
 
@@ -91,6 +106,41 @@ relay ask "Review this change" --provider default --dry-run
 ```
 
 The `claude` CLI reads the prompt from stdin and responds in the terminal. The `--dangerously-skip-permissions` flag allows Claude to run tools without interactive confirmation — appropriate for scripted use where you control the prompt.
+
+### OpenAI Codex (measured)
+
+```json
+{
+  "provider": {
+    "default": "codex",
+    "commands": {
+      "codex": ["codex", "exec", "-"]
+    }
+  },
+  "tokens": {
+    "provider": "openai",
+    "model": "gpt-5-codex"
+  }
+}
+```
+
+`codex exec -` runs non-interactively and reads the prompt from stdin. With `relay ask --measure`, Relay rewrites the command to `codex exec --json -` (inserting `--json` right after `exec`); Codex then streams a JSONL event log, and Relay reads usage from the final `turn.completed` event.
+
+Codex reports `input_tokens` **inclusive** of `cached_input_tokens` (unlike Claude, which reports them separately). Relay normalizes this so the audit ledger always stores *uncached* input: `input_tokens - cached_input_tokens`. Reasoning tokens, when present, are folded into `output_tokens`. Codex has no cache-creation concept, so `usage_cache_creation_tokens` is recorded as `0`.
+
+### GitHub Copilot (routable, not measured)
+
+```json
+{
+  "provider": {
+    "commands": {
+      "copilot": ["copilot", "-p", "{prompt}"]
+    }
+  }
+}
+```
+
+The Copilot CLI takes the prompt as the `-p` **argument**, so it uses the `{prompt}` placeholder rather than stdin. Copilot exposes token usage only via OpenTelemetry — not on stdout — so it **cannot** be auto-measured: `relay ask --provider copilot --measure` will route the prompt but record no provider usage. Use Copilot for routing prompts through your Copilot subscription; use Codex (or Claude) when you want measured savings.
 
 ### Ollama (local model)
 

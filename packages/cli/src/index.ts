@@ -39,7 +39,8 @@ import {
   parseProviderUsage,
   computeMeasuredSavings,
   summarizePrefixStability,
-  projectSavingsFromHistory
+  projectSavingsFromHistory,
+  deepMerge
 } from "@relay/core";
 import type { RelayConfig, StaticBlockInput, TokenEstimateOptions, ProviderUsage } from "@relay/core";
 
@@ -74,14 +75,38 @@ function ensureRelayDir(): void {
 }
 
 function readRelayConfig(): RelayConfig {
+  // Load optional base config from RELAY_BASE_CONFIG env var (file path)
+  let baseRaw: Record<string, unknown> = {};
+  const baseConfigPath = process.env["RELAY_BASE_CONFIG"];
+  if (baseConfigPath) {
+    const baseText = readOptional(baseConfigPath, "");
+    if (!baseText) {
+      process.stderr.write(`Warning: RELAY_BASE_CONFIG file not found: ${baseConfigPath}\n`);
+    } else {
+      try {
+        baseRaw = JSON.parse(baseText) as Record<string, unknown>;
+      } catch {
+        process.stderr.write(`Error: RELAY_BASE_CONFIG file is not valid JSON: ${baseConfigPath}\n`);
+        process.exit(1);
+      }
+    }
+  }
+
+  // Load local .relay/config.json (overrides base)
   const configPath = join(relayDir, "config.json");
   const configText = readOptional(configPath, "");
-  if (!configText) return DEFAULT_RELAY_CONFIG;
+  const localRaw: Record<string, unknown> = configText ? (() => {
+    try { return JSON.parse(configText) as Record<string, unknown>; }
+    catch { process.stderr.write("Error: .relay/config.json is not valid JSON.\n"); process.exit(1); }
+  })() : {};
 
+  // Deep-merge base ← local, then validate through Zod (fills remaining defaults)
+  const merged = baseConfigPath ? deepMerge(baseRaw, localRaw) : localRaw;
   try {
-    return RelayConfigSchema.parse(JSON.parse(configText));
+    return RelayConfigSchema.parse(merged);
   } catch (error) {
-    process.stderr.write(`Error: .relay/config.json is invalid: ${(error as Error).message}\n`);
+    const src = baseConfigPath ? "merged config" : ".relay/config.json";
+    process.stderr.write(`Error: ${src} is invalid: ${(error as Error).message}\n`);
     process.exit(1);
   }
 }

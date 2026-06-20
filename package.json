@@ -17,6 +17,11 @@
     "typecheck": "pnpm -r typecheck",
     "clean": "rm -rf packages/*/dist"
   },
+  "pnpm": {
+    "overrides": {
+      "hono": ">=4.12.25"
+    }
+  },
   "devDependencies": {
     "@types/node": "^25.9.3",
     "tsx": "^4.22.4",

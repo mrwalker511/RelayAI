@@ -6,6 +6,44 @@ Run `relay doctor` at any time to validate config shape, token budget ordering, 
 
 ---
 
+## Team / Shared Base Configuration
+
+Set the `RELAY_BASE_CONFIG` environment variable to a file path containing a shared base config. Relay deep-merges it with the local `.relay/config.json`, with local values winning on any conflict.
+
+```bash
+# In your shell profile or CI environment
+export RELAY_BASE_CONFIG=/path/to/team/relay-base.json
+```
+
+**Merge rules:**
+- Nested objects are merged (local keys override base keys, base keys not present locally are preserved)
+- Arrays are replaced entirely by local values (not concatenated)
+- Missing keys in local config inherit from the base config
+
+**Example:** A team-shared base config at `~/dotfiles/relay-base.json`:
+```json
+{
+  "tokens": {
+    "provider": "anthropic",
+    "model": "claude-sonnet-4",
+    "hardLimit": 170000
+  },
+  "gc": {
+    "command": ["claude", "-p", "--output-format", "text"]
+  },
+  "audit": {
+    "enabled": true,
+    "maxLines": 50000
+  }
+}
+```
+
+Individual developers can still override specific values in their `.relay/config.json` without needing to repeat the full team config.
+
+If `RELAY_BASE_CONFIG` points to a missing file, Relay logs a warning and continues with the local config only.
+
+---
+
 ## Default Configuration
 
 This is what `relay init` writes:

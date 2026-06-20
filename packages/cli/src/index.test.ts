@@ -879,3 +879,69 @@ test("relay savings --json reports measured and projected sections", { skip: can
   assert.ok(report.projected.estimate);
   assert.equal(typeof report.stability.stabilityRate, "number");
 });
+
+test("relay ask uses RELAY_BASE_CONFIG settings when local config has no tokens section", { skip: canSpawnNode ? false : "nested Node execution is unavailable in this sandbox" }, () => {
+  const baseConfigDir = tempWorkspace();
+  const baseConfigPath = join(baseConfigDir, "team-config.json");
+  writeFileSync(baseConfigPath, JSON.stringify({
+    tokens: { warningLimit: 11111, requireConfirmationAbove: 22222, hardLimit: 33333 }
+  }));
+
+  // Minimal local config with no tokens section — base config values should flow through
+  const cwd = tempWorkspace();
+  mkdirSync(join(cwd, ".relay", "memory"), { recursive: true });
+  writeFileSync(join(cwd, ".relay", "config.json"), JSON.stringify({ provider: { default: "default" } }));
+  writeFileSync(join(cwd, ".relay", "memory", "semantic-state.json"), "{}");
+
+  const result = spawnSync(process.execPath, [relayBin, "context", "inspect"], {
+    cwd,
+    encoding: "utf8",
+    env: { ...process.env, RELAY_BASE_CONFIG: baseConfigPath }
+  });
+  assert.equal(result.status, 0);
+  const report = JSON.parse(result.stdout);
+  assert.equal(report.budget.warning_limit, 11111);
+  assert.equal(report.budget.confirmation_threshold, 22222);
+  assert.equal(report.budget.hard_limit, 33333);
+});
+
+test("relay ask local config tokens override RELAY_BASE_CONFIG values", { skip: canSpawnNode ? false : "nested Node execution is unavailable in this sandbox" }, () => {
+  const baseConfigDir = tempWorkspace();
+  const baseConfigPath = join(baseConfigDir, "team-config.json");
+  writeFileSync(baseConfigPath, JSON.stringify({
+    tokens: { warningLimit: 111, requireConfirmationAbove: 222, hardLimit: 333 }
+  }));
+
+  // Local config sets only warningLimit — other token values come from base
+  const cwd = tempWorkspace();
+  mkdirSync(join(cwd, ".relay", "memory"), { recursive: true });
+  writeFileSync(join(cwd, ".relay", "config.json"), JSON.stringify({
+    provider: { default: "default" },
+    tokens: { warningLimit: 999 }
+  }));
+  writeFileSync(join(cwd, ".relay", "memory", "semantic-state.json"), "{}");
+
+  const result = spawnSync(process.execPath, [relayBin, "context", "inspect"], {
+    cwd,
+    encoding: "utf8",
+    env: { ...process.env, RELAY_BASE_CONFIG: baseConfigPath }
+  });
+  assert.equal(result.status, 0);
+  const report = JSON.parse(result.stdout);
+  assert.equal(report.budget.warning_limit, 999);          // local wins
+  assert.equal(report.budget.confirmation_threshold, 222);  // base preserved
+  assert.equal(report.budget.hard_limit, 333);              // base preserved
+});
+
+test("relay reports warning when RELAY_BASE_CONFIG file is missing", { skip: canSpawnNode ? false : "nested Node execution is unavailable in this sandbox" }, () => {
+  const cwd = tempWorkspace();
+  assert.equal(runRelay(["init"], cwd).result.status, 0);
+
+  const result = spawnSync(process.execPath, [relayBin, "context", "inspect"], {
+    cwd,
+    encoding: "utf8",
+    env: { ...process.env, RELAY_BASE_CONFIG: "/tmp/relay-nonexistent-base-config-xyz.json" }
+  });
+  assert.equal(result.status, 0); // non-fatal
+  assert.match(result.stderr, /RELAY_BASE_CONFIG file not found/);
+});

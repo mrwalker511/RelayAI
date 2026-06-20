@@ -33,7 +33,17 @@ function commandExists(command: string): boolean {
     }
   }
 
-  const extensions = process.platform === "win32" ? (process.env.PATHEXT ?? ".EXE;.CMD;.BAT;.COM").split(";") : [""];
+  const isWSL = process.platform === "linux" && (
+    process.env.WSL_DISTRO_NAME !== undefined ||
+    process.env.WSL_INTEROP !== undefined
+  );
+
+  const extensions = process.platform === "win32"
+    ? (process.env.PATHEXT ?? ".EXE;.CMD;.BAT;.COM").split(";")
+    : (isWSL
+        ? ["", ".exe", ".EXE", ".cmd", ".CMD", ".bat", ".BAT", ".com", ".COM"]
+        : [""]);
+
   for (const dir of (process.env.PATH ?? "").split(delimiter)) {
     if (!dir) continue;
     for (const ext of extensions) {

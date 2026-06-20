@@ -19,33 +19,61 @@ export const RelayConfigSchema = z.object({
     preserveErrors: z.boolean().default(true),
     preserveDecisions: z.boolean().default(true),
     preserveCodeChanges: z.boolean().default(true)
-  }).default({}),
+  }).default({
+    enabled: true,
+    historyTokenLimit: 12000,
+    targetSummaryTokens: 500,
+    preserveErrors: true,
+    preserveDecisions: true,
+    preserveCodeChanges: true
+  }),
   tokens: z.object({
     provider: z.string().default("generic"),
     model: z.string().default("default"),
     hardLimit: z.number().int().positive().default(100000),
     warningLimit: z.number().int().positive().default(50000),
     requireConfirmationAbove: z.number().int().positive().default(75000)
-  }).default({}),
+  }).default({
+    provider: "generic",
+    model: "default",
+    hardLimit: 100000,
+    warningLimit: 50000,
+    requireConfirmationAbove: 75000
+  }),
   files: z.object({
     maxIndex: z.number().int().positive().default(200)
-  }).default({}),
+  }).default({
+    maxIndex: 200
+  }),
   context: z.object({
     hierarchical: z.boolean().default(false),
     contextDir: z.string().default(".relay/context"),
     maxBranches: z.number().int().positive().default(3)
-  }).default({}),
+  }).default({
+    hierarchical: false,
+    contextDir: ".relay/context",
+    maxBranches: 3
+  }),
   filter: z.object({
     enabled: z.boolean().default(true),
     maxLines: z.number().int().positive().default(300),
     maxSuccessOccurrences: z.number().int().nonnegative().default(3),
     dedupConsecutive: z.boolean().default(true),
     collapseBlankLines: z.boolean().default(true)
-  }).default({}),
+  }).default({
+    enabled: true,
+    maxLines: 300,
+    maxSuccessOccurrences: 3,
+    dedupConsecutive: true,
+    collapseBlankLines: true
+  }),
   audit: z.object({
     enabled: z.boolean().default(true),
     maxLines: z.number().int().positive().default(10_000)
-  }).default({})
+  }).default({
+    enabled: true,
+    maxLines: 10_000
+  })
 });
 
 export type RelayConfig = z.infer<typeof RelayConfigSchema>;

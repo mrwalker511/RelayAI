@@ -4,6 +4,7 @@ import { appendFileSync, mkdirSync, unlinkSync, writeFileSync, readFileSync, exi
 import { join } from "node:path";
 import { createInterface } from "node:readline";
 import { runMcpServer } from "./mcp-server.js";
+import { BASH_COMPLETION, ZSH_COMPLETION, FISH_COMPLETION, installHint } from "./completions.js";
 import {
   DEFAULT_RELAY_CONFIG,
   RelayConfigSchema,
@@ -1180,6 +1181,30 @@ program.command("savings")
     if (pricingDefined) out.push(`  Pricing used: input ${money(opts.inputCostPerMillion!)}/M, cache-read ${money(cachedInputCostPerMillion)}/M.`);
     if (!measured || measured.callsWithUsage === 0) out.push("  No measured usage recorded — projection above is grounded in real prefix stability but uses the estimator for tokens.");
     process.stdout.write(out.join("\n") + "\n");
+  });
+
+program
+  .command("completion")
+  .description("Print shell tab-completion script.")
+  .argument("<shell>", "Target shell: bash | zsh | fish")
+  .action((shell: string) => {
+    switch (shell) {
+      case "bash":
+        process.stdout.write(BASH_COMPLETION + "\n");
+        process.stderr.write(installHint("bash") + "\n");
+        break;
+      case "zsh":
+        process.stdout.write(ZSH_COMPLETION + "\n");
+        process.stderr.write(installHint("zsh") + "\n");
+        break;
+      case "fish":
+        process.stdout.write(FISH_COMPLETION + "\n");
+        process.stderr.write(installHint("fish") + "\n");
+        break;
+      default:
+        process.stderr.write(`Unknown shell '${shell}'. Choose: bash, zsh, fish\n`);
+        process.exit(1);
+    }
   });
 
 await program.parseAsync();

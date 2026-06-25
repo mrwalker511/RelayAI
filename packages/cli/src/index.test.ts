@@ -945,3 +945,42 @@ test("relay reports warning when RELAY_BASE_CONFIG file is missing", { skip: can
   assert.equal(result.status, 0); // non-fatal
   assert.match(result.stderr, /RELAY_BASE_CONFIG file not found/);
 });
+
+test("relay completion bash prints a valid bash completion script", { skip: canSpawnNode ? false : "nested Node execution is unavailable in this sandbox" }, () => {
+  const result = runRelay(["completion", "bash"]).result;
+
+  assert.equal(result.status, 0);
+  assert.match(result.stdout, /_relay\(\)/);
+  assert.match(result.stdout, /complete -F _relay relay/);
+  assert.match(result.stdout, /session.*ask.*diff/s);
+  assert.match(result.stdout, /full summarized auto/);
+  assert.match(result.stderr, /source.*relay completion bash/);
+});
+
+test("relay completion zsh prints a valid zsh completion script", { skip: canSpawnNode ? false : "nested Node execution is unavailable in this sandbox" }, () => {
+  const result = runRelay(["completion", "zsh"]).result;
+
+  assert.equal(result.status, 0);
+  assert.match(result.stdout, /#compdef relay/);
+  assert.match(result.stdout, /_relay\(\)/);
+  assert.match(result.stdout, /_relay "\$@"/);
+  assert.match(result.stdout, /full summarized auto/);
+  assert.match(result.stderr, /relay completion zsh/);
+});
+
+test("relay completion fish prints a valid fish completion script", { skip: canSpawnNode ? false : "nested Node execution is unavailable in this sandbox" }, () => {
+  const result = runRelay(["completion", "fish"]).result;
+
+  assert.equal(result.status, 0);
+  assert.match(result.stdout, /complete -c relay/);
+  assert.match(result.stdout, /full summarized auto/);
+  assert.match(result.stdout, /ask session_start session_end/);
+  assert.match(result.stderr, /relay completion fish/);
+});
+
+test("relay completion exits nonzero for unknown shell", { skip: canSpawnNode ? false : "nested Node execution is unavailable in this sandbox" }, () => {
+  const result = runRelay(["completion", "powershell"]).result;
+
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /Unknown shell 'powershell'/);
+});

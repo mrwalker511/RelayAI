@@ -25,7 +25,8 @@ export function appendAuditEvent(
     if (lines.length >= maxLines) {
       const dropCount = Math.ceil(maxLines * ROTATION_DROP_FRACTION);
       const kept = lines.slice(dropCount);
-      writeFileSync(logPath, kept.join("\n") + "\n");
+      writeFileSync(logPath, kept.join("\n") + "\n" + line);
+      return;
     }
   }
 

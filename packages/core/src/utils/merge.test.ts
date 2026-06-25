@@ -53,3 +53,19 @@ test("deepMerge unknown keys from override are included", () => {
   assert.equal(result.a, 1);
   assert.equal(result.b, 2);
 });
+
+test("deepMerge skips __proto__ key and does not pollute Object.prototype", () => {
+  const base = {} as Record<string, unknown>;
+  const override = JSON.parse('{"__proto__":{"polluted":true}}') as Partial<typeof base>;
+  deepMerge(base, override);
+  assert.equal((({}) as Record<string, unknown>)["polluted"], undefined, "__proto__ must not pollute Object.prototype");
+});
+
+test("deepMerge skips constructor and prototype keys", () => {
+  const base = { a: 1 } as Record<string, unknown>;
+  const override = JSON.parse('{"constructor":{"evil":true},"prototype":{"evil":true}}') as Partial<typeof base>;
+  const result = deepMerge(base, override);
+  assert.equal(result.a, 1);
+  assert.equal(Object.prototype.hasOwnProperty.call(result, "constructor"), false);
+  assert.equal(Object.prototype.hasOwnProperty.call(result, "prototype"), false);
+});

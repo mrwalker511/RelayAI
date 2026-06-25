@@ -1081,9 +1081,12 @@ program.command("audit")
     }
 
     // Formatted table: timestamp | event | session | details
+    const termWidth = (process.stdout.columns ?? 120);
+    const fixedWidth = 24 + 1 + 16 + 1 + 16 + 1; // ts + event + session + spaces
+    const detailsWidth = Math.max(20, termWidth - fixedWidth);
     const col = (s: string, width: number) => s.slice(0, width).padEnd(width);
     const header = `${col("timestamp", 24)} ${col("event", 16)} ${col("session", 16)} details`;
-    const divider = "-".repeat(header.length);
+    const divider = "-".repeat(Math.min(header.length, termWidth));
     process.stdout.write(`${header}\n${divider}\n`);
     for (const e of filtered) {
       const ts = (e.ts as string).replace("T", " ").replace("Z", "").slice(0, 23);
@@ -1092,7 +1095,8 @@ program.command("audit")
         .filter(([k]) => !["ts", "event", "session_id", "v"].includes(k))
         .map(([k, v]) => `${k}=${JSON.stringify(v)}`)
         .join(" ");
-      process.stdout.write(`${col(ts, 24)} ${col(e.event as string, 16)} ${col(session, 16)} ${details}\n`);
+      const truncatedDetails = details.length > detailsWidth ? `${details.slice(0, detailsWidth - 1)}…` : details;
+      process.stdout.write(`${col(ts, 24)} ${col(e.event as string, 16)} ${col(session, 16)} ${truncatedDetails}\n`);
     }
   });
 

@@ -15,7 +15,10 @@ _relay() {
     --event)
       COMPREPLY=( $(compgen -W "ask session_start session_end gc_run anomaly budget_warning budget_blocked" -- "$cur") )
       return ;;
-    --provider|--model|--cwd|--tail|--session|--input|--cached-input|--cache-creation|--output|--input-cost-per-million|--cached-input-cost-per-million|--cache-creation-cost-per-million|--output-cost-per-million|--expected-cache-hit-rate)
+    --provider)
+      # --provider values come from .relay/config.json (user-defined); no static completions available
+      return ;;
+    --model|--cwd|--tail|--session|--input|--cached-input|--cache-creation|--output|--input-cost-per-million|--cached-input-cost-per-million|--cache-creation-cost-per-million|--output-cost-per-million|--expected-cache-hit-rate)
       return ;;
   esac
 

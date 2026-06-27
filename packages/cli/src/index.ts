@@ -23,11 +23,14 @@ import {
   estimateTokens,
   estimateZoneAwareInputCost,
   getGitDiffSince,
+  getGitDiffSinceAsync,
   getStagedDiff,
+  getStagedDiffAsync,
   getPrefixHash,
   inspectCacheDiagnostics,
   inspectZoneTokens,
   listTrackedFiles,
+  buildPrioritizedFileIndexAsync,
   loadHierarchicalContext,
   renderBranchSections,
   readOptional,
@@ -43,7 +46,7 @@ import {
   projectSavingsFromHistory,
   deepMerge
 } from "@relay/core";
-import type { RelayConfig, StaticBlockInput, TokenEstimateOptions, ProviderUsage } from "@relay/core";
+import type { RelayConfig, StaticBlockInput, TokenEstimateOptions, ProviderUsage, ZoneTokenReport } from "@relay/core";
 
 const program = new Command();
 const relayDir = join(process.cwd(), ".relay");
@@ -221,6 +224,24 @@ function safeGetStagedDiff(): string {
   }
 }
 
+async function safeGetGitDiffAsync(baseRef: string): Promise<string> {
+  try {
+    return await getGitDiffSinceAsync(baseRef);
+  } catch (err) {
+    process.stderr.write(`Warning: could not read git diff — ${(err as Error).message}\n`);
+    return "";
+  }
+}
+
+async function safeGetStagedDiffAsync(): Promise<string> {
+  try {
+    return await getStagedDiffAsync();
+  } catch (err) {
+    process.stderr.write(`Warning: could not read staged diff — ${(err as Error).message}\n`);
+    return "";
+  }
+}
+
 function buildZonesForAsk(
   prompt: string,
   baseRef: string,
@@ -247,8 +268,7 @@ function buildZonesForAsk(
   };
 }
 
-function printZoneBreakdown(zones: ReturnType<typeof buildZonesForAsk>, tokenizerOptions?: TokenEstimateOptions): void {
-  const report = inspectZoneTokens(zones, tokenizerOptions);
+function printZoneBreakdown(report: ZoneTokenReport): void {
   process.stderr.write(
     `Token breakdown:\n` +
     `  static_block  ${report.staticBlock.toLocaleString()}\n` +
@@ -437,23 +457,24 @@ program.command("ask")
       });
     }
     const semanticState = readOptional(join(relayDir, "memory", "semantic-state.json"), serializeSemanticState(createEmptySemanticState()));
-    const files = buildPrioritizedFileIndex(process.cwd(), { limit: cfg.files.maxIndex }).join("\n");
-    const sessionData = activeSessionData;
-    const baseRef = (sessionData.base_git_sha as string | undefined) ?? "HEAD";
+    const baseRef = (activeSessionData.base_git_sha as string | undefined) ?? "HEAD";
 
-    const diffOverride = options.staged ? safeGetStagedDiff() : undefined;
-    const activeDiff = diffOverride ?? safeGetGitDiff(baseRef);
+    // Parallelize the two git subprocess calls — they're independent of each other.
+    const [filesArr, activeDiff] = await Promise.all([
+      buildPrioritizedFileIndexAsync(process.cwd(), { limit: cfg.files.maxIndex }),
+      options.staged ? safeGetStagedDiffAsync() : safeGetGitDiffAsync(baseRef),
+    ]);
+    const files = filesArr.join("\n");
     const { staticBlockInput: staticInput, relevantContext } = readContextInputs(relayDir, { cfg, prompt, gitDiff: activeDiff });
     const tokenizerOptions = tokenizerOptionsFor(cfg);
-    const zones = buildZonesForAsk(prompt, baseRef, semanticState, files, staticInput, diffOverride, options.diffMode, options.includeTimestamp, relevantContext, tokenizerOptions);
+    const zones = buildZonesForAsk(prompt, baseRef, semanticState, files, staticInput, activeDiff, options.diffMode, options.includeTimestamp, relevantContext, tokenizerOptions);
     const payload = buildPromptPayload(zones);
     const resolvedTokens = resolveTokenBudget(cfg);
     const budget = checkTokenBudget(payload, resolvedTokens, tokenizerOptions);
 
-    printZoneBreakdown(zones, tokenizerOptions);
-
-    // Per-call ledger fields — computed before any audit write (previousAskPrefixHash reads the log).
+    // Compute zone token report once and share it with printZoneBreakdown and the audit ledger.
     const zoneReport = inspectZoneTokens(zones, tokenizerOptions);
+    printZoneBreakdown(zoneReport);
     const askPrefixHash = getPrefixHash(zones.staticBlock, zones.stateLayer);
     const prevPrefixHash = previousAskPrefixHash(activeSessionId);
     const ledgerFields = {
@@ -735,7 +756,7 @@ cache.command("warm")
     const name = options.provider ?? cfg.provider.default;
 
     process.stderr.write(`Prefix hash: ${getPrefixHash(zones.staticBlock, zones.stateLayer)}\n`);
-    printZoneBreakdown(zones, tokenizerOptions);
+    printZoneBreakdown(inspectZoneTokens(zones, tokenizerOptions));
 
     if (budget.status === "blocked") {
       process.stderr.write(`Error: ${budget.message} Run \`relay gc run\` to compact context.\n`);

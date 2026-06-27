@@ -1,4 +1,7 @@
-import { execFileSync } from "node:child_process";
+import { execFileSync, execFile } from "node:child_process";
+import { promisify } from "node:util";
+
+const execFileP = promisify(execFile);
 
 const DIFF_SKIP_PATTERNS = [
   /^diff --git .+\.(lock|snap|map|min\.js|d\.ts) /m,
@@ -49,6 +52,28 @@ export function getStagedDiff(cwd = process.cwd()): string {
       encoding: "utf8",
       stdio: ["ignore", "pipe", "pipe"]
     });
+  } catch (error) {
+    throw new Error(`Unable to read staged git diff: ${String(error)}`);
+  }
+}
+
+export async function getGitDiffSinceAsync(baseRef = "HEAD", cwd = process.cwd()): Promise<string> {
+  try {
+    const { stdout } = await execFileP("git", ["diff", baseRef], {
+      cwd, encoding: "utf8", maxBuffer: 50 * 1024 * 1024
+    });
+    return stdout as string;
+  } catch (error) {
+    throw new Error(`Unable to read git diff: ${String(error)}`);
+  }
+}
+
+export async function getStagedDiffAsync(cwd = process.cwd()): Promise<string> {
+  try {
+    const { stdout } = await execFileP("git", ["diff", "--cached"], {
+      cwd, encoding: "utf8", maxBuffer: 50 * 1024 * 1024
+    });
+    return stdout as string;
   } catch (error) {
     throw new Error(`Unable to read staged git diff: ${String(error)}`);
   }

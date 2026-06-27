@@ -33,7 +33,10 @@ export const RelayConfigSchema = z.object({
     hardLimit: z.number().int().positive().default(100000),
     warningLimit: z.number().int().positive().default(50000),
     requireConfirmationAbove: z.number().int().positive().default(75000)
-  }).default({
+  }).refine(
+    (t) => t.warningLimit < t.requireConfirmationAbove && t.requireConfirmationAbove < t.hardLimit,
+    { message: "tokens: warningLimit must be less than requireConfirmationAbove, which must be less than hardLimit" }
+  ).default({
     provider: "generic",
     model: "default",
     hardLimit: 100000,

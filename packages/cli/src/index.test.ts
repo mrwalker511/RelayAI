@@ -917,7 +917,7 @@ test("relay ask local config tokens override RELAY_BASE_CONFIG values", { skip: 
   mkdirSync(join(cwd, ".relay", "memory"), { recursive: true });
   writeFileSync(join(cwd, ".relay", "config.json"), JSON.stringify({
     provider: { default: "default" },
-    tokens: { warningLimit: 999 }
+    tokens: { warningLimit: 50 }
   }));
   writeFileSync(join(cwd, ".relay", "memory", "semantic-state.json"), "{}");
 
@@ -928,7 +928,7 @@ test("relay ask local config tokens override RELAY_BASE_CONFIG values", { skip: 
   });
   assert.equal(result.status, 0);
   const report = JSON.parse(result.stdout);
-  assert.equal(report.budget.warning_limit, 999);          // local wins
+  assert.equal(report.budget.warning_limit, 50);           // local wins
   assert.equal(report.budget.confirmation_threshold, 222);  // base preserved
   assert.equal(report.budget.hard_limit, 333);              // base preserved
 });

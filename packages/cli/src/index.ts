@@ -89,6 +89,11 @@ function readRelayConfig(): RelayConfig {
         process.stderr.write(`Error: RELAY_BASE_CONFIG file is not valid JSON: ${baseConfigPath}\n`);
         process.exit(1);
       }
+      const baseValidation = RelayConfigSchema.safeParse(baseRaw);
+      if (!baseValidation.success) {
+        process.stderr.write(`Error: RELAY_BASE_CONFIG file is invalid: ${baseConfigPath}\n  ${baseValidation.error.message}\n`);
+        process.exit(1);
+      }
     }
   }
 
@@ -438,7 +443,7 @@ program.command("ask")
     const semanticState = readOptional(join(relayDir, "memory", "semantic-state.json"), serializeSemanticState(createEmptySemanticState()));
     const files = buildPrioritizedFileIndex(process.cwd(), { limit: cfg.files.maxIndex }).join("\n");
     const sessionData = activeSessionData;
-    const baseRef = (sessionData.base_git_sha as string | undefined) ?? "HEAD";
+    const baseRef = (sessionData.base_git_sha as string | undefined) || "HEAD";
 
     const diffOverride = options.staged ? safeGetStagedDiff() : undefined;
     const activeDiff = diffOverride ?? safeGetGitDiff(baseRef);
@@ -609,7 +614,7 @@ program.command("diff")
     }
     const sessionText = readOptional(join(relayDir, "session.json"), "{}");
     const sessionData = parseSessionJson(sessionText);
-    console.log(safeGetGitDiff((sessionData.base_git_sha as string | undefined) ?? "HEAD"));
+    console.log(safeGetGitDiff((sessionData.base_git_sha as string | undefined) || "HEAD"));
   });
 
 program.command("doctor").description("Check whether the current workspace is ready for Relay dogfooding.").action(() => {
@@ -783,10 +788,11 @@ tokens.command("inspect").description("Show zone-by-zone token breakdown for the
   const files = buildPrioritizedFileIndex(process.cwd(), { limit: cfg.files.maxIndex }).join("\n");
   const sessionText = readOptional(join(relayDir, "session.json"), "{}");
   const sessionData = parseSessionJson(sessionText);
-  const baseRef = (sessionData.base_git_sha as string | undefined) ?? "HEAD";
+  const baseRef = (sessionData.base_git_sha as string | undefined) || "HEAD";
   const tokenizerOptions = tokenizerOptionsFor(cfg);
-  const { staticBlockInput, relevantContext } = readContextInputs(relayDir, { cfg, prompt: "(inspect)", gitDiff: safeGetGitDiff(baseRef) });
-  const zones = buildZonesForAsk("(inspect)", baseRef, semanticState, files, staticBlockInput, undefined, undefined, undefined, relevantContext, tokenizerOptions);
+  const gitDiff = safeGetGitDiff(baseRef);
+  const { staticBlockInput, relevantContext } = readContextInputs(relayDir, { cfg, prompt: "(inspect)", gitDiff });
+  const zones = buildZonesForAsk("(inspect)", baseRef, semanticState, files, staticBlockInput, gitDiff, undefined, undefined, relevantContext, tokenizerOptions);
   const report = inspectZoneTokens(zones, tokenizerOptions);
   const resolvedTokens = resolveTokenBudget(cfg);
   console.log(JSON.stringify({

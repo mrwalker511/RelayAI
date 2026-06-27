@@ -1,6 +1,7 @@
 {
   "name": "@relay/cli",
   "version": "0.1.0",
+  "description": "Local-first context and prompt-cache optimizer for coding agents and model CLIs.",
   "type": "module",
   "main": "dist/index.js",
   "bin": {
@@ -12,6 +13,31 @@
     "!dist/**/*.test.js",
     "!dist/**/*.test.d.ts"
   ],
+  "engines": {
+    "node": ">=20"
+  },
+  "keywords": [
+    "relay",
+    "llm",
+    "prompt",
+    "cache",
+    "context",
+    "claude",
+    "codex",
+    "copilot",
+    "ai",
+    "cli"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mrwalker511/RelayAI.git",
+    "directory": "packages/cli"
+  },
+  "homepage": "https://github.com/mrwalker511/RelayAI#readme",
+  "bugs": {
+    "url": "https://github.com/mrwalker511/RelayAI/issues"
+  },
+  "license": "MIT",
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "dev": "tsx src/index.ts",

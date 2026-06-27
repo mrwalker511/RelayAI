@@ -169,6 +169,22 @@ See [`docs/MCP.md`](MCP.md) for setup instructions and the full tool contract.
 
 ---
 
+## `relay completion <shell>`
+
+Prints a shell completion script for `bash`, `zsh`, or `fish` to stdout.
+
+Source it directly in your current shell:
+
+```bash
+source <(relay completion bash)   # bash
+source <(relay completion zsh)    # zsh
+relay completion fish | source    # fish
+```
+
+To make it permanent, add the source line to your shell profile (`.bashrc`, `.zshrc`, or `~/.config/fish/config.fish`). The command prints installation instructions to stderr on first use.
+
+---
+
 ## `pnpm sigmap`
 
 _(Root workspace script, not a relay CLI command)_

@@ -102,7 +102,9 @@ test("runRelayDoctor reports invalid token budget ordering", () => {
   const report = runRelayDoctor(cwd);
 
   assert.equal(report.status, "error");
-  assert.equal(report.checks.find((check) => check.id === "token_budget_order")?.status, "error");
+  // Zod refine on the tokens schema catches ordering violations at parse time,
+  // so the error surfaces as a config validation failure before token_budget_order is checked.
+  assert.equal(report.checks.find((check) => check.id === "config")?.status, "error");
 });
 
 test("runRelayDoctor warns for missing provider and GC commands", () => {

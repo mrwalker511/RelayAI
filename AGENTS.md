@@ -30,6 +30,7 @@ pnpm test             # run tests across all packages (must build first)
 pnpm dev              # run CLI via tsx without building
 pnpm sigmap           # generate .relay/sigmap.md (structural skeleton of the codebase)
 pnpm clean            # remove packages/*/dist
+relay completion bash|zsh|fish   # print shell completion script; source it in your shell profile
 ```
 
 Filter to a single package:
@@ -42,7 +43,7 @@ pnpm --filter @relay/cli dev
 Tests run against compiled output via Node's built-in test runner. Always build before testing:
 
 ```bash
-pnpm build && pnpm test      # full suite (133 tests across core + cli)
+pnpm build && pnpm test      # full suite (~207 tests across core + cli)
 pnpm run ci                  # build + typecheck + test + pack:check (matches CI)
 ```
 
@@ -81,6 +82,18 @@ An opt-in two-tier loading strategy for `STATIC_BLOCK`. When `context.hierarchic
 - The `loadHierarchicalContext()` function returns a `HierarchicalContext` with `trunk`, `branches`, and `loaded` (combined string).
 
 Generate the initial context files with `relay context build`. This reads `docs/ARCHITECTURE.md` and scaffolds `.relay/context/trunk.md` and `branches/*.md`.
+
+### Async git operations (`packages/core/src/git/`)
+
+`getGitDiffSinceAsync` and `buildPrioritizedFileIndexAsync` run `git diff` and `git ls-files` concurrently via `Promise.all` in the `relay ask` handler, avoiding sequential subprocess blocking. Sync variants remain available for contexts where async is not needed.
+
+### Tokenizer memoization (`packages/core/src/tokens/tokenizer.ts`)
+
+`estimateTokens` caches results in a process-lifetime two-level Map keyed on `(encodingName, correctionFactor) → text → TokenEstimate`. Prevents re-encoding the same large text (git diffs, zone content) multiple times per invocation.
+
+### Team configuration (`RELAY_BASE_CONFIG`)
+
+Set `RELAY_BASE_CONFIG=/path/to/base.json` to load a shared base configuration before project-local `.relay/config.json`. Deep-merged using `deepMerge` in `packages/core/src/utils/merge.ts` (which guards against prototype pollution via `UNSAFE_KEYS`). Useful for team-wide provider or token defaults. See `docs/CONFIGURATION.md` for the full merge rules.
 
 ### Signature Mapping (`scripts/gen-sigmap.ts`, `pnpm sigmap`)
 

@@ -16,7 +16,9 @@ RelayAI/
 ├── docs/            # Architecture, command reference, MCP guide, configuration reference
 ├── .github/
 │   ├── copilot-instructions.md   # This file
-│   └── workflows/ci.yml          # CI: build → typecheck → test → pack:check
+│   └── workflows/
+│       ├── ci.yml                # CI: build → typecheck → test → pack:check
+│       └── publish.yml           # npm publish triggered on v* tags
 ├── .codex/hooks.json             # OpenAI Codex lifecycle hooks
 ├── .claude/settings.json         # Claude Code lifecycle hooks
 ├── AGENTS.md                     # Coding agent guidance (also serves as Codex AGENTS.md)
@@ -29,11 +31,12 @@ RelayAI/
 pnpm install                     # install all workspace dependencies
 pnpm build                       # compile all packages (tsc) — required before testing
 pnpm typecheck                   # strict TypeScript check, no emit
-pnpm test                        # run 133 tests across core + cli (build first)
+pnpm test                        # run ~207 tests across core + cli (build first)
 pnpm run ci                      # full pipeline: build + typecheck + test + pack:check
 pnpm sigmap                      # regenerate .relay/sigmap.md after structural changes
 pnpm dev                         # run CLI via tsx without building
 pnpm clean                       # remove packages/*/dist
+relay completion bash|zsh|fish   # print shell completion script to stdout
 ```
 
 Filter to a single package:
@@ -67,9 +70,10 @@ Key files: `payload-builder.ts`, `zones.ts`, `static-block.ts`, `state-layer.ts`
 |--------|------|---------|
 | Payload builder | `packages/core/src/context/payload-builder.ts` | Assembles three-zone prompt |
 | Config | `packages/core/src/config/relay-config.ts` | Zod-validated `.relay/config.json` |
-| Git delta | `packages/core/src/git/` | Records base SHA; diffs only on follow-up prompts |
+| Git delta | `packages/core/src/git/` | Records base SHA; diffs only on follow-up prompts. Async variants (`*Async`) parallelize `ls-files` + `diff` via `Promise.all` |
 | Semantic GC | `packages/core/src/memory/gc.ts` | Compacts raw history into `SemanticState` |
 | Token budget | `packages/core/src/tokens/budget.ts` | warning / confirmation / hard limit enforcement |
+| Token cache | `packages/core/src/tokens/tokenizer.ts` | Process-lifetime memoization; avoids re-encoding identical text within an invocation |
 | MCP server | `packages/cli/src/mcp-server.ts` | Six read-only MCP tools over stdio |
 | CLI router | `packages/cli/src/index.ts` | Commander.js command routing |
 
@@ -108,6 +112,8 @@ Test files live alongside source as `*.test.ts` and compile to `*.test.js` in `d
 ## Local Runtime State
 
 Relay creates `.relay/` in the working repository at `relay init` time. This directory is not committed to git. Key files agents may reference:
+
+**Team config:** Set `RELAY_BASE_CONFIG=/path/to/base.json` to deep-merge a shared base configuration before the project-local `.relay/config.json`. Local values win on any conflict. See `docs/CONFIGURATION.md` for merge rules.
 
 ```
 .relay/

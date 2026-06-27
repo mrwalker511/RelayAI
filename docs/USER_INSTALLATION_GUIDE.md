@@ -71,6 +71,16 @@ relay doctor
 
 `relay doctor` prints JSON diagnostics. Fix blocking errors before using Relay for provider execution.
 
+## Shell Tab Completion (Optional)
+
+To enable tab completion for `relay` subcommands and flags:
+
+```bash
+source <(relay completion bash)   # bash — add to ~/.bashrc
+source <(relay completion zsh)    # zsh — add to ~/.zshrc
+relay completion fish | source    # fish — add to ~/.config/fish/config.fish
+```
+
 ## Start a Session
 
 Start a git-anchored session from the project repository:

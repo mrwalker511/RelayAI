@@ -57,6 +57,13 @@ test("Claude applies the correction factor over the base count", () => {
   assert.ok(claude.tokens > base.tokens);
 });
 
+test("estimateTokens returns the same object reference on cache hit", () => {
+  const text = "cache hit test string that is unique enough";
+  const first = estimateTokens(text);
+  const second = estimateTokens(text);
+  assert.strictEqual(first, second, "memoized call should return the same object");
+});
+
 test("explicit correctionFactor overrides the default", () => {
   const text = "some text to estimate";
   const base = estimateTokens(text);

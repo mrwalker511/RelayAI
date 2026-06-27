@@ -14,11 +14,17 @@ export function getCurrentGitSha(cwd = process.cwd()): string {
   try {
     const sha = execFileSync("git", ["rev-parse", "HEAD"], {
       cwd,
-      encoding: "utf8"
+      encoding: "utf8",
+      stdio: ["pipe", "pipe", "pipe"]
     }).trim();
     return sha;
   } catch (err) {
-    process.stderr.write(`[relay] Warning: could not resolve git HEAD: ${(err as Error).message}\n`);
+    const msg = (err as Error).message ?? "";
+    if (msg.includes("ambiguous argument") || msg.includes("unknown revision")) {
+      process.stderr.write("[relay] Warning: no commits yet — base SHA will be recorded on first commit.\n");
+    } else {
+      process.stderr.write(`[relay] Warning: could not resolve git HEAD: ${msg}\n`);
+    }
     return "";
   }
 }

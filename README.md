@@ -1,9 +1,8 @@
 # Relay CLI
 
-[![CI](https://github.com/mrwalker511/relayai/actions/workflows/ci.yml/badge.svg)](https://github.com/mrwalker511/relayai/actions/workflows/ci.yml)
+[![CI](https://github.com/mrwalker511/RelayAI/actions/workflows/ci.yml/badge.svg)](https://github.com/mrwalker511/RelayAI/actions/workflows/ci.yml)
+[![npm](https://img.shields.io/npm/v/@relay/cli)](https://www.npmjs.com/package/@relay/cli)
 [![Node.js ≥ 20](https://img.shields.io/badge/node-%3E%3D20-brightgreen)](https://nodejs.org)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.7-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org)
-[![pnpm](https://img.shields.io/badge/pnpm-9-F69220?logo=pnpm&logoColor=white)](https://pnpm.io)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 > Local-first context and prompt-cache optimizer for coding agents and model CLIs.
@@ -14,7 +13,41 @@ Relay does **not** replace your model or coding agent. It gives them cleaner, re
 
 ---
 
-## Why Relay
+## Install
+
+```bash
+npm install -g @relay/cli
+```
+
+Or run without installing:
+
+```bash
+npx @relay/cli --help
+```
+
+**Requirements:** Node.js 20+, git.
+
+---
+
+## 5-minute quickstart
+
+```bash
+# inside any git repository
+relay init                               # create .relay/ workspace
+relay doctor                             # verify setup
+relay session start                      # anchor context to current git SHA
+relay ask "Summarize the active diff"    # print cache-optimized payload
+
+# wire up to your provider
+relay ask "Review this diff" --provider claude   # pipe payload to claude CLI
+
+# tab completion (optional)
+source <(relay completion bash)          # or zsh / fish
+```
+
+That's it. Add `--measure` to track real token savings, `relay gc run` to compact history, and `relay audit` to inspect the event log.
+
+---
 
 | Need | What Relay Provides |
 | --- | --- |

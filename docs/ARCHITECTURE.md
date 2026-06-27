@@ -91,7 +91,7 @@ The three-zone payload builder. `payload-builder.ts` assembles zones in a fixed 
 
 ### `packages/core/src/git/`
 
-Git-anchored delta prompting. When `relay session start` runs, `snapshot.ts` records the current `HEAD` SHA as `base_git_sha` in `.relay/session.json`. On every subsequent `relay ask`, `delta-builder.ts` calls `git diff <base_git_sha>` and injects only the diff into `DYNAMIC_INPUT` — not the full file contents. `tracked-files.ts` calls `git ls-files` to enumerate the project file index placed in `STATE_LAYER`. `diff.ts` contains the raw diff execution logic.
+Git-anchored delta prompting. When `relay session start` runs, `snapshot.ts` records the current `HEAD` SHA as `base_git_sha` in `.relay/session.json`. On every subsequent `relay ask`, `delta-builder.ts` calls `git diff <base_git_sha>` and injects only the diff into `DYNAMIC_INPUT` — not the full file contents. `tracked-files.ts` calls `git ls-files` to enumerate the project file index placed in `STATE_LAYER`. `diff.ts` contains the raw diff execution logic. Both modules provide async variants (`getGitDiffSinceAsync`, `buildPrioritizedFileIndexAsync`) used by the `relay ask` handler to run the two git subprocess calls concurrently via `Promise.all`.
 
 ### `packages/core/src/memory/`
 
@@ -99,7 +99,7 @@ Semantic state and garbage collection. Raw session history accumulates in `.rela
 
 ### `packages/core/src/tokens/`
 
-Token budgeting and safety. `tokenizer.ts` estimates token counts using `js-tiktoken` (`cl100k_base` encoding) with a `char/4` fallback for unsupported content. `budget.ts` checks the assembled payload against three thresholds from config — `warningLimit`, `requireConfirmationAbove`, `hardLimit` — and returns a status of `ok`, `warning`, `requires_confirmation`, or `blocked`. `cost-estimator.ts` calculates cache-aware cost projections from explicit provider pricing inputs. `anomaly-detector.ts` reads `.relay/calls.json` and warns when more than 10 prompts are sent within 60 seconds.
+Token budgeting and safety. `tokenizer.ts` estimates token counts using `js-tiktoken` (`cl100k_base` encoding) with a `char/4` fallback for unsupported content; results are memoized in a process-lifetime two-level Map keyed on `(encodingName, correctionFactor) → text` to avoid re-encoding identical strings within a single invocation. `budget.ts` checks the assembled payload against three thresholds from config — `warningLimit`, `requireConfirmationAbove`, `hardLimit` — and returns a status of `ok`, `warning`, `requires_confirmation`, or `blocked`. `cost-estimator.ts` calculates cache-aware cost projections from explicit provider pricing inputs. `anomaly-detector.ts` reads `.relay/calls.json` and warns when more than 10 prompts are sent within 60 seconds.
 
 ### `packages/core/src/providers/`
 
@@ -111,7 +111,7 @@ Shared utilities. `fs.ts` provides `readOptional()` and file write helpers. `out
 
 ### `packages/core/src/config/`
 
-Configuration loading and validation. `relay-config.ts` defines the `RelayConfigSchema` using Zod. Config is validated at load time; invalid configs surface as errors rather than silently falling back to defaults. The schema covers `provider`, `routing`, `gc`, `tokens`, `files`, `context` (hierarchical loading), and `filter` (output filtering) sections. See [`docs/CONFIGURATION.md`](CONFIGURATION.md) for the full schema reference.
+Configuration loading and validation. `relay-config.ts` defines the `RelayConfigSchema` using Zod. Config is validated at load time; invalid configs surface as errors rather than silently falling back to defaults. The schema covers `provider`, `routing`, `gc`, `tokens`, `files`, `context` (hierarchical loading), `filter` (output filtering), and `audit` (event log) sections. See [`docs/CONFIGURATION.md`](CONFIGURATION.md) for the full schema reference.
 
 ### `packages/core/src/doctor.ts`
 

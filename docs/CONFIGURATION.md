@@ -267,6 +267,24 @@ The filter settings in config apply when callers of `buildDynamicInput()` pass `
 
 ---
 
+### `audit`
+
+Controls the audit event log written to `.relay/audit.log`.
+
+```json
+"audit": {
+  "enabled": true,
+  "maxLines": 10000
+}
+```
+
+| Field | Type | Default | Description |
+| --- | --- | --- | --- |
+| `enabled` | boolean | `true` | Enable audit event logging. When `false`, no events are written to `.relay/audit.log`. |
+| `maxLines` | number | `10000` | Maximum lines in the audit log. When the limit is reached, the oldest 20% of events are dropped atomically in a single write before the new event is appended. |
+
+---
+
 ## Cache Stability Rules
 
 To keep the `STATIC_BLOCK` and `STATE_LAYER` prefix stable across requests (so provider caches hit), avoid putting these in the stable zones:

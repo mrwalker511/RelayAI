@@ -4,7 +4,7 @@ import { mkdirSync, mkdtempSync, writeFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { execFileSync } from "node:child_process";
-import { listTrackedFiles, buildPrioritizedFileIndex } from "./tracked-files.js";
+import { listTrackedFiles, listTrackedFilesAsync, buildPrioritizedFileIndex, buildPrioritizedFileIndexAsync } from "./tracked-files.js";
 
 function makeTempGitRepo(files: Record<string, string> = {}): string {
   const dir = mkdtempSync(join(tmpdir(), "relay-tracked-test-"));
@@ -70,6 +70,32 @@ test("buildPrioritizedFileIndex respects the limit option", () => {
   try {
     const index = buildPrioritizedFileIndex(dir, { limit: 2 });
     assert.ok(index.length <= 2);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("listTrackedFilesAsync returns same files as sync version", async () => {
+  const dir = makeTempGitRepo({ "src/index.ts": "export {};\n" });
+  try {
+    const [sync, async_] = await Promise.all([
+      Promise.resolve(listTrackedFiles(dir)),
+      listTrackedFilesAsync(dir),
+    ]);
+    assert.deepEqual(sync.sort(), async_.sort());
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("buildPrioritizedFileIndexAsync returns same result as sync version", async () => {
+  const dir = makeTempGitRepo({ "src/a.ts": "a", "src/b.ts": "b" });
+  try {
+    const [sync, async_] = await Promise.all([
+      Promise.resolve(buildPrioritizedFileIndex(dir, { priorityPaths: ["src/a.ts"] })),
+      buildPrioritizedFileIndexAsync(dir, { priorityPaths: ["src/a.ts"] }),
+    ]);
+    assert.deepEqual(sync, async_);
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }

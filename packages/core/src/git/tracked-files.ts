@@ -1,4 +1,7 @@
-import { execFileSync } from "node:child_process";
+import { execFileSync, execFile } from "node:child_process";
+import { promisify } from "node:util";
+
+const execFileP = promisify(execFile);
 
 export function listTrackedFiles(cwd = process.cwd()): string[] {
   try {
@@ -33,6 +36,32 @@ export function buildPrioritizedFileIndex(
   const { limit = 200, priorityPaths = [], excludePatterns = DEFAULT_EXCLUDE } = options;
 
   const all = listTrackedFiles(cwd);
+  const prioritySet = new Set(priorityPaths);
+  const filtered = all.filter((f) => !excludePatterns.some((pattern) => pattern.test(f)));
+
+  const priority = filtered.filter((f) => prioritySet.has(f));
+  const rest = filtered.filter((f) => !prioritySet.has(f));
+
+  return [...priority, ...rest].slice(0, limit);
+}
+
+export async function listTrackedFilesAsync(cwd = process.cwd()): Promise<string[]> {
+  try {
+    const { stdout } = await execFileP("git", ["ls-files"], { cwd, encoding: "utf8" });
+    return (stdout as string).split("\n").map((line) => line.trim()).filter(Boolean);
+  } catch (err) {
+    process.stderr.write(`[relay] Warning: could not list git tracked files: ${(err as Error).message}\n`);
+    return [];
+  }
+}
+
+export async function buildPrioritizedFileIndexAsync(
+  cwd = process.cwd(),
+  options: FileIndexOptions = {}
+): Promise<string[]> {
+  const { limit = 200, priorityPaths = [], excludePatterns = DEFAULT_EXCLUDE } = options;
+
+  const all = await listTrackedFilesAsync(cwd);
   const prioritySet = new Set(priorityPaths);
   const filtered = all.filter((f) => !excludePatterns.some((pattern) => pattern.test(f)));
 

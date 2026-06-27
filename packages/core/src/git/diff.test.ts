@@ -4,7 +4,7 @@ import { mkdtempSync, writeFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { execFileSync } from "node:child_process";
-import { getGitDiffSince, getStagedDiff, summarizeDiff } from "./diff.js";
+import { getGitDiffSince, getGitDiffSinceAsync, getStagedDiff, getStagedDiffAsync, summarizeDiff } from "./diff.js";
 
 function makeTempGitRepo(): string {
   const dir = mkdtempSync(join(tmpdir(), "relay-diff-test-"));
@@ -68,6 +68,36 @@ test("getStagedDiff returns staged content after git add", () => {
     const diff = getStagedDiff(dir);
     assert.match(diff, /file\.ts/);
     assert.match(diff, /\+export const x = 99/);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("getGitDiffSinceAsync returns same result as sync version", async () => {
+  const dir = makeTempGitRepo();
+  try {
+    const baseSha = execFileSync("git", ["rev-parse", "HEAD"], { cwd: dir, encoding: "utf8" }).trim();
+    writeFileSync(join(dir, "file.ts"), "export const x = 42;\n");
+    const [sync, async_] = await Promise.all([
+      Promise.resolve(getGitDiffSince(baseSha, dir)),
+      getGitDiffSinceAsync(baseSha, dir),
+    ]);
+    assert.equal(sync, async_);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("getStagedDiffAsync returns same result as sync version", async () => {
+  const dir = makeTempGitRepo();
+  try {
+    writeFileSync(join(dir, "file.ts"), "export const x = 99;\n");
+    execFileSync("git", ["add", "file.ts"], { cwd: dir, stdio: "ignore" });
+    const [sync, async_] = await Promise.all([
+      Promise.resolve(getStagedDiff(dir)),
+      getStagedDiffAsync(dir),
+    ]);
+    assert.equal(sync, async_);
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }

@@ -28,6 +28,7 @@ type EncodingName = "cl100k_base" | "o200k_base";
 export const CLAUDE_TOKEN_CORRECTION_FACTOR = 1.15;
 
 const _encoders = new Map<EncodingName, ReturnType<typeof getEncoding> | null>();
+const _tokenCache = new Map<string, Map<string, TokenEstimate>>();
 
 function getEncoder(name: EncodingName): ReturnType<typeof getEncoding> | null {
   if (!_encoders.has(name)) {
@@ -67,24 +68,38 @@ export function estimateTokens(text: string, opts: TokenEstimateOptions = {}): T
   const provider = (opts.provider ?? "").toLowerCase();
   const model = (opts.model ?? "").toLowerCase();
   const encodingName = selectEncoding(provider, model);
-  const enc = getEncoder(encodingName);
 
-  if (!enc) {
-    return { tokens: Math.ceil(text.length / 4), tokenizer: "char_div_4_fallback" };
-  }
-
-  const baseTokens = enc.encode(text).length;
-
-  // Claude (native Anthropic, or a Claude model routed through Copilot) is
-  // estimated from the base encoding with an empirical correction factor.
   const claudeRequested =
     provider === "anthropic" || (provider === "copilot" && isClaudeModel(model));
-  if (claudeRequested) {
-    const factor = resolveClaudeFactor(opts);
-    if (factor !== 1) {
-      return { tokens: Math.ceil(baseTokens * factor), tokenizer: `${encodingName}*claude_factor` };
+  const factor = claudeRequested ? resolveClaudeFactor(opts) : 1;
+
+  // Cache lookup — keyed by encoding+factor in outer map, text in inner map.
+  // Avoids re-encoding the same large text (e.g. git diffs) within a single invocation.
+  const outerKey = `${encodingName}:${factor}`;
+  let innerCache = _tokenCache.get(outerKey);
+  if (!innerCache) {
+    innerCache = new Map();
+    _tokenCache.set(outerKey, innerCache);
+  }
+  const cached = innerCache.get(text);
+  if (cached !== undefined) return cached;
+
+  const enc = getEncoder(encodingName);
+  let result: TokenEstimate;
+
+  if (!enc) {
+    result = { tokens: Math.ceil(text.length / 4), tokenizer: "char_div_4_fallback" };
+  } else {
+    const baseTokens = enc.encode(text).length;
+    // Claude (native Anthropic, or a Claude model routed through Copilot) is
+    // estimated from the base encoding with an empirical correction factor.
+    if (claudeRequested && factor !== 1) {
+      result = { tokens: Math.ceil(baseTokens * factor), tokenizer: `${encodingName}*claude_factor` };
+    } else {
+      result = { tokens: baseTokens, tokenizer: encodingName };
     }
   }
 
-  return { tokens: baseTokens, tokenizer: encodingName };
+  innerCache.set(text, result);
+  return result;
 }

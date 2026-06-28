@@ -239,7 +239,7 @@ Now, initialize and configure Relay in the `AgentFlow` project directory to prep
 
    ```bash
    cd /home/matthew/projects/AgentFlow
-   node /home/matthew/projects/RelayAI/packages/cli/dist/index.js init
+   node RelayAI/packages/cli/dist/index.js init
    ```
 
 2. **Verify Relay Health**:

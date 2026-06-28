@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RelayAI — Walkthrough</title>
+  <style>
+    :root {
+      --bg: #0f1117;
+      --surface: #181c27;
+      --surface2: #1e2333;
+      --border: #2a3045;
+      --accent: #4f8ef7;
+      --accent2: #7c5cbf;
+      --green: #22c55e;
+      --red: #ef4444;
+      --yellow: #f59e0b;
+      --text: #e2e8f0;
+      --muted: #8892a4;
+      --radius: 10px;
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; }
+    body { background: var(--bg); color: var(--text); display: flex; flex-direction: column; min-height: 100vh; }
+
+    /* ── Header ── */
+    header {
+      background: linear-gradient(135deg, #1a1f35 0%, #0f1117 100%);
+      border-bottom: 1px solid var(--border);
+      padding: 14px 28px;
+      display: flex; align-items: center; gap: 14px;
+      position: sticky; top: 0; z-index: 100;
+    }
+    .logo-icon {
+      width: 34px; height: 34px; border-radius: 8px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px; font-weight: 800; color: #fff; flex-shrink: 0;
+    }
+    .logo-name { font-size: 16px; font-weight: 700; letter-spacing: -0.3px; }
+    .logo-sub { font-size: 11px; color: var(--muted); margin-top: 1px; }
+
+    /* ── Layout ── */
+    .layout { display: flex; flex: 1; overflow: hidden; }
+
+    /* ── Sidebar ── */
+    nav {
+      width: 220px; flex-shrink: 0;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      padding: 20px 0;
+      overflow-y: auto;
+      position: sticky; top: 57px; height: calc(100vh - 57px);
+    }
+    .nav-group { margin-bottom: 6px; }
+    .nav-group-label {
+      font-size: 10px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.8px; color: var(--muted);
+      padding: 10px 20px 6px;
+    }
+    .nav-link {
+      display: block; padding: 7px 20px;
+      font-size: 13px; color: var(--muted);
+      text-decoration: none; transition: all 0.15s;
+      border-left: 2px solid transparent;
+    }
+    .nav-link:hover { color: var(--text); background: var(--surface2); }
+    .nav-link.active {
+      color: var(--accent); border-left-color: var(--accent);
+      background: rgba(79,142,247,0.08);
+    }
+
+    /* ── Content ── */
+    main {
+      flex: 1; overflow-y: auto;
+      padding: 40px 48px 80px;
+      max-width: 900px;
+    }
+
+    /* ── Markdown styles ── */
+    .md h1 { font-size: 28px; font-weight: 800; letter-spacing: -0.5px; margin-bottom: 16px; line-height: 1.25; }
+    .md h2 { font-size: 20px; font-weight: 700; margin: 36px 0 12px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+    .md h3 { font-size: 16px; font-weight: 700; margin: 28px 0 10px; color: var(--text); }
+    .md h4 { font-size: 14px; font-weight: 700; margin: 20px 0 8px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
+
+    .md p { font-size: 14px; line-height: 1.75; margin-bottom: 14px; color: var(--text); }
+    .md a { color: var(--accent); text-decoration: none; }
+    .md a:hover { text-decoration: underline; }
+
+    .md ul, .md ol { padding-left: 22px; margin-bottom: 14px; }
+    .md li { font-size: 14px; line-height: 1.7; margin-bottom: 4px; }
+    .md li > p { margin-bottom: 4px; }
+
+    /* task lists */
+    .md ul.contains-task-list { list-style: none; padding-left: 4px; }
+    .md li.task-list-item { display: flex; align-items: flex-start; gap: 8px; }
+    .md li.task-list-item input[type="checkbox"] { margin-top: 4px; accent-color: var(--accent); flex-shrink: 0; }
+
+    .md blockquote {
+      border-left: 3px solid var(--accent2);
+      padding: 10px 18px; margin: 18px 0;
+      background: rgba(124,92,191,0.08); border-radius: 0 6px 6px 0;
+      font-size: 13px; color: var(--muted);
+    }
+    .md blockquote p { margin-bottom: 0; color: var(--muted); }
+
+    .md code {
+      font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+      font-size: 12.5px; background: var(--surface2);
+      border: 1px solid var(--border); border-radius: 4px;
+      padding: 2px 6px; color: #a5d6ff;
+    }
+    .md pre {
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 8px; padding: 18px 20px; margin: 16px 0;
+      overflow-x: auto;
+    }
+    .md pre code {
+      background: none; border: none; padding: 0;
+      font-size: 13px; color: #cdd9e5; line-height: 1.6;
+    }
+
+    .md table {
+      width: 100%; border-collapse: collapse; margin: 18px 0; font-size: 13px;
+    }
+    .md th {
+      text-align: left; padding: 9px 14px;
+      background: var(--surface2); color: var(--muted);
+      font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;
+      border-bottom: 1px solid var(--border);
+    }
+    .md td { padding: 10px 14px; border-bottom: 1px solid var(--border); vertical-align: top; }
+    .md tr:last-child td { border-bottom: none; }
+    .md tr:hover td { background: rgba(255,255,255,0.02); }
+
+    .md hr { border: none; border-top: 1px solid var(--border); margin: 32px 0; }
+
+    .md img { max-width: 100%; border-radius: 8px; }
+
+    /* badges (shields.io etc.) */
+    .md img[src*="shields.io"], .md img[src*="badge"] { border-radius: 3px; }
+
+    /* ── Responsive ── */
+    @media (max-width: 700px) {
+      nav { display: none; }
+      main { padding: 24px 20px 60px; }
+      .md h1 { font-size: 22px; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="logo-icon">R</div>
+    <div>
+      <div class="logo-name">RelayAI</div>
+      <div class="logo-sub">Docs</div>
+    </div>
+  </header>
+  <div class="layout">
+    <nav>
+      <div class="nav-group">
+        <div class="nav-group-label">Project</div>
+        <a href="index.html" class="nav-link">Overview</a>
+        <a href="getting-started.html" class="nav-link">Getting Started</a>
+        <a href="user-installation-guide.html" class="nav-link">Installation Guide</a>
+        <a href="walkthrough.html" class="nav-link active">Walkthrough</a>
+      </div>
+      <div class="nav-group">
+        <div class="nav-group-label">Reference</div>
+        <a href="commands.html" class="nav-link">Commands</a>
+        <a href="configuration.html" class="nav-link">Configuration</a>
+        <a href="provider-adapters.html" class="nav-link">Provider Adapters</a>
+        <a href="mcp.html" class="nav-link">MCP Integration</a>
+        <a href="architecture.html" class="nav-link">Architecture</a>
+      </div>
+      <div class="nav-group">
+        <div class="nav-group-label">Development</div>
+        <a href="testing-plan-doc.html" class="nav-link">Testing Plan</a>
+        <a href="mvp-roadmap.html" class="nav-link">MVP Roadmap</a>
+        <a href="bench-prompts.html" class="nav-link">Bench Prompts</a>
+        <a href="contributing.html" class="nav-link">Contributing</a>
+        <a href="agents.html" class="nav-link">Agents Guide</a>
+        <a href="changelog.html" class="nav-link">Changelog</a>
+        <a href="security.html" class="nav-link">Security</a>
+      </div>
+    </nav>
+    <main>
+      <div class="md">
+        <h1>Walkthrough: see RelayAI&#39;s savings for yourself</h1>
+<p>This guide takes you from a clean checkout to <strong>measured</strong> token savings against
+the real <a href="https://github.com/openai/codex">OpenAI Codex</a> CLI, using the bundled
+<a href="../examples/sample-project"><code>examples/sample-project</code></a>.</p>
+<ul>
+<li><strong>Fastest path:</strong> <a href="#the-fast-path-one-command">one command</a>.</li>
+<li><strong>Understand each step:</strong> <a href="#the-manual-walkthrough">manual walkthrough</a>.</li>
+<li><strong>Route to Copilot:</strong> <a href="#routing-to-github-copilot">the unmeasured provider</a>.</li>
+</ul>
+<blockquote>
+<p>The token/cost numbers shown below are <strong>illustrative</strong> — they come from a
+representative Codex run. Your exact figures will differ, but the mechanics
+(a stable cached prefix, cached input growing across repeat calls) are the same.</p>
+</blockquote>
+<hr>
+<h2>Prerequisites</h2>
+<ul>
+<li>Node.js 20+, pnpm 9+, git</li>
+<li>From the repo root: <code>pnpm install &amp;&amp; pnpm build</code></li>
+<li>The <a href="https://github.com/openai/codex"><code>codex</code></a> CLI on your PATH, authenticated
+with <code>codex login</code>. The steps below make <strong>real</strong> Codex calls (network +
+tokens against your account).</li>
+</ul>
+<hr>
+<h2>The fast path (one command)</h2>
+<pre><code class="language-bash">./examples/sample-project/try-relay.sh
+</code></pre>
+<p>It checks that <code>codex</code> is installed, copies the sample project into a throwaway
+git repo, wires up Codex as the measured provider, and runs the whole flow. As
+Codex&#39;s prompt cache warms across calls you&#39;ll watch <code>cached_input_tokens</code> climb,
+then see <code>relay savings</code> total up the real provider usage. Skip to
+<a href="#step-5-read-the-measured-savings">reading the savings output</a> for what the
+numbers mean.</p>
+<hr>
+<h2>The manual walkthrough</h2>
+<p>Run these yourself to understand each piece. We&#39;ll use the built CLI directly so
+no global install is needed. From the repo root:</p>
+<pre><code class="language-bash"># A throwaway copy of the sample project as its own git repo
+WORK=&quot;$(mktemp -d)&quot;
+cp -r examples/sample-project/. &quot;$WORK&quot;/
+rm -f &quot;$WORK&quot;/try-relay.sh
+cd &quot;$WORK&quot;
+git init -q &amp;&amp; git add -A &amp;&amp; git commit -qm &quot;init task-tracker&quot;
+
+# Point `relay` at the freshly built CLI
+relay() { node &quot;$OLDPWD/packages/cli/dist/index.js&quot; &quot;$@&quot;; }
+</code></pre>
+<h3>Step 1: initialize Relay and install the Codex config</h3>
+<pre><code class="language-bash">relay init
+cp relay.config.json .relay/config.json   # pre-wired to Codex (measured) + Copilot
+relay session start
+</code></pre>
+<p><code>relay session start</code> anchors context to the current git SHA and records the
+deterministic prefix hashes. Everything after this is a <em>diff since that base</em>,
+not the whole repo.</p>
+<h3>Step 2: see the three zones</h3>
+<pre><code class="language-bash">relay cache inspect --input-cost-per-million 3 --cached-input-cost-per-million 0.3
+</code></pre>
+<pre><code class="language-jsonc">&quot;zones&quot;: { &quot;static_block&quot;: 83, &quot;state_layer&quot;: 120, &quot;dynamic_input&quot;: 145, &quot;total&quot;: 348 }
+</code></pre>
+<p><code>static_block</code> + <code>state_layer</code> are the <strong>stable, cacheable prefix</strong>;
+<code>dynamic_input</code> is the volatile tail (your prompt + the git diff). The stable
+zones come first so a provider cache can reuse them across calls.</p>
+<h3>Step 3: ask Codex, capturing real usage</h3>
+<pre><code class="language-bash">relay ask --provider codex --measure &quot;Explain how the priority sort works.&quot;
+relay ask --provider codex --measure &quot;Add a dueDate field to the Task type.&quot;
+relay ask --provider codex --measure &quot;Write a test for TaskStore.complete().&quot;
+</code></pre>
+<p><code>--measure</code> rewrites the command to <code>codex exec --json -</code>, tees Codex&#39;s output
+(you still see it), and parses the final <code>turn.completed</code> event into the audit
+ledger. Codex reports <code>input_tokens</code> <strong>inclusive</strong> of <code>cached_input_tokens</code>, so
+Relay normalizes the <em>uncached</em> input as <code>input - cached</code> before recording it.
+As the cached prefix is reused, the <strong>first</strong> call writes Codex&#39;s cache and later
+calls read it back — <code>cached_input_tokens</code> grows accordingly.</p>
+<h3>Step 4: inspect the per-call ledger</h3>
+<pre><code class="language-bash">relay audit --event ask --tail 3
+</code></pre>
+<p>Each <code>ask</code> now records <code>prefix_hash</code>, per-zone token counts, the <code>tokenizer</code>
+used, <code>prefix_stable</code> (did the cached prefix match the previous call), and the
+measured <code>usage_*</code> tokens. Note <code>prefix_stable</code> is <code>false</code> on call 1 and <code>true</code>
+afterward — that&#39;s the deterministic, <em>measured</em> cache-eligibility signal.</p>
+<h3>Step 5: read the measured savings</h3>
+<pre><code class="language-bash">relay savings --input-cost-per-million 3 --cached-input-cost-per-million 0.3 --output-cost-per-million 15
+</code></pre>
+<pre><code class="language-text">MEASURED (from recorded provider/manual usage)
+  calls with usage:    3
+  input / cache-read:  945 / 48896 tokens
+  cache-write / output:0 / 244 tokens
+  actual vs baseline:  $0.0186 vs $0.1495
+  saved:               $0.1309  (aggregate over the run is the honest figure)
+
+PROJECTED FROM HISTORY (measured prefix-stability rate × zone estimator)
+  prefix-stability:    100.0% over 3 ask(s)
+  avg zones (S/St/D):  83 / 120 / 152 tokens
+  projected/call saved:$0.0005  (PROJECTION, not measured)
+</code></pre>
+<blockquote>
+<p>These figures are <strong>illustrative</strong> of a representative Codex run — your numbers
+will vary with prompt size, the model, and how much of the prefix Codex caches.</p>
+</blockquote>
+<p>What the two sections mean:</p>
+<ul>
+<li><strong>MEASURED</strong> is real: actual cost (Codex&#39;s cached input is billed cheap, output
+included) vs. a no-cache baseline where every input token is billed full price.
+The win grows with every repeat call as more of the prefix is served from
+cache, which is why the <strong>aggregate</strong> is the honest number. (Codex has no
+separate cache-<em>write</em> surcharge in its usage, so <code>cache-write</code> reads as 0.)</li>
+<li><strong>PROJECTED FROM HISTORY</strong> feeds your <strong>measured</strong> prefix-stability rate (here
+100%) into the zone estimator. It&#39;s a projection, not a measurement — clearly
+labeled as such.</li>
+</ul>
+<blockquote>
+<p>The dollar figures here are tiny because the sample project is tiny. On a real
+codebase the cacheable prefix is far larger, so the same mechanics produce much
+bigger savings — see the estimate below.</p>
+</blockquote>
+<h3>Step 6 (optional): estimated comparison vs. a naive file dump</h3>
+<p>From the <strong>RelayAI repo root</strong> (this tool resolves the workspace package, so run
+it there):</p>
+<pre><code class="language-bash">pnpm run compare -- --prompt &quot;Explain the priority sort&quot;
+</code></pre>
+<p>It prints first-call (cold cache) <strong>and</strong> amortized repeat-call (warm cache) size
+versus naively dumping every file into the prompt. On the RelayAI repo itself
+that&#39;s roughly <strong>−92% first call, −98% on cached repeats</strong>.</p>
+<hr>
+<h2>Routing to GitHub Copilot</h2>
+<p>The sample config also wires up GitHub Copilot as a routable provider:</p>
+<pre><code class="language-jsonc">&quot;commands&quot;: { &quot;copilot&quot;: [&quot;copilot&quot;, &quot;-p&quot;, &quot;{prompt}&quot;] }
+</code></pre>
+<p>The <code>{prompt}</code> placeholder tells Relay to deliver the assembled payload as the
+<code>-p</code> <strong>argument</strong> (Copilot doesn&#39;t read the prompt from stdin). Route to it with:</p>
+<pre><code class="language-bash">relay ask --provider copilot &quot;Explain how the priority sort works.&quot;
+</code></pre>
+<p>Copilot exposes token usage only via OpenTelemetry, not on stdout, so it
+<strong>cannot</strong> be auto-measured. If you want measured savings through Copilot,
+capture the numbers from your telemetry and record them manually:</p>
+<pre><code class="language-bash">relay usage record --input 1200 --cached-input 8000 --cache-creation 300 --output 450
+</code></pre>
+<p><code>relay savings</code> includes both provider-measured (Codex) and manually recorded usage.</p>
+<hr>
+<h2>Troubleshooting</h2>
+<table>
+<thead>
+<tr>
+<th>Symptom</th>
+<th>Fix</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>codex: command not found</code></td>
+<td>Install the Codex CLI (<code>npm i -g @openai/codex</code>) and run <code>codex login</code>. The demo&#39;s preflight checks for this.</td>
+</tr>
+<tr>
+<td><code>relay: command not found</code></td>
+<td>Use the built CLI: <code>node packages/cli/dist/index.js …</code>, or define the <code>relay()</code> shell function shown above.</td>
+</tr>
+<tr>
+<td><code>--measure: could not parse provider usage</code></td>
+<td>The provider didn&#39;t emit a usage envelope on stdout. Use the <code>codex</code> (or <code>claude</code>) builtin, or record usage with <code>relay usage record</code>. Copilot can&#39;t be auto-measured.</td>
+</tr>
+<tr>
+<td><code>savings</code> shows no MEASURED section</td>
+<td>No usage recorded yet — run <code>relay ask --provider codex --measure</code> or <code>relay usage record</code> first.</td>
+</tr>
+<tr>
+<td><code>compare</code> errors on <code>@relay/core</code></td>
+<td>Run it from the RelayAI repo root, not from the sample copy.</td>
+</tr>
+</tbody></table>
+<p>See also: <a href="commands.html"><code>COMMANDS.md</code></a> · <a href="getting-started.html"><code>GETTING_STARTED.md</code></a> · <a href="testing-plan-doc.html"><code>TESTING_PLAN.md</code></a></p>
+
+      </div>
+    </main>
+  </div>
+</body>
+</html>

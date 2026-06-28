@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RelayAI — Provider Adapters</title>
+  <style>
+    :root {
+      --bg: #0f1117;
+      --surface: #181c27;
+      --surface2: #1e2333;
+      --border: #2a3045;
+      --accent: #4f8ef7;
+      --accent2: #7c5cbf;
+      --green: #22c55e;
+      --red: #ef4444;
+      --yellow: #f59e0b;
+      --text: #e2e8f0;
+      --muted: #8892a4;
+      --radius: 10px;
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; }
+    body { background: var(--bg); color: var(--text); display: flex; flex-direction: column; min-height: 100vh; }
+
+    /* ── Header ── */
+    header {
+      background: linear-gradient(135deg, #1a1f35 0%, #0f1117 100%);
+      border-bottom: 1px solid var(--border);
+      padding: 14px 28px;
+      display: flex; align-items: center; gap: 14px;
+      position: sticky; top: 0; z-index: 100;
+    }
+    .logo-icon {
+      width: 34px; height: 34px; border-radius: 8px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px; font-weight: 800; color: #fff; flex-shrink: 0;
+    }
+    .logo-name { font-size: 16px; font-weight: 700; letter-spacing: -0.3px; }
+    .logo-sub { font-size: 11px; color: var(--muted); margin-top: 1px; }
+
+    /* ── Layout ── */
+    .layout { display: flex; flex: 1; overflow: hidden; }
+
+    /* ── Sidebar ── */
+    nav {
+      width: 220px; flex-shrink: 0;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      padding: 20px 0;
+      overflow-y: auto;
+      position: sticky; top: 57px; height: calc(100vh - 57px);
+    }
+    .nav-group { margin-bottom: 6px; }
+    .nav-group-label {
+      font-size: 10px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.8px; color: var(--muted);
+      padding: 10px 20px 6px;
+    }
+    .nav-link {
+      display: block; padding: 7px 20px;
+      font-size: 13px; color: var(--muted);
+      text-decoration: none; transition: all 0.15s;
+      border-left: 2px solid transparent;
+    }
+    .nav-link:hover { color: var(--text); background: var(--surface2); }
+    .nav-link.active {
+      color: var(--accent); border-left-color: var(--accent);
+      background: rgba(79,142,247,0.08);
+    }
+
+    /* ── Content ── */
+    main {
+      flex: 1; overflow-y: auto;
+      padding: 40px 48px 80px;
+      max-width: 900px;
+    }
+
+    /* ── Markdown styles ── */
+    .md h1 { font-size: 28px; font-weight: 800; letter-spacing: -0.5px; margin-bottom: 16px; line-height: 1.25; }
+    .md h2 { font-size: 20px; font-weight: 700; margin: 36px 0 12px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+    .md h3 { font-size: 16px; font-weight: 700; margin: 28px 0 10px; color: var(--text); }
+    .md h4 { font-size: 14px; font-weight: 700; margin: 20px 0 8px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
+
+    .md p { font-size: 14px; line-height: 1.75; margin-bottom: 14px; color: var(--text); }
+    .md a { color: var(--accent); text-decoration: none; }
+    .md a:hover { text-decoration: underline; }
+
+    .md ul, .md ol { padding-left: 22px; margin-bottom: 14px; }
+    .md li { font-size: 14px; line-height: 1.7; margin-bottom: 4px; }
+    .md li > p { margin-bottom: 4px; }
+
+    /* task lists */
+    .md ul.contains-task-list { list-style: none; padding-left: 4px; }
+    .md li.task-list-item { display: flex; align-items: flex-start; gap: 8px; }
+    .md li.task-list-item input[type="checkbox"] { margin-top: 4px; accent-color: var(--accent); flex-shrink: 0; }
+
+    .md blockquote {
+      border-left: 3px solid var(--accent2);
+      padding: 10px 18px; margin: 18px 0;
+      background: rgba(124,92,191,0.08); border-radius: 0 6px 6px 0;
+      font-size: 13px; color: var(--muted);
+    }
+    .md blockquote p { margin-bottom: 0; color: var(--muted); }
+
+    .md code {
+      font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+      font-size: 12.5px; background: var(--surface2);
+      border: 1px solid var(--border); border-radius: 4px;
+      padding: 2px 6px; color: #a5d6ff;
+    }
+    .md pre {
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 8px; padding: 18px 20px; margin: 16px 0;
+      overflow-x: auto;
+    }
+    .md pre code {
+      background: none; border: none; padding: 0;
+      font-size: 13px; color: #cdd9e5; line-height: 1.6;
+    }
+
+    .md table {
+      width: 100%; border-collapse: collapse; margin: 18px 0; font-size: 13px;
+    }
+    .md th {
+      text-align: left; padding: 9px 14px;
+      background: var(--surface2); color: var(--muted);
+      font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;
+      border-bottom: 1px solid var(--border);
+    }
+    .md td { padding: 10px 14px; border-bottom: 1px solid var(--border); vertical-align: top; }
+    .md tr:last-child td { border-bottom: none; }
+    .md tr:hover td { background: rgba(255,255,255,0.02); }
+
+    .md hr { border: none; border-top: 1px solid var(--border); margin: 32px 0; }
+
+    .md img { max-width: 100%; border-radius: 8px; }
+
+    /* badges (shields.io etc.) */
+    .md img[src*="shields.io"], .md img[src*="badge"] { border-radius: 3px; }
+
+    /* ── Responsive ── */
+    @media (max-width: 700px) {
+      nav { display: none; }
+      main { padding: 24px 20px 60px; }
+      .md h1 { font-size: 22px; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="logo-icon">R</div>
+    <div>
+      <div class="logo-name">RelayAI</div>
+      <div class="logo-sub">Docs</div>
+    </div>
+  </header>
+  <div class="layout">
+    <nav>
+      <div class="nav-group">
+        <div class="nav-group-label">Project</div>
+        <a href="index.html" class="nav-link">Overview</a>
+        <a href="getting-started.html" class="nav-link">Getting Started</a>
+        <a href="user-installation-guide.html" class="nav-link">Installation Guide</a>
+        <a href="walkthrough.html" class="nav-link">Walkthrough</a>
+      </div>
+      <div class="nav-group">
+        <div class="nav-group-label">Reference</div>
+        <a href="commands.html" class="nav-link">Commands</a>
+        <a href="configuration.html" class="nav-link">Configuration</a>
+        <a href="provider-adapters.html" class="nav-link active">Provider Adapters</a>
+        <a href="mcp.html" class="nav-link">MCP Integration</a>
+        <a href="architecture.html" class="nav-link">Architecture</a>
+      </div>
+      <div class="nav-group">
+        <div class="nav-group-label">Development</div>
+        <a href="testing-plan-doc.html" class="nav-link">Testing Plan</a>
+        <a href="mvp-roadmap.html" class="nav-link">MVP Roadmap</a>
+        <a href="bench-prompts.html" class="nav-link">Bench Prompts</a>
+        <a href="contributing.html" class="nav-link">Contributing</a>
+        <a href="agents.html" class="nav-link">Agents Guide</a>
+        <a href="changelog.html" class="nav-link">Changelog</a>
+        <a href="security.html" class="nav-link">Security</a>
+      </div>
+    </nav>
+    <main>
+      <div class="md">
+        <h1>Provider Adapters</h1>
+<p>Relay integrates with model and coding-agent CLIs without replacing them. A provider adapter is a small wrapper around a configured shell command. Relay assembles the prompt payload and writes it to the provider process on stdin; the provider owns model execution, code generation, and authentication.</p>
+<hr>
+<h2>Design Principle</h2>
+<p>Relay owns:</p>
+<ul>
+<li>Context construction (three-zone payload)</li>
+<li>Token budgeting and guardrails</li>
+<li>Semantic state and garbage collection</li>
+<li>Git delta prompting</li>
+<li>Cache diagnostics and fingerprinting</li>
+</ul>
+<p>Providers own:</p>
+<ul>
+<li>Model execution</li>
+<li>Code generation and tool use</li>
+<li>Provider-specific authentication and rate limiting</li>
+</ul>
+<p>Relay does not switch providers silently to optimize cost. That would undermine predictability. Instead, Relay reduces token consumption through deterministic prefix pinning, context compaction, git deltas, and local budget enforcement.</p>
+<hr>
+<h2>Adapter Interface</h2>
+<pre><code class="language-ts">export interface ProviderAdapter {
+  name: string;
+  sendPrompt(payload: string, opts?: SendPromptOptions): Promise&lt;ProviderResult&gt;;
+}
+</code></pre>
+<p><code>ShellProvider</code> implements this interface by spawning the configured command array and delivering the assembled payload — by default on <strong>stdin</strong>, or as an argv element when the command template contains a <code>{prompt}</code> placeholder (see below). The result carries the provider&#39;s exit code and, when <code>--measure</code> is used, its captured stdout.</p>
+<h3>Prompt delivery: stdin vs. <code>{prompt}</code> placeholder</h3>
+<p>Most CLIs read the prompt from stdin, which is the default. If any element of a provider&#39;s command array contains the literal token <code>{prompt}</code>, Relay instead substitutes the assembled payload into those elements and leaves stdin empty. Because Relay spawns the process directly (no shell), an argv-delivered prompt is injection-safe regardless of its contents.</p>
+<pre><code class="language-json">{
+  &quot;provider&quot;: {
+    &quot;commands&quot;: {
+      &quot;codex&quot;: [&quot;codex&quot;, &quot;exec&quot;, &quot;-&quot;],
+      &quot;copilot&quot;: [&quot;copilot&quot;, &quot;-p&quot;, &quot;{prompt}&quot;]
+    }
+  }
+}
+</code></pre>
+<hr>
+<h2>Configuring Providers</h2>
+<p>Provider commands are defined in <code>.relay/config.json</code> as arrays of command arguments. Relay spawns the process directly — no shell interpolation.</p>
+<pre><code class="language-json">{
+  &quot;provider&quot;: {
+    &quot;default&quot;: &quot;my-provider&quot;,
+    &quot;commands&quot;: {
+      &quot;my-provider&quot;: [&quot;command&quot;, &quot;arg1&quot;, &quot;arg2&quot;]
+    }
+  }
+}
+</code></pre>
+<p>Send a prompt to the default provider:</p>
+<pre><code class="language-bash">relay ask &quot;Explain the active diff&quot; --provider default
+</code></pre>
+<p>Send to a named provider:</p>
+<pre><code class="language-bash">relay ask &quot;Write tests for the changed files&quot; --provider my-provider
+</code></pre>
+<p>Inspect the resolved command without executing it:</p>
+<pre><code class="language-bash">relay ask &quot;Review this change&quot; --provider default --dry-run
+</code></pre>
+<hr>
+<h2>Examples</h2>
+<h3>Claude CLI</h3>
+<pre><code class="language-json">{
+  &quot;provider&quot;: {
+    &quot;default&quot;: &quot;claude&quot;,
+    &quot;commands&quot;: {
+      &quot;claude&quot;: [&quot;claude&quot;, &quot;--dangerously-skip-permissions&quot;]
+    }
+  },
+  &quot;gc&quot;: {
+    &quot;enabled&quot;: true
+  }
+}
+</code></pre>
+<p>The <code>claude</code> CLI reads the prompt from stdin and responds in the terminal. The <code>--dangerously-skip-permissions</code> flag allows Claude to run tools without interactive confirmation — appropriate for scripted use where you control the prompt.</p>
+<h3>OpenAI Codex (measured)</h3>
+<pre><code class="language-json">{
+  &quot;provider&quot;: {
+    &quot;default&quot;: &quot;codex&quot;,
+    &quot;commands&quot;: {
+      &quot;codex&quot;: [&quot;codex&quot;, &quot;exec&quot;, &quot;-&quot;]
+    }
+  },
+  &quot;tokens&quot;: {
+    &quot;provider&quot;: &quot;openai&quot;,
+    &quot;model&quot;: &quot;gpt-5-codex&quot;
+  }
+}
+</code></pre>
+<p><code>codex exec -</code> runs non-interactively and reads the prompt from stdin. With <code>relay ask --measure</code>, Relay rewrites the command to <code>codex exec --json -</code> (inserting <code>--json</code> right after <code>exec</code>); Codex then streams a JSONL event log, and Relay reads usage from the final <code>turn.completed</code> event.</p>
+<p>Codex reports <code>input_tokens</code> <strong>inclusive</strong> of <code>cached_input_tokens</code> (unlike Claude, which reports them separately). Relay normalizes this so the audit ledger always stores <em>uncached</em> input: <code>input_tokens - cached_input_tokens</code>. Reasoning tokens, when present, are folded into <code>output_tokens</code>. Codex has no cache-creation concept, so <code>usage_cache_creation_tokens</code> is recorded as <code>0</code>.</p>
+<h3>GitHub Copilot (routable, not measured)</h3>
+<pre><code class="language-json">{
+  &quot;provider&quot;: {
+    &quot;commands&quot;: {
+      &quot;copilot&quot;: [&quot;copilot&quot;, &quot;-p&quot;, &quot;{prompt}&quot;]
+    }
+  }
+}
+</code></pre>
+<p>The Copilot CLI takes the prompt as the <code>-p</code> <strong>argument</strong>, so it uses the <code>{prompt}</code> placeholder rather than stdin. Copilot exposes token usage only via OpenTelemetry — not on stdout — so it <strong>cannot</strong> be auto-measured: <code>relay ask --provider copilot --measure</code> will route the prompt but record no provider usage. Use Copilot for routing prompts through your Copilot subscription; use Codex (or Claude) when you want measured savings.</p>
+<h3>Ollama (local model)</h3>
+<pre><code class="language-json">{
+  &quot;provider&quot;: {
+    &quot;default&quot;: &quot;ollama&quot;,
+    &quot;commands&quot;: {
+      &quot;ollama&quot;: [&quot;ollama&quot;, &quot;run&quot;, &quot;mistral&quot;]
+    }
+  },
+  &quot;gc&quot;: {
+    &quot;command&quot;: [&quot;ollama&quot;, &quot;run&quot;, &quot;mistral&quot;],
+    &quot;historyTokenLimit&quot;: 8000,
+    &quot;targetSummaryTokens&quot;: 400
+  },
+  &quot;tokens&quot;: {
+    &quot;provider&quot;: &quot;ollama&quot;,
+    &quot;model&quot;: &quot;mistral&quot;
+  }
+}
+</code></pre>
+<p>Ollama reads from stdin when piped. This config also uses Ollama for garbage collection to keep all inference local.</p>
+<h3>Ollama with a larger model</h3>
+<pre><code class="language-json">{
+  &quot;provider&quot;: {
+    &quot;default&quot;: &quot;ollama-large&quot;,
+    &quot;commands&quot;: {
+      &quot;ollama-large&quot;: [&quot;ollama&quot;, &quot;run&quot;, &quot;llama3.3&quot;],
+      &quot;ollama-fast&quot;: [&quot;ollama&quot;, &quot;run&quot;, &quot;llama3.2&quot;]
+    }
+  },
+  &quot;routing&quot;: {
+    &quot;gc&quot;: &quot;ollama-fast&quot;
+  },
+  &quot;tokens&quot;: {
+    &quot;provider&quot;: &quot;ollama&quot;,
+    &quot;model&quot;: &quot;llama3.3&quot;
+  }
+}
+</code></pre>
+<h3>Custom shell script</h3>
+<p>Any executable that reads stdin works as a provider:</p>
+<pre><code class="language-json">{
+  &quot;provider&quot;: {
+    &quot;default&quot;: &quot;my-script&quot;,
+    &quot;commands&quot;: {
+      &quot;my-script&quot;: [&quot;/path/to/my-llm-wrapper.sh&quot;]
+    }
+  }
+}
+</code></pre>
+<p>The script receives the full assembled Relay payload on stdin. It should write its response to stdout and exit with code 0 on success.</p>
+<h3>Multi-provider setup</h3>
+<pre><code class="language-json">{
+  &quot;provider&quot;: {
+    &quot;default&quot;: &quot;claude&quot;,
+    &quot;commands&quot;: {
+      &quot;claude&quot;: [&quot;claude&quot;, &quot;--dangerously-skip-permissions&quot;],
+      &quot;local&quot;: [&quot;ollama&quot;, &quot;run&quot;, &quot;mistral&quot;]
+    }
+  },
+  &quot;routing&quot;: {
+    &quot;gc&quot;: &quot;local&quot;
+  }
+}
+</code></pre>
+<p>This routes regular prompts to Claude but uses a local Ollama model for garbage collection, reducing cost for the frequent compaction operation.</p>
+<hr>
+<h2>No Automated Model Switching</h2>
+<p>Relay never silently switches models or providers to optimize cost. All routing decisions are explicit in <code>.relay/config.json</code>. This keeps prompt behavior predictable and ensures token budget estimates reflect the actual provider being used.</p>
+<p>To inspect the current routing before executing:</p>
+<pre><code class="language-bash">relay ask &quot;test prompt&quot; --provider default --dry-run
+relay doctor
+</code></pre>
+
+      </div>
+    </main>
+  </div>
+</body>
+</html>

@@ -12,6 +12,7 @@
     "lint": "pnpm -r lint",
     "pack:check": "pnpm clean && pnpm build && npm pack --dry-run --cache /tmp/npm-cache ./packages/core && npm pack --dry-run --cache /tmp/npm-cache ./packages/cli",
     "compare": "tsx scripts/compare.ts",
+    "docs": "tsx scripts/gen-docs.ts",
     "sigmap": "tsx scripts/gen-sigmap.ts",
     "pretest": "pnpm build",
     "test": "pnpm -r test",
@@ -25,6 +26,7 @@
   },
   "devDependencies": {
     "@types/node": "^25.9.3",
+    "marked": "^14.0.0",
     "tsx": "^4.22.4",
     "typescript": "^6.0.3"
   }

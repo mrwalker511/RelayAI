@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RelayAI — MCP Integration</title>
+  <style>
+    :root {
+      --bg: #0f1117;
+      --surface: #181c27;
+      --surface2: #1e2333;
+      --border: #2a3045;
+      --accent: #4f8ef7;
+      --accent2: #7c5cbf;
+      --green: #22c55e;
+      --red: #ef4444;
+      --yellow: #f59e0b;
+      --text: #e2e8f0;
+      --muted: #8892a4;
+      --radius: 10px;
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; }
+    body { background: var(--bg); color: var(--text); display: flex; flex-direction: column; min-height: 100vh; }
+
+    /* ── Header ── */
+    header {
+      background: linear-gradient(135deg, #1a1f35 0%, #0f1117 100%);
+      border-bottom: 1px solid var(--border);
+      padding: 14px 28px;
+      display: flex; align-items: center; gap: 14px;
+      position: sticky; top: 0; z-index: 100;
+    }
+    .logo-icon {
+      width: 34px; height: 34px; border-radius: 8px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px; font-weight: 800; color: #fff; flex-shrink: 0;
+    }
+    .logo-name { font-size: 16px; font-weight: 700; letter-spacing: -0.3px; }
+    .logo-sub { font-size: 11px; color: var(--muted); margin-top: 1px; }
+
+    /* ── Layout ── */
+    .layout { display: flex; flex: 1; overflow: hidden; }
+
+    /* ── Sidebar ── */
+    nav {
+      width: 220px; flex-shrink: 0;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      padding: 20px 0;
+      overflow-y: auto;
+      position: sticky; top: 57px; height: calc(100vh - 57px);
+    }
+    .nav-group { margin-bottom: 6px; }
+    .nav-group-label {
+      font-size: 10px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.8px; color: var(--muted);
+      padding: 10px 20px 6px;
+    }
+    .nav-link {
+      display: block; padding: 7px 20px;
+      font-size: 13px; color: var(--muted);
+      text-decoration: none; transition: all 0.15s;
+      border-left: 2px solid transparent;
+    }
+    .nav-link:hover { color: var(--text); background: var(--surface2); }
+    .nav-link.active {
+      color: var(--accent); border-left-color: var(--accent);
+      background: rgba(79,142,247,0.08);
+    }
+
+    /* ── Content ── */
+    main {
+      flex: 1; overflow-y: auto;
+      padding: 40px 48px 80px;
+      max-width: 900px;
+    }
+
+    /* ── Markdown styles ── */
+    .md h1 { font-size: 28px; font-weight: 800; letter-spacing: -0.5px; margin-bottom: 16px; line-height: 1.25; }
+    .md h2 { font-size: 20px; font-weight: 700; margin: 36px 0 12px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+    .md h3 { font-size: 16px; font-weight: 700; margin: 28px 0 10px; color: var(--text); }
+    .md h4 { font-size: 14px; font-weight: 700; margin: 20px 0 8px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
+
+    .md p { font-size: 14px; line-height: 1.75; margin-bottom: 14px; color: var(--text); }
+    .md a { color: var(--accent); text-decoration: none; }
+    .md a:hover { text-decoration: underline; }
+
+    .md ul, .md ol { padding-left: 22px; margin-bottom: 14px; }
+    .md li { font-size: 14px; line-height: 1.7; margin-bottom: 4px; }
+    .md li > p { margin-bottom: 4px; }
+
+    /* task lists */
+    .md ul.contains-task-list { list-style: none; padding-left: 4px; }
+    .md li.task-list-item { display: flex; align-items: flex-start; gap: 8px; }
+    .md li.task-list-item input[type="checkbox"] { margin-top: 4px; accent-color: var(--accent); flex-shrink: 0; }
+
+    .md blockquote {
+      border-left: 3px solid var(--accent2);
+      padding: 10px 18px; margin: 18px 0;
+      background: rgba(124,92,191,0.08); border-radius: 0 6px 6px 0;
+      font-size: 13px; color: var(--muted);
+    }
+    .md blockquote p { margin-bottom: 0; color: var(--muted); }
+
+    .md code {
+      font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+      font-size: 12.5px; background: var(--surface2);
+      border: 1px solid var(--border); border-radius: 4px;
+      padding: 2px 6px; color: #a5d6ff;
+    }
+    .md pre {
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 8px; padding: 18px 20px; margin: 16px 0;
+      overflow-x: auto;
+    }
+    .md pre code {
+      background: none; border: none; padding: 0;
+      font-size: 13px; color: #cdd9e5; line-height: 1.6;
+    }
+
+    .md table {
+      width: 100%; border-collapse: collapse; margin: 18px 0; font-size: 13px;
+    }
+    .md th {
+      text-align: left; padding: 9px 14px;
+      background: var(--surface2); color: var(--muted);
+      font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;
+      border-bottom: 1px solid var(--border);
+    }
+    .md td { padding: 10px 14px; border-bottom: 1px solid var(--border); vertical-align: top; }
+    .md tr:last-child td { border-bottom: none; }
+    .md tr:hover td { background: rgba(255,255,255,0.02); }
+
+    .md hr { border: none; border-top: 1px solid var(--border); margin: 32px 0; }
+
+    .md img { max-width: 100%; border-radius: 8px; }
+
+    /* badges (shields.io etc.) */
+    .md img[src*="shields.io"], .md img[src*="badge"] { border-radius: 3px; }
+
+    /* ── Responsive ── */
+    @media (max-width: 700px) {
+      nav { display: none; }
+      main { padding: 24px 20px 60px; }
+      .md h1 { font-size: 22px; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="logo-icon">R</div>
+    <div>
+      <div class="logo-name">RelayAI</div>
+      <div class="logo-sub">Docs</div>
+    </div>
+  </header>
+  <div class="layout">
+    <nav>
+      <div class="nav-group">
+        <div class="nav-group-label">Project</div>
+        <a href="index.html" class="nav-link">Overview</a>
+        <a href="getting-started.html" class="nav-link">Getting Started</a>
+        <a href="user-installation-guide.html" class="nav-link">Installation Guide</a>
+        <a href="walkthrough.html" class="nav-link">Walkthrough</a>
+      </div>
+      <div class="nav-group">
+        <div class="nav-group-label">Reference</div>
+        <a href="commands.html" class="nav-link">Commands</a>
+        <a href="configuration.html" class="nav-link">Configuration</a>
+        <a href="provider-adapters.html" class="nav-link">Provider Adapters</a>
+        <a href="mcp.html" class="nav-link active">MCP Integration</a>
+        <a href="architecture.html" class="nav-link">Architecture</a>
+      </div>
+      <div class="nav-group">
+        <div class="nav-group-label">Development</div>
+        <a href="testing-plan-doc.html" class="nav-link">Testing Plan</a>
+        <a href="mvp-roadmap.html" class="nav-link">MVP Roadmap</a>
+        <a href="bench-prompts.html" class="nav-link">Bench Prompts</a>
+        <a href="contributing.html" class="nav-link">Contributing</a>
+        <a href="agents.html" class="nav-link">Agents Guide</a>
+        <a href="changelog.html" class="nav-link">Changelog</a>
+        <a href="security.html" class="nav-link">Security</a>
+      </div>
+    </nav>
+    <main>
+      <div class="md">
+        <h1>Relay MCP Server</h1>
+<p>Relay can run as a local, read-only MCP server so any MCP-compatible coding agent can request deterministic, cache-optimized project context without changing how it works.</p>
+<p>Relay remains the context layer. Claude Code, Cursor, Windsurf, or any other MCP-compatible host remains the interface. Relay contributes cache-friendly payloads, git delta awareness, semantic memory, and token safety — transparently.</p>
+<hr>
+<h2>How It Works</h2>
+<pre><code>┌─────────────────────────────────────────┐
+│  MCP Host (Claude Code, Cursor, etc.)   │
+│                                         │
+│  agent calls: get_prompt_payload(...)   │
+└────────────────┬────────────────────────┘
+                 │ stdio (MCP protocol)
+                 ▼
+┌─────────────────────────────────────────┐
+│  relay mcp  (local stdio process)       │
+│                                         │
+│  reads .relay/ — no mutations           │
+│  assembles three-zone payload           │
+│  returns cache_control hints            │
+└─────────────────────────────────────────┘
+</code></pre>
+<p>The MCP server is a thin read-only projection of your <code>.relay/</code> workspace state. It does not start sessions, run garbage collection, call providers, or write files. All mutating operations remain in the CLI.</p>
+<hr>
+<h2>Prerequisites</h2>
+<p>The MCP server reads from <code>.relay/</code> — it will not function correctly without an initialized workspace and an active session. Run these commands in the repository you want Relay to manage before connecting any MCP host:</p>
+<pre><code class="language-bash">relay init            # create .relay/ with config and memory files
+relay doctor          # verify workspace readiness
+relay session start   # anchor context to the current git SHA
+</code></pre>
+<p>Confirm your workspace is healthy before proceeding to host configuration.</p>
+<hr>
+<h2>Host Configuration</h2>
+<h3>Claude Code</h3>
+<p>Add Relay to your Claude Code MCP settings at <code>~/.claude/mcp_settings.json</code> (create the file if it does not exist):</p>
+<pre><code class="language-json">{
+  &quot;mcpServers&quot;: {
+    &quot;relay&quot;: {
+      &quot;command&quot;: &quot;relay&quot;,
+      &quot;args&quot;: [&quot;mcp&quot;]
+    }
+  }
+}
+</code></pre>
+<p>If <code>relay</code> is not on your PATH (for example, when running from a local development clone), use the full path to the compiled CLI:</p>
+<pre><code class="language-json">{
+  &quot;mcpServers&quot;: {
+    &quot;relay&quot;: {
+      &quot;command&quot;: &quot;node&quot;,
+      &quot;args&quot;: [&quot;/absolute/path/to/RelayAI/packages/cli/dist/index.js&quot;, &quot;mcp&quot;]
+    }
+  }
+}
+</code></pre>
+<h3>Cursor</h3>
+<p>Add Relay to <code>.cursor/mcp.json</code> in your project root (or Cursor&#39;s global MCP config):</p>
+<pre><code class="language-json">{
+  &quot;mcpServers&quot;: {
+    &quot;relay&quot;: {
+      &quot;command&quot;: &quot;relay&quot;,
+      &quot;args&quot;: [&quot;mcp&quot;]
+    }
+  }
+}
+</code></pre>
+<h3>Windsurf</h3>
+<p>Add Relay to your Windsurf MCP configuration (global or workspace-level):</p>
+<pre><code class="language-json">{
+  &quot;mcpServers&quot;: {
+    &quot;relay&quot;: {
+      &quot;command&quot;: &quot;relay&quot;,
+      &quot;args&quot;: [&quot;mcp&quot;]
+    }
+  }
+}
+</code></pre>
+<h3>Continue (VS Code / JetBrains)</h3>
+<p>Add Relay as a subprocess MCP provider in your Continue config:</p>
+<pre><code class="language-json">{
+  &quot;mcpServers&quot;: [
+    {
+      &quot;name&quot;: &quot;relay&quot;,
+      &quot;command&quot;: &quot;relay&quot;,
+      &quot;args&quot;: [&quot;mcp&quot;]
+    }
+  ]
+}
+</code></pre>
+<h3>Codex CLI</h3>
+<p>Add Relay to your Codex CLI config at <code>~/.codex/config.toml</code>. The <code>--cwd</code> flag is required because Codex spawns the server from its own working directory — without it, Relay can&#39;t locate your project&#39;s <code>.relay/</code> workspace:</p>
+<pre><code class="language-toml">[mcp_servers.relay]
+command = &quot;relay&quot;
+args    = [&quot;mcp&quot;, &quot;--cwd&quot;, &quot;/absolute/path/to/your/project&quot;]
+</code></pre>
+<p>If <code>relay</code> is not on PATH when Codex spawns subprocesses, use the full Node path:</p>
+<pre><code class="language-toml">[mcp_servers.relay]
+command = &quot;node&quot;
+args    = [&quot;/absolute/path/to/RelayAI/packages/cli/dist/index.js&quot;,
+           &quot;mcp&quot;, &quot;--cwd&quot;, &quot;/absolute/path/to/your/project&quot;]
+</code></pre>
+<p>To confirm the server started correctly, check the stderr output from Codex for a line like:</p>
+<pre><code>[relay-mcp] starting in /absolute/path/to/your/project
+</code></pre>
+<h3>Generic MCP Host</h3>
+<p>Any host that supports the MCP stdio transport can connect to Relay. Use <code>--cwd</code> to point the server at the right project when the host spawns from a different directory:</p>
+<pre><code class="language-json">{
+  &quot;mcpServers&quot;: {
+    &quot;relay&quot;: {
+      &quot;command&quot;: &quot;relay&quot;,
+      &quot;args&quot;: [&quot;mcp&quot;, &quot;--cwd&quot;, &quot;/absolute/path/to/your/project&quot;],
+      &quot;transport&quot;: &quot;stdio&quot;
+    }
+  }
+}
+</code></pre>
+<p>If the host always spawns from the project root (like Claude Code), <code>--cwd</code> is optional.</p>
+<hr>
+<h2>Tool Reference</h2>
+<p>Once connected, the host can call six read-only tools. All tools set <code>readOnlyHint: true</code> and <code>destructiveHint: false</code> in their MCP annotations.</p>
+<hr>
+<h3><code>get_prompt_payload</code></h3>
+<p>Assembles Relay&#39;s full cache-optimized prompt payload for a user prompt.</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Input</strong></td>
+<td><code>prompt</code> (string, required) — the user&#39;s task or question</td>
+</tr>
+<tr>
+<td><strong>Returns</strong></td>
+<td>Three <code>text</code> content blocks (STATIC_BLOCK, STATE_LAYER, DYNAMIC_INPUT). STATIC_BLOCK and STATE_LAYER include <code>cache_control: { type: &quot;ephemeral&quot; }</code> hints for Anthropic prompt caching. Returns a JSON error object if the token budget is exceeded.</td>
+</tr>
+<tr>
+<td><strong>When to use</strong></td>
+<td>Before any coding task, debugging session, code review, test planning, or repository explanation. This is the primary tool for most agent workflows.</td>
+</tr>
+<tr>
+<td><strong>Notes</strong></td>
+<td>When <code>budget.status === &quot;blocked&quot;</code>, the payload is not returned. Run <code>relay gc run</code> in the CLI to compact memory, then retry.</td>
+</tr>
+</tbody></table>
+<p><strong>Example call:</strong></p>
+<pre><code class="language-json">{ &quot;prompt&quot;: &quot;Refactor the token budget module to support soft limits&quot; }
+</code></pre>
+<p><strong>Example response shape (unblocked):</strong></p>
+<pre><code>content[0]: { type: &quot;text&quot;, text: &quot;&lt;STATIC_BLOCK&gt;...&quot;, cache_control: { type: &quot;ephemeral&quot; } }
+content[1]: { type: &quot;text&quot;, text: &quot;&lt;STATE_LAYER&gt;...&quot;, cache_control: { type: &quot;ephemeral&quot; } }
+content[2]: { type: &quot;text&quot;, text: &quot;&lt;DYNAMIC_INPUT&gt;...&quot; }
+</code></pre>
+<hr>
+<h3><code>get_project_context</code></h3>
+<p>Returns a structured overview of the current Relay workspace state without assembling the full payload.</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Input</strong></td>
+<td>None</td>
+</tr>
+<tr>
+<td><strong>Returns</strong></td>
+<td>JSON object with <code>cwd</code>, <code>relay_dir</code>, <code>config</code> (valid/path/error), <code>session</code> (id, base_git_sha, prefix_hash, created_at, tracked_path_count), <code>prefix</code>, <code>state</code> (semantic_state_path, exists, valid_json, parsed), <code>files</code> (tracked/included counts, included paths), <code>zones</code> (token counts per zone), <code>budget</code> (tokens, status, limits), <code>git</code> (base_ref, diff_present, diff_tokens)</td>
+</tr>
+<tr>
+<td><strong>When to use</strong></td>
+<td>Light context checks before deciding whether to call <code>get_prompt_payload</code>. Useful for health dashboards, debugging, or when you need metadata without the full payload.</td>
+</tr>
+<tr>
+<td><strong>Notes</strong></td>
+<td>Cheaper than <code>get_prompt_payload</code> because it does not assemble zone content.</td>
+</tr>
+</tbody></table>
+<hr>
+<h3><code>get_git_delta</code></h3>
+<p>Returns the git diff since the Relay session base SHA.</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Input</strong></td>
+<td><code>max_chars</code> (integer, optional) — maximum diff characters to return. Defaults to 120,000; capped at 500,000.</td>
+</tr>
+<tr>
+<td><strong>Returns</strong></td>
+<td>JSON object with <code>base_ref</code> (SHA), <code>diff</code> (string), <code>diff_tokens</code> (estimate), <code>truncated</code> (boolean), <code>original_chars</code>, <code>returned_chars</code></td>
+</tr>
+<tr>
+<td><strong>When to use</strong></td>
+<td>When you need the raw diff for custom analysis, code review prompts, or change summaries without the full Relay payload overhead.</td>
+</tr>
+<tr>
+<td><strong>Notes</strong></td>
+<td>The diff covers all changes since <code>relay session start</code>. To reset the base, run <code>relay session start</code> in the CLI.</td>
+</tr>
+</tbody></table>
+<p><strong>Example call:</strong></p>
+<pre><code class="language-json">{ &quot;max_chars&quot;: 50000 }
+</code></pre>
+<hr>
+<h3><code>get_semantic_state</code></h3>
+<p>Returns Relay&#39;s compacted semantic memory.</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Input</strong></td>
+<td>None</td>
+</tr>
+<tr>
+<td><strong>Returns</strong></td>
+<td>JSON object with <code>semantic_state_path</code>, <code>exists</code>, <code>valid_json</code>, <code>error</code>, and <code>semantic_state</code> — the parsed <code>SemanticState</code> struct</td>
+</tr>
+<tr>
+<td><strong>When to use</strong></td>
+<td>When you need to inspect what Relay&#39;s GC has recorded about the current work session: goals, errors, hypotheses, next actions, and code changes.</td>
+</tr>
+<tr>
+<td><strong>Notes</strong></td>
+<td><code>semantic_state</code> will be <code>null</code> if no GC has been run yet. Run <code>relay gc run</code> in the CLI to generate or refresh the state.</td>
+</tr>
+</tbody></table>
+<p><strong><code>SemanticState</code> schema:</strong></p>
+<pre><code class="language-typescript">{
+  active_target: string;          // repository or module being worked on
+  current_goal: string;           // most recent high-level objective
+  runtime_errors: string[];       // observed errors not yet resolved
+  verified_hypotheses: string[];  // confirmed causes or fixes
+  rejected_hypotheses: string[];  // ruled-out approaches
+  next_actions: string[];         // planned next steps
+  code_changes: string[];         // summary of changes made this session
+}
+</code></pre>
+<hr>
+<h3><code>get_token_budget</code></h3>
+<p>Computes token usage for an optional prompt without sending anything to a provider.</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Input</strong></td>
+<td><code>prompt</code> (string, optional) — prompt to include in the dynamic input zone. Defaults to a placeholder if omitted.</td>
+</tr>
+<tr>
+<td><strong>Returns</strong></td>
+<td>JSON object with <code>zones</code> (token counts per zone: static_block, state_layer, dynamic_input, total) and <code>budget</code> (tokens, status, message, warning_limit, confirmation_threshold, hard_limit)</td>
+</tr>
+<tr>
+<td><strong>When to use</strong></td>
+<td>Before large context requests. Check whether a prompt will hit <code>warning</code>, <code>requires_confirmation</code>, or <code>blocked</code> status before calling <code>get_prompt_payload</code>.</td>
+</tr>
+<tr>
+<td><strong>Budget statuses:</strong></td>
+<td><code>ok</code> — within all limits; <code>warning</code> — approaching limit; <code>requires_confirmation</code> — above confirmation threshold; <code>blocked</code> — exceeds hard limit</td>
+</tr>
+</tbody></table>
+<p><strong>Example call:</strong></p>
+<pre><code class="language-json">{ &quot;prompt&quot;: &quot;Rewrite the entire core package with a new architecture&quot; }
+</code></pre>
+<hr>
+<h3><code>inspect_context_health</code></h3>
+<p>Returns structured health findings for the full Relay workspace.</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Input</strong></td>
+<td>None</td>
+</tr>
+<tr>
+<td><strong>Returns</strong></td>
+<td>JSON object with health findings array (each with <code>level</code>, <code>area</code>, <code>message</code>, <code>action</code>), plus <code>session</code>, <code>budget</code>, and <code>git</code> summaries</td>
+</tr>
+<tr>
+<td><strong>When to use</strong></td>
+<td>At the start of a coding session, when context looks stale, after pulling new changes, or when other tools return unexpected results.</td>
+</tr>
+<tr>
+<td><strong>Health areas checked:</strong></td>
+<td>Config validity, session state, semantic state freshness, prefix drift (has the codebase changed since the last session start?), token budget, git delta presence</td>
+</tr>
+</tbody></table>
+<hr>
+<h2>Recommended Agent Workflow</h2>
+<p>A well-integrated agent should follow this call sequence:</p>
+<pre><code>1. inspect_context_health()
+   └─ Check for warnings or errors before proceeding.
+      If session is missing → run `relay session start` in CLI.
+      If semantic state is stale → run `relay gc run` in CLI.
+
+2. get_token_budget({ prompt })
+   └─ Confirm the prompt fits within budget.
+      If status is &quot;blocked&quot; → run `relay gc run` in CLI, then retry.
+
+3. get_prompt_payload({ prompt })
+   └─ Use as the full context for the coding task.
+      STATIC_BLOCK and STATE_LAYER carry cache_control hints — the
+      host should pass these through to the model API unchanged.
+</code></pre>
+<p>For lightweight checks (monitoring, status dashboards, pre-flight checks):</p>
+<pre><code>get_project_context()   — overview without full assembly cost
+get_semantic_state()    — inspect current GC memory
+get_git_delta()         — inspect raw changes since session start
+</code></pre>
+<hr>
+<h2>Cache Behavior</h2>
+<p><code>get_prompt_payload</code> returns three MCP content blocks. The first two carry <code>cache_control: { type: &quot;ephemeral&quot; }</code> hints:</p>
+<pre><code>content[0]  STATIC_BLOCK   cache_control: { type: &quot;ephemeral&quot; }   ← cache this
+content[1]  STATE_LAYER     cache_control: { type: &quot;ephemeral&quot; }   ← cache this
+content[2]  DYNAMIC_INPUT   (no cache_control)                      ← volatile
+</code></pre>
+<p>When a host passes these hints to the Anthropic API (Claude), the provider caches the stable prefix on the first call. Subsequent calls with the same STATIC_BLOCK and STATE_LAYER hit the cache rather than reprocessing the entire context. Relay&#39;s three-zone architecture is specifically designed so the stable zones change infrequently — only when you run <code>relay gc run</code> or <code>relay session start</code>.</p>
+<hr>
+<h2>Safety Guarantees</h2>
+<p>The MCP server is <strong>read-only</strong>. MCP tool calls do not:</p>
+<ul>
+<li>Start or end sessions</li>
+<li>Run or trigger garbage collection</li>
+<li>Warm provider caches</li>
+<li>Call configured provider commands</li>
+<li>Write to any <code>.relay/</code> files</li>
+<li>Execute shell commands beyond reading git state</li>
+</ul>
+<p>All mutating workflows must be run from the CLI:</p>
+<pre><code class="language-bash">relay session start          # anchor context to current git SHA
+relay gc preview             # preview what GC will compact
+relay gc run                 # compact session history into SemanticState
+relay cache warm             # warm the provider&#39;s prompt cache
+</code></pre>
+<p>This boundary is intentional — it ensures the MCP server cannot interfere with session state or trigger unexpected provider calls, regardless of what the connected agent requests.</p>
+<hr>
+<h2>Troubleshooting</h2>
+<h3>Server crashes immediately on startup</h3>
+<p>The most common cause is the host spawning the server from the wrong working directory. Add <code>--cwd</code> to point it at your project:</p>
+<pre><code class="language-json">{ &quot;args&quot;: [&quot;mcp&quot;, &quot;--cwd&quot;, &quot;/absolute/path/to/your/project&quot;] }
+</code></pre>
+<p>Confirm the server started by checking stderr for:</p>
+<pre><code>[relay-mcp] starting in /absolute/path/to/your/project
+</code></pre>
+<p>If you see <code>[relay-mcp] fatal: ...</code>, the error message will tell you exactly what went wrong.</p>
+<h3><code>relay: command not found</code></h3>
+<p>The <code>relay</code> binary is not on the PATH seen by the MCP host process. Use the full path form:</p>
+<pre><code class="language-json">{
+  &quot;command&quot;: &quot;node&quot;,
+  &quot;args&quot;: [&quot;/absolute/path/to/RelayAI/packages/cli/dist/index.js&quot;, &quot;mcp&quot;]
+}
+</code></pre>
+<p>Or install the package globally: <code>npm install -g @relay/cli</code>.</p>
+<h3>Tools return empty or invalid session data</h3>
+<p>No active session. Run <code>relay session start</code> in your repository. The MCP server cannot create sessions — it only reads them.</p>
+<h3><code>get_prompt_payload</code> returns <code>blocked</code></h3>
+<p>The assembled payload exceeds the configured hard token limit. Compact session memory:</p>
+<pre><code class="language-bash">relay gc run
+</code></pre>
+<p>Then call <code>get_prompt_payload</code> again.</p>
+<h3>Context looks stale after recent code changes</h3>
+<p>The session base SHA may be outdated. Reset:</p>
+<pre><code class="language-bash">relay session start
+</code></pre>
+<p>This re-anchors the git delta to HEAD and refreshes the file index.</p>
+<h3><code>inspect_context_health</code> reports prefix drift</h3>
+<p>The codebase has changed significantly since the last session start, causing the stable zones to diverge from the session&#39;s recorded prefix hash. Run <code>relay session start</code> to re-anchor.</p>
+<h3>General diagnostics</h3>
+<p>Run <code>relay doctor</code> in your repository to check workspace configuration, session state, and file validity. The output maps directly to what <code>inspect_context_health</code> surfaces via MCP.</p>
+
+      </div>
+    </main>
+  </div>
+</body>
+</html>

@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RelayAI — Getting Started</title>
+  <style>
+    :root {
+      --bg: #0f1117;
+      --surface: #181c27;
+      --surface2: #1e2333;
+      --border: #2a3045;
+      --accent: #4f8ef7;
+      --accent2: #7c5cbf;
+      --green: #22c55e;
+      --red: #ef4444;
+      --yellow: #f59e0b;
+      --text: #e2e8f0;
+      --muted: #8892a4;
+      --radius: 10px;
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; }
+    body { background: var(--bg); color: var(--text); display: flex; flex-direction: column; min-height: 100vh; }
+
+    /* ── Header ── */
+    header {
+      background: linear-gradient(135deg, #1a1f35 0%, #0f1117 100%);
+      border-bottom: 1px solid var(--border);
+      padding: 14px 28px;
+      display: flex; align-items: center; gap: 14px;
+      position: sticky; top: 0; z-index: 100;
+    }
+    .logo-icon {
+      width: 34px; height: 34px; border-radius: 8px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px; font-weight: 800; color: #fff; flex-shrink: 0;
+    }
+    .logo-name { font-size: 16px; font-weight: 700; letter-spacing: -0.3px; }
+    .logo-sub { font-size: 11px; color: var(--muted); margin-top: 1px; }
+
+    /* ── Layout ── */
+    .layout { display: flex; flex: 1; overflow: hidden; }
+
+    /* ── Sidebar ── */
+    nav {
+      width: 220px; flex-shrink: 0;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      padding: 20px 0;
+      overflow-y: auto;
+      position: sticky; top: 57px; height: calc(100vh - 57px);
+    }
+    .nav-group { margin-bottom: 6px; }
+    .nav-group-label {
+      font-size: 10px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.8px; color: var(--muted);
+      padding: 10px 20px 6px;
+    }
+    .nav-link {
+      display: block; padding: 7px 20px;
+      font-size: 13px; color: var(--muted);
+      text-decoration: none; transition: all 0.15s;
+      border-left: 2px solid transparent;
+    }
+    .nav-link:hover { color: var(--text); background: var(--surface2); }
+    .nav-link.active {
+      color: var(--accent); border-left-color: var(--accent);
+      background: rgba(79,142,247,0.08);
+    }
+
+    /* ── Content ── */
+    main {
+      flex: 1; overflow-y: auto;
+      padding: 40px 48px 80px;
+      max-width: 900px;
+    }
+
+    /* ── Markdown styles ── */
+    .md h1 { font-size: 28px; font-weight: 800; letter-spacing: -0.5px; margin-bottom: 16px; line-height: 1.25; }
+    .md h2 { font-size: 20px; font-weight: 700; margin: 36px 0 12px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+    .md h3 { font-size: 16px; font-weight: 700; margin: 28px 0 10px; color: var(--text); }
+    .md h4 { font-size: 14px; font-weight: 700; margin: 20px 0 8px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
+
+    .md p { font-size: 14px; line-height: 1.75; margin-bottom: 14px; color: var(--text); }
+    .md a { color: var(--accent); text-decoration: none; }
+    .md a:hover { text-decoration: underline; }
+
+    .md ul, .md ol { padding-left: 22px; margin-bottom: 14px; }
+    .md li { font-size: 14px; line-height: 1.7; margin-bottom: 4px; }
+    .md li > p { margin-bottom: 4px; }
+
+    /* task lists */
+    .md ul.contains-task-list { list-style: none; padding-left: 4px; }
+    .md li.task-list-item { display: flex; align-items: flex-start; gap: 8px; }
+    .md li.task-list-item input[type="checkbox"] { margin-top: 4px; accent-color: var(--accent); flex-shrink: 0; }
+
+    .md blockquote {
+      border-left: 3px solid var(--accent2);
+      padding: 10px 18px; margin: 18px 0;
+      background: rgba(124,92,191,0.08); border-radius: 0 6px 6px 0;
+      font-size: 13px; color: var(--muted);
+    }
+    .md blockquote p { margin-bottom: 0; color: var(--muted); }
+
+    .md code {
+      font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+      font-size: 12.5px; background: var(--surface2);
+      border: 1px solid var(--border); border-radius: 4px;
+      padding: 2px 6px; color: #a5d6ff;
+    }
+    .md pre {
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 8px; padding: 18px 20px; margin: 16px 0;
+      overflow-x: auto;
+    }
+    .md pre code {
+      background: none; border: none; padding: 0;
+      font-size: 13px; color: #cdd9e5; line-height: 1.6;
+    }
+
+    .md table {
+      width: 100%; border-collapse: collapse; margin: 18px 0; font-size: 13px;
+    }
+    .md th {
+      text-align: left; padding: 9px 14px;
+      background: var(--surface2); color: var(--muted);
+      font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;
+      border-bottom: 1px solid var(--border);
+    }
+    .md td { padding: 10px 14px; border-bottom: 1px solid var(--border); vertical-align: top; }
+    .md tr:last-child td { border-bottom: none; }
+    .md tr:hover td { background: rgba(255,255,255,0.02); }
+
+    .md hr { border: none; border-top: 1px solid var(--border); margin: 32px 0; }
+
+    .md img { max-width: 100%; border-radius: 8px; }
+
+    /* badges (shields.io etc.) */
+    .md img[src*="shields.io"], .md img[src*="badge"] { border-radius: 3px; }
+
+    /* ── Responsive ── */
+    @media (max-width: 700px) {
+      nav { display: none; }
+      main { padding: 24px 20px 60px; }
+      .md h1 { font-size: 22px; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="logo-icon">R</div>
+    <div>
+      <div class="logo-name">RelayAI</div>
+      <div class="logo-sub">Docs</div>
+    </div>
+  </header>
+  <div class="layout">
+    <nav>
+      <div class="nav-group">
+        <div class="nav-group-label">Project</div>
+        <a href="index.html" class="nav-link">Overview</a>
+        <a href="getting-started.html" class="nav-link active">Getting Started</a>
+        <a href="user-installation-guide.html" class="nav-link">Installation Guide</a>
+        <a href="walkthrough.html" class="nav-link">Walkthrough</a>
+      </div>
+      <div class="nav-group">
+        <div class="nav-group-label">Reference</div>
+        <a href="commands.html" class="nav-link">Commands</a>
+        <a href="configuration.html" class="nav-link">Configuration</a>
+        <a href="provider-adapters.html" class="nav-link">Provider Adapters</a>
+        <a href="mcp.html" class="nav-link">MCP Integration</a>
+        <a href="architecture.html" class="nav-link">Architecture</a>
+      </div>
+      <div class="nav-group">
+        <div class="nav-group-label">Development</div>
+        <a href="testing-plan-doc.html" class="nav-link">Testing Plan</a>
+        <a href="mvp-roadmap.html" class="nav-link">MVP Roadmap</a>
+        <a href="bench-prompts.html" class="nav-link">Bench Prompts</a>
+        <a href="contributing.html" class="nav-link">Contributing</a>
+        <a href="agents.html" class="nav-link">Agents Guide</a>
+        <a href="changelog.html" class="nav-link">Changelog</a>
+        <a href="security.html" class="nav-link">Security</a>
+      </div>
+    </nav>
+    <main>
+      <div class="md">
+        <h1>Getting Started</h1>
+<p>This guide walks through installing, building, and running Relay locally for development. For a complete user-facing installation guide covering provider setup, daily workflow, and troubleshooting, see <a href="user-installation-guide.html"><code>USER_INSTALLATION_GUIDE.md</code></a>.</p>
+<blockquote>
+<p><strong>Just want to see it work?</strong> Run <code>./examples/sample-project/try-relay.sh</code> for a
+one-command demo of measured token savings against the real OpenAI Codex CLI
+(requires <code>codex</code> on PATH and <code>codex login</code>), then read
+<a href="walkthrough.html"><code>WALKTHROUGH.md</code></a> for what each number means.</p>
+</blockquote>
+<hr>
+<h2>Prerequisites</h2>
+<ul>
+<li>Node.js 20+</li>
+<li>pnpm 9+</li>
+<li>git</li>
+<li>A local or remote LLM command-line tool for provider execution (optional for local development)</li>
+</ul>
+<hr>
+<h2>Install Dependencies</h2>
+<pre><code class="language-bash">pnpm install
+</code></pre>
+<hr>
+<h2>Build the Workspace</h2>
+<pre><code class="language-bash">pnpm build
+</code></pre>
+<hr>
+<h2>Initialize Relay in a Repository</h2>
+<p>From the repository you want Relay to manage:</p>
+<pre><code class="language-bash">relay init
+</code></pre>
+<p>During local development from this checkout, use:</p>
+<pre><code class="language-bash">pnpm dev init
+</code></pre>
+<p>This creates:</p>
+<pre><code class="language-txt">.relay/
+├── config.json
+└── memory/
+    ├── semantic-state.json
+    ├── session.raw.md
+    └── session.compacted.md
+</code></pre>
+<hr>
+<h2>Start a Session</h2>
+<pre><code class="language-bash">relay session start
+</code></pre>
+<p>Relay records:</p>
+<ul>
+<li>Session ID</li>
+<li>Base git SHA</li>
+<li>Deterministic prefix hash</li>
+<li>Tracked paths</li>
+<li>Creation timestamp</li>
+</ul>
+<hr>
+<h2>Ask Through Relay</h2>
+<pre><code class="language-bash">relay ask &quot;Fix the failing auth middleware test&quot;
+</code></pre>
+<p>Without a provider, Relay prints the assembled payload. With <code>--provider &lt;name&gt;</code>, Relay sends the payload to the configured provider command. Use <code>--dry-run</code> to inspect the resolved provider command and payload without executing it.</p>
+<hr>
+<h2>Measure Real Savings</h2>
+<p>Add <code>--measure</code> to capture the provider&#39;s actual reported token usage into the audit ledger, then report it:</p>
+<pre><code class="language-bash">relay ask --provider codex --measure &quot;Fix the failing auth middleware test&quot;
+relay savings --input-cost-per-million 3 --cached-input-cost-per-million 0.3
+</code></pre>
+<p>With <code>--measure</code>, the <code>codex</code> builtin runs <code>codex exec --json -</code> and Relay reads usage from the final <code>turn.completed</code> event (Codex&#39;s <code>input_tokens</code> includes cached, which Relay normalizes to uncached input). <code>relay savings</code> then prints <strong>MEASURED</strong> cost vs. a no-cache baseline and a <strong>PROJECTED</strong> figure grounded in your measured prefix-stability rate. For providers that don&#39;t emit parseable usage, record it with <code>relay usage record</code>. See <a href="walkthrough.html"><code>WALKTHROUGH.md</code></a> for a full walkthrough.</p>
+<hr>
+<h2>Check Workspace Readiness</h2>
+<pre><code class="language-bash">relay doctor
+</code></pre>
+<p><code>relay doctor</code> prints JSON diagnostics for git, <code>.relay</code> runtime files, config validity, session metadata, token budget ordering, and provider/GC command availability. Warnings do not fail the command; blocking errors do.</p>
+<hr>
+<h2>Inspect Token Usage</h2>
+<pre><code class="language-bash">relay tokens estimate &quot;hello world&quot;
+relay tokens inspect
+relay cache inspect
+relay cache fingerprint
+relay context inspect
+</code></pre>
+<hr>
+<h2>Recommended Development Flow</h2>
+<ol>
+<li>Open this repository in your editor.</li>
+<li>Run <code>pnpm install</code>.</li>
+<li>Run <code>pnpm build</code>.</li>
+<li>Use <code>pnpm dev &lt;command&gt;</code> while iterating on the CLI, or <code>node packages/cli/dist/index.js &lt;command&gt;</code> after building.</li>
+<li>Run <code>pnpm run ci</code> before treating package artifacts as ready.</li>
+</ol>
+<hr>
+<h2>Next Steps</h2>
+<ul>
+<li><strong>Try it end to end (no API key)</strong>: <a href="walkthrough.html"><code>WALKTHROUGH.md</code></a></li>
+<li><strong>Set up a provider</strong>: <a href="user-installation-guide.html"><code>USER_INSTALLATION_GUIDE.md</code></a></li>
+<li><strong>Full command reference</strong>: <a href="commands.html"><code>COMMANDS.md</code></a></li>
+<li><strong>Configuration options</strong>: <a href="configuration.html"><code>CONFIGURATION.md</code></a></li>
+<li><strong>MCP integration</strong>: <a href="mcp.html"><code>MCP.md</code></a></li>
+<li><strong>Architecture deep-dive</strong>: <a href="architecture.html"><code>ARCHITECTURE.md</code></a></li>
+</ul>
+
+      </div>
+    </main>
+  </div>
+</body>
+</html>

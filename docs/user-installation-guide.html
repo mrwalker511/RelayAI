@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RelayAI — Installation Guide</title>
+  <style>
+    :root {
+      --bg: #0f1117;
+      --surface: #181c27;
+      --surface2: #1e2333;
+      --border: #2a3045;
+      --accent: #4f8ef7;
+      --accent2: #7c5cbf;
+      --green: #22c55e;
+      --red: #ef4444;
+      --yellow: #f59e0b;
+      --text: #e2e8f0;
+      --muted: #8892a4;
+      --radius: 10px;
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; }
+    body { background: var(--bg); color: var(--text); display: flex; flex-direction: column; min-height: 100vh; }
+
+    /* ── Header ── */
+    header {
+      background: linear-gradient(135deg, #1a1f35 0%, #0f1117 100%);
+      border-bottom: 1px solid var(--border);
+      padding: 14px 28px;
+      display: flex; align-items: center; gap: 14px;
+      position: sticky; top: 0; z-index: 100;
+    }
+    .logo-icon {
+      width: 34px; height: 34px; border-radius: 8px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px; font-weight: 800; color: #fff; flex-shrink: 0;
+    }
+    .logo-name { font-size: 16px; font-weight: 700; letter-spacing: -0.3px; }
+    .logo-sub { font-size: 11px; color: var(--muted); margin-top: 1px; }
+
+    /* ── Layout ── */
+    .layout { display: flex; flex: 1; overflow: hidden; }
+
+    /* ── Sidebar ── */
+    nav {
+      width: 220px; flex-shrink: 0;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      padding: 20px 0;
+      overflow-y: auto;
+      position: sticky; top: 57px; height: calc(100vh - 57px);
+    }
+    .nav-group { margin-bottom: 6px; }
+    .nav-group-label {
+      font-size: 10px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.8px; color: var(--muted);
+      padding: 10px 20px 6px;
+    }
+    .nav-link {
+      display: block; padding: 7px 20px;
+      font-size: 13px; color: var(--muted);
+      text-decoration: none; transition: all 0.15s;
+      border-left: 2px solid transparent;
+    }
+    .nav-link:hover { color: var(--text); background: var(--surface2); }
+    .nav-link.active {
+      color: var(--accent); border-left-color: var(--accent);
+      background: rgba(79,142,247,0.08);
+    }
+
+    /* ── Content ── */
+    main {
+      flex: 1; overflow-y: auto;
+      padding: 40px 48px 80px;
+      max-width: 900px;
+    }
+
+    /* ── Markdown styles ── */
+    .md h1 { font-size: 28px; font-weight: 800; letter-spacing: -0.5px; margin-bottom: 16px; line-height: 1.25; }
+    .md h2 { font-size: 20px; font-weight: 700; margin: 36px 0 12px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+    .md h3 { font-size: 16px; font-weight: 700; margin: 28px 0 10px; color: var(--text); }
+    .md h4 { font-size: 14px; font-weight: 700; margin: 20px 0 8px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
+
+    .md p { font-size: 14px; line-height: 1.75; margin-bottom: 14px; color: var(--text); }
+    .md a { color: var(--accent); text-decoration: none; }
+    .md a:hover { text-decoration: underline; }
+
+    .md ul, .md ol { padding-left: 22px; margin-bottom: 14px; }
+    .md li { font-size: 14px; line-height: 1.7; margin-bottom: 4px; }
+    .md li > p { margin-bottom: 4px; }
+
+    /* task lists */
+    .md ul.contains-task-list { list-style: none; padding-left: 4px; }
+    .md li.task-list-item { display: flex; align-items: flex-start; gap: 8px; }
+    .md li.task-list-item input[type="checkbox"] { margin-top: 4px; accent-color: var(--accent); flex-shrink: 0; }
+
+    .md blockquote {
+      border-left: 3px solid var(--accent2);
+      padding: 10px 18px; margin: 18px 0;
+      background: rgba(124,92,191,0.08); border-radius: 0 6px 6px 0;
+      font-size: 13px; color: var(--muted);
+    }
+    .md blockquote p { margin-bottom: 0; color: var(--muted); }
+
+    .md code {
+      font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+      font-size: 12.5px; background: var(--surface2);
+      border: 1px solid var(--border); border-radius: 4px;
+      padding: 2px 6px; color: #a5d6ff;
+    }
+    .md pre {
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 8px; padding: 18px 20px; margin: 16px 0;
+      overflow-x: auto;
+    }
+    .md pre code {
+      background: none; border: none; padding: 0;
+      font-size: 13px; color: #cdd9e5; line-height: 1.6;
+    }
+
+    .md table {
+      width: 100%; border-collapse: collapse; margin: 18px 0; font-size: 13px;
+    }
+    .md th {
+      text-align: left; padding: 9px 14px;
+      background: var(--surface2); color: var(--muted);
+      font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;
+      border-bottom: 1px solid var(--border);
+    }
+    .md td { padding: 10px 14px; border-bottom: 1px solid var(--border); vertical-align: top; }
+    .md tr:last-child td { border-bottom: none; }
+    .md tr:hover td { background: rgba(255,255,255,0.02); }
+
+    .md hr { border: none; border-top: 1px solid var(--border); margin: 32px 0; }
+
+    .md img { max-width: 100%; border-radius: 8px; }
+
+    /* badges (shields.io etc.) */
+    .md img[src*="shields.io"], .md img[src*="badge"] { border-radius: 3px; }
+
+    /* ── Responsive ── */
+    @media (max-width: 700px) {
+      nav { display: none; }
+      main { padding: 24px 20px 60px; }
+      .md h1 { font-size: 22px; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="logo-icon">R</div>
+    <div>
+      <div class="logo-name">RelayAI</div>
+      <div class="logo-sub">Docs</div>
+    </div>
+  </header>
+  <div class="layout">
+    <nav>
+      <div class="nav-group">
+        <div class="nav-group-label">Project</div>
+        <a href="index.html" class="nav-link">Overview</a>
+        <a href="getting-started.html" class="nav-link">Getting Started</a>
+        <a href="user-installation-guide.html" class="nav-link active">Installation Guide</a>
+        <a href="walkthrough.html" class="nav-link">Walkthrough</a>
+      </div>
+      <div class="nav-group">
+        <div class="nav-group-label">Reference</div>
+        <a href="commands.html" class="nav-link">Commands</a>
+        <a href="configuration.html" class="nav-link">Configuration</a>
+        <a href="provider-adapters.html" class="nav-link">Provider Adapters</a>
+        <a href="mcp.html" class="nav-link">MCP Integration</a>
+        <a href="architecture.html" class="nav-link">Architecture</a>
+      </div>
+      <div class="nav-group">
+        <div class="nav-group-label">Development</div>
+        <a href="testing-plan-doc.html" class="nav-link">Testing Plan</a>
+        <a href="mvp-roadmap.html" class="nav-link">MVP Roadmap</a>
+        <a href="bench-prompts.html" class="nav-link">Bench Prompts</a>
+        <a href="contributing.html" class="nav-link">Contributing</a>
+        <a href="agents.html" class="nav-link">Agents Guide</a>
+        <a href="changelog.html" class="nav-link">Changelog</a>
+        <a href="security.html" class="nav-link">Security</a>
+      </div>
+    </nav>
+    <main>
+      <div class="md">
+        <h1>Relay User and Installation Guide</h1>
+<p>Relay is a local-first context construction layer for coding agents and model CLIs. It prepares deterministic, cache-friendly prompts from your repository state, git diff, and compact session memory, then either prints the assembled payload or sends it to a configured provider command.</p>
+<p>Relay does not replace your model CLI. It sits in front of it.</p>
+<h2>Who This Guide Is For</h2>
+<p>Use this guide if you want to install Relay and use it in your own codebase. If you are changing Relay itself, read <a href="getting-started.html"><code>docs/GETTING_STARTED.md</code></a> instead.</p>
+<h2>Requirements</h2>
+<ul>
+<li>Node.js 20 or newer</li>
+<li>git</li>
+</ul>
+<h2>Install</h2>
+<pre><code class="language-bash">npm install -g @relay/cli
+</code></pre>
+<p>If <code>relay --help</code> prints the command list, the install succeeded.</p>
+<p>Or run without installing:</p>
+<pre><code class="language-bash">npx @relay/cli --help
+</code></pre>
+<h2>Before You Initialize a Project</h2>
+<p>Confirm the following before running <code>relay init</code>:</p>
+<ul>
+<li><input disabled="" type="checkbox"> Node.js 20 or newer: <code>node --version</code></li>
+<li><input disabled="" type="checkbox"> You are inside a git repository with at least one commit: <code>git log --oneline -1</code></li>
+<li><input disabled="" type="checkbox"> A provider CLI is installed (e.g. <code>claude --version</code>, <code>codex --version</code>, <code>ollama --version</code>). Optional for first install; required to route prompts.</li>
+</ul>
+<p>Relay stores all runtime state in a local <code>.relay/</code> directory inside the repository where you run it. That directory is intended to stay uncommitted.</p>
+<h2>Initialize a Project</h2>
+<p>Change into the repository you want Relay to manage:</p>
+<pre><code class="language-bash">cd /path/to/your/project
+relay init
+</code></pre>
+<p>Relay creates:</p>
+<pre><code class="language-txt">.relay/
+├── config.json
+└── memory/
+    ├── semantic-state.json
+    ├── session.raw.md
+    └── session.compacted.md
+</code></pre>
+<p>Run the readiness check:</p>
+<pre><code class="language-bash">relay doctor
+</code></pre>
+<p><code>relay doctor</code> checks: git repository presence, <code>.relay/</code> structure, <code>config.json</code> validity, session metadata, token budget ordering, and provider command availability.</p>
+<ul>
+<li><code>&quot;status&quot;: &quot;ok&quot;</code> — ready</li>
+<li><code>&quot;status&quot;: &quot;warning&quot;</code> — degraded but functional (e.g. no session started yet)</li>
+<li><code>&quot;status&quot;: &quot;error&quot;</code> — blocking issue; the <code>message</code> field explains what to fix</li>
+</ul>
+<h2>Shell Tab Completion (Optional)</h2>
+<p>To enable tab completion for <code>relay</code> subcommands and flags:</p>
+<pre><code class="language-bash">source &lt;(relay completion bash)   # bash — add to ~/.bashrc
+source &lt;(relay completion zsh)    # zsh — add to ~/.zshrc
+relay completion fish | source    # fish — add to ~/.config/fish/config.fish
+</code></pre>
+<h2>Start a Session</h2>
+<p>Start a git-anchored session from the project repository:</p>
+<pre><code class="language-bash">relay session start
+</code></pre>
+<p>Relay records the current git SHA as the session base. Later prompts include the git diff since that base instead of resending the whole repository.</p>
+<p>Check session metadata at any time:</p>
+<pre><code class="language-bash">relay session status
+</code></pre>
+<h2>First Prompt</h2>
+<p>To inspect the payload Relay would send to a model:</p>
+<pre><code class="language-bash">relay ask &quot;Summarize this repository&quot;
+</code></pre>
+<p>Without <code>--provider</code>, Relay prints the assembled payload between <code>---BEGIN RELAY PAYLOAD---</code> and <code>---END RELAY PAYLOAD---</code>.</p>
+<p>To inspect a configured provider route without executing it:</p>
+<pre><code class="language-bash">relay ask &quot;Summarize this repository&quot; --provider default --dry-run
+</code></pre>
+<h2>Configure a Provider</h2>
+<p>Edit <code>.relay/config.json</code> in the project where you initialized Relay.</p>
+<p>Example:</p>
+<pre><code class="language-json">{
+  &quot;provider&quot;: {
+    &quot;default&quot;: &quot;local-agent&quot;,
+    &quot;commands&quot;: {
+      &quot;local-agent&quot;: [&quot;your-agent-cli&quot;]
+    }
+  },
+  &quot;gc&quot;: {
+    &quot;enabled&quot;: true,
+    &quot;command&quot;: [&quot;your-agent-cli&quot;],
+    &quot;historyTokenLimit&quot;: 12000,
+    &quot;targetSummaryTokens&quot;: 500,
+    &quot;preserveErrors&quot;: true,
+    &quot;preserveDecisions&quot;: true,
+    &quot;preserveCodeChanges&quot;: true
+  },
+  &quot;tokens&quot;: {
+    &quot;provider&quot;: &quot;generic&quot;,
+    &quot;model&quot;: &quot;default&quot;,
+    &quot;hardLimit&quot;: 100000,
+    &quot;warningLimit&quot;: 50000,
+    &quot;requireConfirmationAbove&quot;: 75000
+  }
+}
+</code></pre>
+<p>Provider commands are arrays of command arguments. Relay sends the assembled prompt to the provider process on stdin.</p>
+<h3>Claude CLI</h3>
+<pre><code class="language-json">{
+  &quot;provider&quot;: {
+    &quot;default&quot;: &quot;claude&quot;,
+    &quot;commands&quot;: { &quot;claude&quot;: [&quot;claude&quot;, &quot;--dangerously-skip-permissions&quot;] }
+  }
+}
+</code></pre>
+<h3>OpenAI Codex</h3>
+<pre><code class="language-json">{
+  &quot;provider&quot;: {
+    &quot;default&quot;: &quot;codex&quot;,
+    &quot;commands&quot;: { &quot;codex&quot;: [&quot;codex&quot;, &quot;exec&quot;, &quot;-&quot;] }
+  }
+}
+</code></pre>
+<p>For more provider configurations (Ollama, Copilot, multi-provider), see <a href="provider-adapters.html"><code>docs/PROVIDER_ADAPTERS.md</code></a>.</p>
+<p>Validate the configuration:</p>
+<pre><code class="language-bash">relay doctor
+</code></pre>
+<p>Send a prompt through the default provider:</p>
+<pre><code class="language-bash">relay ask &quot;Review the current diff and identify risky changes&quot; --provider default
+</code></pre>
+<p>Or send through a named provider:</p>
+<pre><code class="language-bash">relay ask &quot;Write focused tests for the changed files&quot; --provider local-agent
+</code></pre>
+<h2>Daily Workflow</h2>
+<p>Use this loop inside the project you are working on:</p>
+<pre><code class="language-bash">relay doctor
+relay session start
+relay ask &quot;Plan the next change&quot; --provider default
+relay diff
+relay context inspect
+relay tokens inspect
+</code></pre>
+<p>Recommended habits:</p>
+<ul>
+<li>Start a new Relay session when you begin a distinct task or after rebasing.</li>
+<li>Use <code>relay diff</code> to confirm the active delta is what you expect.</li>
+<li>Use <code>relay context inspect</code> when prompt contents or cache behavior look surprising.</li>
+<li>Use <code>relay tokens inspect</code> before sending a large prompt.</li>
+<li>Keep <code>.relay/</code> out of git.</li>
+</ul>
+<h2>Cache and Token Tools</h2>
+<p>Relay separates prompt construction into stable and dynamic zones so providers with prompt caching can reuse the stable prefix.</p>
+<p>Inspect cache-relevant metadata:</p>
+<pre><code class="language-bash">relay cache inspect
+relay cache fingerprint
+</code></pre>
+<p>Warm a provider-side prompt cache:</p>
+<pre><code class="language-bash">relay cache warm --provider default
+</code></pre>
+<p>Preview the warmup payload without executing the provider:</p>
+<pre><code class="language-bash">relay cache warm --provider default --dry-run
+</code></pre>
+<p>Estimate token usage for ad hoc text:</p>
+<pre><code class="language-bash">relay tokens estimate &quot;short prompt text&quot;
+relay tokens budget
+relay tokens inspect
+</code></pre>
+<h2>Compact Session Memory</h2>
+<p>Relay appends prompt history to <code>.relay/memory/session.raw.md</code>. When that history gets large, compact it into structured semantic state:</p>
+<pre><code class="language-bash">relay gc preview
+relay gc run
+</code></pre>
+<p><code>relay gc preview</code> shows the compacted state without writing changes. <code>relay gc run</code> writes <code>.relay/memory/semantic-state.json</code>, clears raw history, and saves a snapshot for rollback.</p>
+<p>Restore the previous semantic state snapshot:</p>
+<pre><code class="language-bash">relay gc restore
+</code></pre>
+<p>GC requires either <code>gc.command</code> or a configured default provider command in <code>.relay/config.json</code>.</p>
+<h2>Troubleshooting</h2>
+<h3><code>relay</code> command not found</h3>
+<p>Re-run <code>npm install -g @relay/cli</code>, then verify <code>npm bin -g</code> is on your PATH:</p>
+<pre><code class="language-bash">npm bin -g   # should print a directory — confirm it&#39;s in your PATH
+</code></pre>
+<h3><code>.relay/config.json is invalid</code></h3>
+<p>Run:</p>
+<pre><code class="language-bash">relay doctor
+</code></pre>
+<p>Then compare your config with the example in this guide. Provider commands must be arrays, not strings.</p>
+<h3>No active session found</h3>
+<p>Run:</p>
+<pre><code class="language-bash">relay session start
+</code></pre>
+<h3>Provider command fails</h3>
+<p>First inspect without execution:</p>
+<pre><code class="language-bash">relay ask &quot;test prompt&quot; --provider default --dry-run
+</code></pre>
+<p>Then run <code>relay doctor</code> to confirm the provider command is available.</p>
+<h3>Prompt is too large</h3>
+<p>Inspect token usage and compact history:</p>
+<pre><code class="language-bash">relay tokens inspect
+relay gc preview
+relay gc run
+</code></pre>
+<h2>Building From Source (Contributors)</h2>
+<p>If you want to modify Relay itself rather than just use it:</p>
+<pre><code class="language-bash">git clone https://github.com/mrwalker511/relayai.git RelayAI
+cd RelayAI
+pnpm install   # requires pnpm 9 — npm install -g pnpm
+pnpm build
+node packages/cli/dist/index.js --help
+</code></pre>
+<p>During development, use <code>pnpm dev</code> to run the CLI without rebuilding:</p>
+<pre><code class="language-bash">pnpm dev --help
+pnpm dev ask &quot;test prompt&quot;
+</code></pre>
+<p>See <a href="getting-started.html"><code>docs/GETTING_STARTED.md</code></a> for the full contributor workflow.</p>
+<h2>Reference Docs</h2>
+<ul>
+<li><code>docs/COMMANDS.md</code> lists every CLI command.</li>
+<li><code>docs/CONFIGURATION.md</code> describes <code>.relay/config.json</code>.</li>
+<li><code>docs/PROVIDER_ADAPTERS.md</code> explains provider command behavior.</li>
+<li><code>docs/ARCHITECTURE.md</code> explains Relay&#39;s three-zone context model.</li>
+</ul>
+
+      </div>
+    </main>
+  </div>
+</body>
+</html>

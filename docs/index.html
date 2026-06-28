@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RelayAI — Overview</title>
+  <style>
+    :root {
+      --bg: #0f1117;
+      --surface: #181c27;
+      --surface2: #1e2333;
+      --border: #2a3045;
+      --accent: #4f8ef7;
+      --accent2: #7c5cbf;
+      --green: #22c55e;
+      --red: #ef4444;
+      --yellow: #f59e0b;
+      --text: #e2e8f0;
+      --muted: #8892a4;
+      --radius: 10px;
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; }
+    body { background: var(--bg); color: var(--text); display: flex; flex-direction: column; min-height: 100vh; }
+
+    /* ── Header ── */
+    header {
+      background: linear-gradient(135deg, #1a1f35 0%, #0f1117 100%);
+      border-bottom: 1px solid var(--border);
+      padding: 14px 28px;
+      display: flex; align-items: center; gap: 14px;
+      position: sticky; top: 0; z-index: 100;
+    }
+    .logo-icon {
+      width: 34px; height: 34px; border-radius: 8px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px; font-weight: 800; color: #fff; flex-shrink: 0;
+    }
+    .logo-name { font-size: 16px; font-weight: 700; letter-spacing: -0.3px; }
+    .logo-sub { font-size: 11px; color: var(--muted); margin-top: 1px; }
+
+    /* ── Layout ── */
+    .layout { display: flex; flex: 1; overflow: hidden; }
+
+    /* ── Sidebar ── */
+    nav {
+      width: 220px; flex-shrink: 0;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      padding: 20px 0;
+      overflow-y: auto;
+      position: sticky; top: 57px; height: calc(100vh - 57px);
+    }
+    .nav-group { margin-bottom: 6px; }
+    .nav-group-label {
+      font-size: 10px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.8px; color: var(--muted);
+      padding: 10px 20px 6px;
+    }
+    .nav-link {
+      display: block; padding: 7px 20px;
+      font-size: 13px; color: var(--muted);
+      text-decoration: none; transition: all 0.15s;
+      border-left: 2px solid transparent;
+    }
+    .nav-link:hover { color: var(--text); background: var(--surface2); }
+    .nav-link.active {
+      color: var(--accent); border-left-color: var(--accent);
+      background: rgba(79,142,247,0.08);
+    }
+
+    /* ── Content ── */
+    main {
+      flex: 1; overflow-y: auto;
+      padding: 40px 48px 80px;
+      max-width: 900px;
+    }
+
+    /* ── Markdown styles ── */
+    .md h1 { font-size: 28px; font-weight: 800; letter-spacing: -0.5px; margin-bottom: 16px; line-height: 1.25; }
+    .md h2 { font-size: 20px; font-weight: 700; margin: 36px 0 12px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+    .md h3 { font-size: 16px; font-weight: 700; margin: 28px 0 10px; color: var(--text); }
+    .md h4 { font-size: 14px; font-weight: 700; margin: 20px 0 8px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
+
+    .md p { font-size: 14px; line-height: 1.75; margin-bottom: 14px; color: var(--text); }
+    .md a { color: var(--accent); text-decoration: none; }
+    .md a:hover { text-decoration: underline; }
+
+    .md ul, .md ol { padding-left: 22px; margin-bottom: 14px; }
+    .md li { font-size: 14px; line-height: 1.7; margin-bottom: 4px; }
+    .md li > p { margin-bottom: 4px; }
+
+    /* task lists */
+    .md ul.contains-task-list { list-style: none; padding-left: 4px; }
+    .md li.task-list-item { display: flex; align-items: flex-start; gap: 8px; }
+    .md li.task-list-item input[type="checkbox"] { margin-top: 4px; accent-color: var(--accent); flex-shrink: 0; }
+
+    .md blockquote {
+      border-left: 3px solid var(--accent2);
+      padding: 10px 18px; margin: 18px 0;
+      background: rgba(124,92,191,0.08); border-radius: 0 6px 6px 0;
+      font-size: 13px; color: var(--muted);
+    }
+    .md blockquote p { margin-bottom: 0; color: var(--muted); }
+
+    .md code {
+      font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+      font-size: 12.5px; background: var(--surface2);
+      border: 1px solid var(--border); border-radius: 4px;
+      padding: 2px 6px; color: #a5d6ff;
+    }
+    .md pre {
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 8px; padding: 18px 20px; margin: 16px 0;
+      overflow-x: auto;
+    }
+    .md pre code {
+      background: none; border: none; padding: 0;
+      font-size: 13px; color: #cdd9e5; line-height: 1.6;
+    }
+
+    .md table {
+      width: 100%; border-collapse: collapse; margin: 18px 0; font-size: 13px;
+    }
+    .md th {
+      text-align: left; padding: 9px 14px;
+      background: var(--surface2); color: var(--muted);
+      font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;
+      border-bottom: 1px solid var(--border);
+    }
+    .md td { padding: 10px 14px; border-bottom: 1px solid var(--border); vertical-align: top; }
+    .md tr:last-child td { border-bottom: none; }
+    .md tr:hover td { background: rgba(255,255,255,0.02); }
+
+    .md hr { border: none; border-top: 1px solid var(--border); margin: 32px 0; }
+
+    .md img { max-width: 100%; border-radius: 8px; }
+
+    /* badges (shields.io etc.) */
+    .md img[src*="shields.io"], .md img[src*="badge"] { border-radius: 3px; }
+
+    /* ── Responsive ── */
+    @media (max-width: 700px) {
+      nav { display: none; }
+      main { padding: 24px 20px 60px; }
+      .md h1 { font-size: 22px; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="logo-icon">R</div>
+    <div>
+      <div class="logo-name">RelayAI</div>
+      <div class="logo-sub">Docs</div>
+    </div>
+  </header>
+  <div class="layout">
+    <nav>
+      <div class="nav-group">
+        <div class="nav-group-label">Project</div>
+        <a href="index.html" class="nav-link active">Overview</a>
+        <a href="getting-started.html" class="nav-link">Getting Started</a>
+        <a href="user-installation-guide.html" class="nav-link">Installation Guide</a>
+        <a href="walkthrough.html" class="nav-link">Walkthrough</a>
+      </div>
+      <div class="nav-group">
+        <div class="nav-group-label">Reference</div>
+        <a href="commands.html" class="nav-link">Commands</a>
+        <a href="configuration.html" class="nav-link">Configuration</a>
+        <a href="provider-adapters.html" class="nav-link">Provider Adapters</a>
+        <a href="mcp.html" class="nav-link">MCP Integration</a>
+        <a href="architecture.html" class="nav-link">Architecture</a>
+      </div>
+      <div class="nav-group">
+        <div class="nav-group-label">Development</div>
+        <a href="testing-plan-doc.html" class="nav-link">Testing Plan</a>
+        <a href="mvp-roadmap.html" class="nav-link">MVP Roadmap</a>
+        <a href="bench-prompts.html" class="nav-link">Bench Prompts</a>
+        <a href="contributing.html" class="nav-link">Contributing</a>
+        <a href="agents.html" class="nav-link">Agents Guide</a>
+        <a href="changelog.html" class="nav-link">Changelog</a>
+        <a href="security.html" class="nav-link">Security</a>
+      </div>
+    </nav>
+    <main>
+      <div class="md">
+        <h1>Relay CLI</h1>
+<p><a href="https://github.com/mrwalker511/RelayAI/actions/workflows/ci.yml"><img src="https://github.com/mrwalker511/RelayAI/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+<a href="https://www.npmjs.com/package/@relay/cli"><img src="https://img.shields.io/npm/v/@relay/cli" alt="npm"></a>
+<a href="https://nodejs.org"><img src="https://img.shields.io/badge/node-%3E%3D20-brightgreen" alt="Node.js ≥ 20"></a>
+<a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a></p>
+<blockquote>
+<p>Local-first context and prompt-cache optimizer for coding agents and model CLIs.</p>
+</blockquote>
+<p>Relay wraps your existing provider command, builds deterministic prompt payloads from your repository state, and structures content into stable zones so provider-side caching can work more effectively across sessions.</p>
+<p>Relay does <strong>not</strong> replace your model or coding agent. It gives them cleaner, repeatable, cache-optimized context.</p>
+<hr>
+<h2>Install</h2>
+<pre><code class="language-bash">npm install -g @relay/cli
+</code></pre>
+<p>Or run without installing:</p>
+<pre><code class="language-bash">npx @relay/cli --help
+</code></pre>
+<p><strong>Requirements:</strong> Node.js 20+, git.</p>
+<hr>
+<h2>5-minute quickstart</h2>
+<pre><code class="language-bash"># inside any git repository
+relay init                               # create .relay/ workspace
+relay doctor                             # verify setup
+relay session start                      # anchor context to current git SHA
+relay ask &quot;Summarize the active diff&quot;    # print cache-optimized payload
+
+# wire up to your provider
+relay ask &quot;Review this diff&quot; --provider claude   # pipe payload to claude CLI
+
+# tab completion (optional)
+source &lt;(relay completion bash)          # or zsh / fish
+</code></pre>
+<p>That&#39;s it. Add <code>--measure</code> to track real token savings, <code>relay gc run</code> to compact history, and <code>relay audit</code> to inspect the event log.</p>
+<hr>
+<table>
+<thead>
+<tr>
+<th>Need</th>
+<th>What Relay Provides</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Lower repeated prompt cost</td>
+<td>Stable prompt zones designed for provider cache reuse</td>
+</tr>
+<tr>
+<td>Better continuity between sessions</td>
+<td>Compact semantic memory stored in <code>.relay/</code></td>
+</tr>
+<tr>
+<td>Smaller follow-up prompts</td>
+<td>Git-anchored diffs instead of resending full files</td>
+</tr>
+<tr>
+<td>Safer large-context usage</td>
+<td>Local token estimates, budget checks, and anomaly detection</td>
+</tr>
+<tr>
+<td>Provider flexibility</td>
+<td>Shell-based adapters for any CLI that reads stdin</td>
+</tr>
+<tr>
+<td>Native agent integration</td>
+<td>Read-only MCP server gives agents deterministic context via standard tool calls</td>
+</tr>
+</tbody></table>
+<hr>
+<h2>How It Works</h2>
+<p>Relay assembles every outbound prompt in three ordered zones:</p>
+<pre><code>┌─────────────────────────────────────────┐
+│  STATIC_BLOCK                           │  ← project rules, architecture notes,
+│  (stable across requests)               │    source snapshots
+├─────────────────────────────────────────┤
+│  STATE_LAYER                            │  ← semantic memory, file index,
+│  (stable, structured)                   │    session summary
+├─────────────────────────────────────────┤
+│  DYNAMIC_INPUT                          │  ← current prompt, git diff,
+│  (volatile, always last)                │    runtime output, timestamp
+└─────────────────────────────────────────┘
+          │
+          ▼
+   configured provider CLI  (stdin)
+</code></pre>
+<p>The stable zones come first so provider caches hit on repeat calls. Volatile data goes last so it never busts the cached prefix. Relay also records a base git SHA at session start — follow-up prompts include only the diff since that base, not the whole repository.</p>
+<hr>
+<h2>Prerequisites</h2>
+<ul>
+<li><strong>Node.js 20 or newer</strong></li>
+<li><strong>git</strong></li>
+<li>A model or coding-agent CLI that can read a prompt from stdin (Claude, Ollama, ChatGPT CLI, etc.)</li>
+</ul>
+<hr>
+<h2>Installation</h2>
+<pre><code class="language-bash">npm install -g @relay/cli
+</code></pre>
+<p>After installing, the <code>relay</code> command is available globally:</p>
+<pre><code class="language-bash">relay --help
+</code></pre>
+<p>Or run without installing using <code>npx</code>:</p>
+<pre><code class="language-bash">npx @relay/cli --help
+</code></pre>
+<hr>
+<h2>Local Development</h2>
+<p>To work on Relay itself, clone the repository and build from source:</p>
+<pre><code class="language-bash">git clone https://github.com/mrwalker511/relayai.git RelayAI
+cd RelayAI
+pnpm install   # requires pnpm 9 — npm install -g pnpm
+pnpm build
+</code></pre>
+<p>Confirm the CLI works:</p>
+<pre><code class="language-bash">node packages/cli/dist/index.js --help
+</code></pre>
+<p>During development, use <code>pnpm dev</code> instead of a shell alias:</p>
+<pre><code class="language-bash">pnpm dev --help
+pnpm dev ask &quot;test prompt&quot;
+</code></pre>
+<hr>
+<h2>Quick Start</h2>
+<h3>See it work (real OpenAI Codex)</h3>
+<pre><code class="language-bash">pnpm install &amp;&amp; pnpm build
+./examples/sample-project/try-relay.sh
+</code></pre>
+<p>This runs RelayAI against the bundled <a href="examples/sample-project">sample project</a> using the real OpenAI Codex CLI as the measured provider, and prints <strong>measured</strong> token savings building up across calls. It requires the <a href="https://github.com/openai/codex"><code>codex</code></a> CLI on your PATH and <code>codex login</code> (it makes real Codex calls). The annotated version is in <a href="walkthrough.html"><code>docs/WALKTHROUGH.md</code></a>.</p>
+<h3>Use it on your own repo</h3>
+<p>Run these commands inside the repository you want Relay to manage:</p>
+<pre><code class="language-bash">relay init                          # create .relay/ with config and memory files
+relay doctor                        # verify workspace readiness
+relay session start                 # anchor context to the current git SHA
+relay ask &quot;Summarize this repo&quot;     # print the assembled prompt payload
+</code></pre>
+<p>Without <code>--provider</code>, <code>relay ask</code> prints the payload between <code>---BEGIN RELAY PAYLOAD---</code> and <code>---END RELAY PAYLOAD---</code>. Once you have a provider configured, add <code>--provider default</code> to route the payload to your model.</p>
+<p>For a complete walkthrough including provider setup, see <a href="user-installation-guide.html"><code>docs/USER_INSTALLATION_GUIDE.md</code></a>.</p>
+<hr>
+<h2>Everyday Commands</h2>
+<pre><code class="language-bash">relay doctor                                      # verify Relay readiness
+relay session start                               # anchor context to the current git SHA
+relay ask &quot;Review the active diff&quot;                # print a Relay payload
+relay ask &quot;Review the active diff&quot; --provider default  # send to configured provider
+relay diff                                        # inspect the session delta
+relay context inspect                             # inspect prompt-construction state
+relay tokens inspect                              # inspect token usage by zone
+relay cache inspect                               # inspect cache-relevant prefix metadata
+relay ask &quot;...&quot; --provider codex --measure        # capture the provider&#39;s real token usage
+relay savings --input-cost-per-million 3          # report measured + projected cache savings
+relay gc preview                                  # preview semantic memory compaction
+relay gc run                                      # compact session history
+relay mcp                                         # expose Relay context to MCP agents
+</code></pre>
+<p>See <a href="commands.html"><code>docs/COMMANDS.md</code></a> for the full command reference.</p>
+<h3>Estimated vs. measured savings</h3>
+<p>Relay distinguishes two kinds of numbers, and labels them as such:</p>
+<ul>
+<li><strong>Estimated</strong> — local token math from the bundled tokenizer (<code>relay tokens inspect</code>, <code>relay cache inspect</code>, <code>pnpm run compare</code>). Useful and offline, but a model of cost, not a bill. <code>compare</code> shows both the first-call (cold-cache) size and the amortized repeat-call (warm-cache) cost, because savings accrue on repeat calls — a single call on a small repo can cost <em>more</em>.</li>
+<li><strong>Measured</strong> — the provider&#39;s actual reported usage. <code>relay ask --measure</code> captures it (e.g. Claude&#39;s <code>cache_read_input_tokens</code>) into the audit ledger; <code>relay usage record</code> ingests it for providers that don&#39;t emit it; <code>relay savings</code> then reports real cost vs a no-cache baseline (cache-creation surcharge and output included). Even without measured usage, <code>relay savings</code> grounds its projection in the <strong>measured prefix-stability rate</strong> from your call history rather than a guess.</li>
+</ul>
+<hr>
+<h2>MCP Integration</h2>
+<p>Relay can run as a local, read-only MCP context server so any MCP-compatible agent (Claude Code, Cursor, Windsurf, Continue, etc.) can request deterministic, cache-optimized project context without leaving its normal workflow.</p>
+<pre><code class="language-bash">relay mcp   # starts the MCP stdio server over stdio transport
+</code></pre>
+<p>Once connected, the agent has access to six read-only tools: <code>get_prompt_payload</code>, <code>get_project_context</code>, <code>get_git_delta</code>, <code>get_semantic_state</code>, <code>get_token_budget</code>, and <code>inspect_context_health</code>. The payload tool returns content blocks with <code>cache_control</code> hints so Anthropic-hosted models can cache stable context across repeated calls.</p>
+<p>See <a href="mcp.html"><code>docs/MCP.md</code></a> for host configuration, the full tool reference, recommended agent workflow, and troubleshooting.</p>
+<hr>
+<h2>Documentation</h2>
+<table>
+<thead>
+<tr>
+<th>Document</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><a href="walkthrough.html"><code>docs/WALKTHROUGH.md</code></a></td>
+<td>Hands-on walkthrough proving measured savings on the sample project with real OpenAI Codex</td>
+</tr>
+<tr>
+<td><a href="user-installation-guide.html"><code>docs/USER_INSTALLATION_GUIDE.md</code></a></td>
+<td>Setup, provider configuration, daily workflow, and troubleshooting</td>
+</tr>
+<tr>
+<td><a href="getting-started.html"><code>docs/GETTING_STARTED.md</code></a></td>
+<td>Short local development quick start</td>
+</tr>
+<tr>
+<td><a href="commands.html"><code>docs/COMMANDS.md</code></a></td>
+<td>Full CLI command reference</td>
+</tr>
+<tr>
+<td><a href="configuration.html"><code>docs/CONFIGURATION.md</code></a></td>
+<td><code>.relay/config.json</code> schema reference</td>
+</tr>
+<tr>
+<td><a href="provider-adapters.html"><code>docs/PROVIDER_ADAPTERS.md</code></a></td>
+<td>Provider command examples and adapter design</td>
+</tr>
+<tr>
+<td><a href="mcp.html"><code>docs/MCP.md</code></a></td>
+<td>MCP server setup, tool reference, agent workflow, and troubleshooting</td>
+</tr>
+<tr>
+<td><a href="architecture.html"><code>docs/ARCHITECTURE.md</code></a></td>
+<td>Context construction architecture and module reference</td>
+</tr>
+<tr>
+<td><a href="agents.html"><code>AGENTS.md</code></a></td>
+<td>Coding agent guidance, Codex integration, and hook documentation</td>
+</tr>
+<tr>
+<td><a href=".github/copilot-instructions.md"><code>.github/copilot-instructions.md</code></a></td>
+<td>GitHub Copilot workspace instructions</td>
+</tr>
+</tbody></table>
+<hr>
+<h2>Repository Structure</h2>
+<pre><code>RelayAI/
+├── packages/
+│   ├── core/       # Context engine, token guardrails, git delta logic, semantic memory
+│   └── cli/        # Commander.js router and MCP stdio server
+├── docs/           # Architecture, command reference, MCP guide, walkthrough
+├── examples/
+│   ├── sample-project/   # Runnable demo project + try-relay.sh (real OpenAI Codex)
+│   └── *.example.json    # Example config and semantic state files
+├── .github/
+│   └── copilot-instructions.md   # GitHub Copilot workspace instructions
+├── .codex/
+│   └── hooks.json                # OpenAI Codex lifecycle hooks
+├── .claude/
+│   └── settings.json             # Claude Code lifecycle hooks
+├── AGENTS.md       # Coding agent guidance (also serves as Codex AGENTS.md)
+└── README.md
+</code></pre>
+<hr>
+<h2>Development</h2>
+<pre><code class="language-bash">pnpm install        # install all workspace dependencies
+pnpm build          # compile all packages
+pnpm typecheck      # type-check without emitting
+pnpm test           # run tests
+pnpm dev            # run CLI via tsx without building
+pnpm run ci         # full CI: build + typecheck + test + pack:check
+pnpm pack:check     # validate package artifacts (dry run)
+</code></pre>
+<p>Filter commands to a single package:</p>
+<pre><code class="language-bash">pnpm --filter @relay/core build
+pnpm --filter @relay/cli dev
+</code></pre>
+<p>CI runs on every push and pull request to <code>main</code>. The pipeline runs <code>build</code>, <code>typecheck</code>, <code>test</code>, and <code>pack:check</code> on Node.js 22.</p>
+
+      </div>
+    </main>
+  </div>
+</body>
+</html>

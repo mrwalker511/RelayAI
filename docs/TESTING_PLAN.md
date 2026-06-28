@@ -9,6 +9,7 @@ This guide covers three testing levels in order of scope:
 ### 💡 Pro Tip - Autopopulating Session Data
 
 Instead of manually typing token counts and SHAs, you can upload session files directly into the reviewer tool:
+
 - **Relay metadata**: Drag and drop `.relay/session.json` or `.relay/config.json` to autopopulate SHAs, AI Provider, and date.
 - **Codex sessions**: Locate your Codex log files under `~/.codex/sessions/` and upload the `.jsonl` files. The reviewer tool will display an interactive **Turn Selector** allowing you to select turns and import their token metrics automatically into either the **Baseline** or **Relay-Enabled** slots.
 - **Export/Import State**: You can export the entire state of your results tracker as a JSON file at any time and upload it later to resume.
@@ -33,12 +34,12 @@ pnpm run ci
 
 This runs four steps in order:
 
-| Step | Command | What it checks |
-|---|---|---|
-| Build | `pnpm build` | TypeScript compiles without errors |
-| Typecheck | `pnpm typecheck` | Strict type checking (no `any` leaks, no missing types) |
-| Test | `pnpm test` | All 186 unit + integration tests pass |
-| Pack check | `pnpm pack:check` | Both packages are publishable (no missing files) |
+| Step       | Command           | What it checks                                          |
+| ---------- | ----------------- | ------------------------------------------------------- |
+| Build      | `pnpm build`      | TypeScript compiles without errors                      |
+| Typecheck  | `pnpm typecheck`  | Strict type checking (no `any` leaks, no missing types) |
+| Test       | `pnpm test`       | All 186 unit + integration tests pass                   |
+| Pack check | `pnpm pack:check` | Both packages are publishable (no missing files)        |
 
 **Expected result:** All steps exit 0. Test output should show `# pass 137` (core) and `# pass 49` (cli), `# fail 0`.
 
@@ -52,11 +53,11 @@ node --test packages/core/dist/tokens/budget.test.js
 
 ### Test inventory
 
-| Package | Test files | Test count | Focus areas |
-|---|---|---|---|
-| `@relay/core` | 20 files | 137 | Config, context zones, git delta, tokens, GC, providers, usage parser (Claude + Codex), savings, output filter |
-| `@relay/cli` | 1 file | 49 | E2E: init, session, ask, `--measure` (claude + codex), `{prompt}` routing, usage record, savings, diff, cache, tokens, gc, MCP server |
-| **Total** | **21 files** | **186** | - |
+| Package       | Test files   | Test count | Focus areas                                                                                                                           |
+| ------------- | ------------ | ---------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| `@relay/core` | 20 files     | 137        | Config, context zones, git delta, tokens, GC, providers, usage parser (Claude + Codex), savings, output filter                        |
+| `@relay/cli`  | 1 file       | 49         | E2E: init, session, ask, `--measure` (claude + codex), `{prompt}` routing, usage record, savings, diff, cache, tokens, gc, MCP server |
+| **Total**     | **21 files** | **186**    | -                                                                                                                                     |
 
 ### End-to-end smoke test (real Codex)
 
@@ -69,6 +70,7 @@ CLI on your PATH and `codex login` (it makes real Codex calls):
 ```
 
 **Expected:** exit 0, and the output shows
+
 - three `ask --provider codex --measure` calls, with `cached_input_tokens` growing across calls as Codex's prompt cache warms,
 - `prefix_stable` flipping `false → true` in the audit ledger,
 - a `relay savings` **MEASURED** section with `calls with usage: 3` and a **PROJECTED** section at `100.0%` prefix-stability.
@@ -145,12 +147,12 @@ relay cache inspect
 
 ### Common hook troubleshooting
 
-| Symptom | Likely cause | Fix |
-|---|---|---|
-| `.relay/session.json` not created | `relay` not on PATH | Run `pnpm install -g @relay/cli` or use `node packages/cli/dist/index.js` |
-| `sigmap.md` not updated | `pnpm` / `node` not on PATH in hook shell | Hooks now fall back to `npx tsx scripts/gen-sigmap.ts`. Alternatively, use absolute path: `$(which pnpm) --silent sigmap` |
-| `semantic-state.json` not updated | No GC command configured | Set `gc.command` in `.relay/config.json` |
-| Hook fires but errors silently | `2>/dev/null || true` suppresses output | Temporarily remove the suppression to see errors |
+| Symptom                           | Likely cause                              | Fix                                                                                                                       |
+| --------------------------------- | ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- | ----------------------- | ------------------------------------------------ |
+| `.relay/session.json` not created | `relay` not on PATH                       | Run `pnpm install -g @relay/cli` or use `node packages/cli/dist/index.js`                                                 |
+| `sigmap.md` not updated           | `pnpm` / `node` not on PATH in hook shell | Hooks now fall back to `npx tsx scripts/gen-sigmap.ts`. Alternatively, use absolute path: `$(which pnpm) --silent sigmap` |
+| `semantic-state.json` not updated | No GC command configured                  | Set `gc.command` in `.relay/config.json`                                                                                  |
+| Hook fires but errors silently    | `2>/dev/null                              |                                                                                                                           | true` suppresses output | Temporarily remove the suppression to see errors |
 
 ---
 
@@ -164,6 +166,7 @@ This phase validates RelayAI's effectiveness by comparing a Codex session withou
 
 1. **Verify RelayAI CLI is functional**:
    Make sure you are in the `RelayAI` directory:
+
    ```bash
    cd /home/matthew/projects/RelayAI
    pnpm install
@@ -173,6 +176,7 @@ This phase validates RelayAI's effectiveness by comparing a Codex session withou
 
 2. **Prepare the AgentFlow project**:
    Ensure you have the `AgentFlow` project cloned and built:
+
    ```bash
    cd /home/matthew/projects
    # If not already cloned:
@@ -182,7 +186,8 @@ This phase validates RelayAI's effectiveness by comparing a Codex session withou
    npm run build
    npm test
    ```
-   *Note: Ensure all tests pass before proceeding.*
+
+   _Note: Ensure all tests pass before proceeding._
 
 3. **Record the baseline git SHA**:
    Record the current Git HEAD SHA of AgentFlow. This will act as the baseline anchor:
@@ -198,6 +203,7 @@ In this phase, we run Codex without any help from Relay to establish a baseline.
 
 1. **Open a fresh Codex session in AgentFlow**:
    Make sure you are in the `AgentFlow` directory, and start Codex. Do **NOT** have Relay configured in your Codex MCP config yet.
+
    ```bash
    cd /home/matthew/projects/AgentFlow
    codex
@@ -230,6 +236,7 @@ Now, initialize and configure Relay in the `AgentFlow` project directory to prep
 
 1. **Initialize Relay**:
    Run the `init` command in the `AgentFlow` directory using your locally built Relay CLI:
+
    ```bash
    cd /home/matthew/projects/AgentFlow
    node /home/matthew/projects/RelayAI/packages/cli/dist/index.js init
@@ -237,6 +244,7 @@ Now, initialize and configure Relay in the `AgentFlow` project directory to prep
 
 2. **Verify Relay Health**:
    Ensure all setup checks pass:
+
    ```bash
    node /home/matthew/projects/RelayAI/packages/cli/dist/index.js doctor
    ```
@@ -244,7 +252,7 @@ Now, initialize and configure Relay in the `AgentFlow` project directory to prep
 3. **Start the Relay session**:
    Anchor Relay to the baseline Git SHA you recorded in Step 1:
    ```bash
-   node /home/matthew/projects/RelayAI/packages/cli/dist/index.js session start
+   node ~/projects/RelayAI/RelayAI/packages/cli/dist/index.js session start
    ```
 
 ---
@@ -260,7 +268,10 @@ To allow Codex to communicate with Relay, register Relay as an MCP server.
      "mcpServers": {
        "relay": {
          "command": "node",
-         "args": ["/home/matthew/projects/RelayAI/packages/cli/dist/index.js", "mcp"]
+         "args": [
+           "~/projects/RelayAI/RelayAI/packages/cli/dist/index.js",
+           "mcp"
+         ]
        }
      }
    }
@@ -274,11 +285,13 @@ In this phase, we run Codex with Relay active. Relay will automatically inject h
 
 1. **Open a fresh Codex session in AgentFlow**:
    Start Codex. It will automatically detect the configuration in `~/.codex/config.json` and start the Relay MCP server:
+
    ```bash
    cd /home/matthew/projects/AgentFlow
    codex
    ```
-   *Verify: When Codex starts, ensure it lists the Relay MCP tools (such as `get_prompt_payload`).*
+
+   _Verify: When Codex starts, ensure it lists the Relay MCP tools (such as `get_prompt_payload`)._
 
 2. **Run the same 5 prompts**:
    Enter the exact same prompts as in the baseline phase, in the same order:
@@ -322,15 +335,15 @@ In this phase, we run Codex with Relay active. Relay will automatically inject h
 
 All signals must pass before marking the Relay integration as successful:
 
-| Signal | Command | Pass Condition |
-|---|---|---|
-| CLI healthy | `relay doctor` | Exits with code 0, all diagnostics are green. |
-| Session anchored | `relay session start` | Base git SHA is correctly recorded in `.relay/session.json`. |
-| Token zones populated | `relay tokens inspect` | `STATIC_BLOCK`, `STATE_LAYER`, and `DYNAMIC_INPUT` are all populated. |
-| Cache prefix stable | `relay cache inspect` | The prefix hash remains identical across prompts 2+. |
-| Diff anchored | `relay diff` | Only git delta/diff changes are shown in context, not full file contents. |
+| Signal                    | Command                | Pass Condition                                                                         |
+| ------------------------- | ---------------------- | -------------------------------------------------------------------------------------- |
+| CLI healthy               | `relay doctor`         | Exits with code 0, all diagnostics are green.                                          |
+| Session anchored          | `relay session start`  | Base git SHA is correctly recorded in `.relay/session.json`.                           |
+| Token zones populated     | `relay tokens inspect` | `STATIC_BLOCK`, `STATE_LAYER`, and `DYNAMIC_INPUT` are all populated.                  |
+| Cache prefix stable       | `relay cache inspect`  | The prefix hash remains identical across prompts 2+.                                   |
+| Diff anchored             | `relay diff`           | Only git delta/diff changes are shown in context, not full file contents.              |
 | Follow-up prompts smaller | `relay tokens inspect` | The context size on prompts P2–P5 is smaller than prompt P1 due to cache optimization. |
-| GC preview works | `relay gc preview` | History compacted successfully into `.relay/memory/semantic-state.json`. |
+| GC preview works          | `relay gc preview`     | History compacted successfully into `.relay/memory/semantic-state.json`.               |
 
 ---
 

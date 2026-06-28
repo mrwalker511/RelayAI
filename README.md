@@ -49,14 +49,14 @@ That's it. Add `--measure` to track real token savings, `relay gc run` to compac
 
 ---
 
-| Need | What Relay Provides |
-| --- | --- |
-| Lower repeated prompt cost | Stable prompt zones designed for provider cache reuse |
-| Better continuity between sessions | Compact semantic memory stored in `.relay/` |
-| Smaller follow-up prompts | Git-anchored diffs instead of resending full files |
-| Safer large-context usage | Local token estimates, budget checks, and anomaly detection |
-| Provider flexibility | Shell-based adapters for any CLI that reads stdin |
-| Native agent integration | Read-only MCP server gives agents deterministic context via standard tool calls |
+| Need                               | What Relay Provides                                                             |
+| ---------------------------------- | ------------------------------------------------------------------------------- |
+| Lower repeated prompt cost         | Stable prompt zones designed for provider cache reuse                           |
+| Better continuity between sessions | Compact semantic memory stored in `.relay/`                                     |
+| Smaller follow-up prompts          | Git-anchored diffs instead of resending full files                              |
+| Safer large-context usage          | Local token estimates, budget checks, and anomaly detection                     |
+| Provider flexibility               | Shell-based adapters for any CLI that reads stdin                               |
+| Native agent integration           | Read-only MCP server gives agents deterministic context via standard tool calls |
 
 ---
 
@@ -133,10 +133,10 @@ node packages/cli/dist/index.js --help
 Create a shell alias so you can use `relay` from any repository:
 
 ```bash
-alias relay='node /absolute/path/to/RelayAI/packages/cli/dist/index.js'
+alias relay='node ~/projects/RelayAI/RelayAI/packages/cli/dist/index.js'
 ```
 
-Replace `/absolute/path/to/RelayAI` with your actual clone path. Add the alias to your shell profile (`.bashrc`, `.zshrc`, etc.) once you've confirmed it works.
+Replace `/home/matthew/projects/RelayAI` with your actual clone path. Add the alias to your shell profile (`.bashrc`, `.zshrc`, etc.) once you've confirmed it works.
 
 ---
 
@@ -192,7 +192,7 @@ See [`docs/COMMANDS.md`](docs/COMMANDS.md) for the full command reference.
 
 Relay distinguishes two kinds of numbers, and labels them as such:
 
-- **Estimated** — local token math from the bundled tokenizer (`relay tokens inspect`, `relay cache inspect`, `pnpm run compare`). Useful and offline, but a model of cost, not a bill. `compare` shows both the first-call (cold-cache) size and the amortized repeat-call (warm-cache) cost, because savings accrue on repeat calls — a single call on a small repo can cost *more*.
+- **Estimated** — local token math from the bundled tokenizer (`relay tokens inspect`, `relay cache inspect`, `pnpm run compare`). Useful and offline, but a model of cost, not a bill. `compare` shows both the first-call (cold-cache) size and the amortized repeat-call (warm-cache) cost, because savings accrue on repeat calls — a single call on a small repo can cost _more_.
 - **Measured** — the provider's actual reported usage. `relay ask --measure` captures it (e.g. Claude's `cache_read_input_tokens`) into the audit ledger; `relay usage record` ingests it for providers that don't emit it; `relay savings` then reports real cost vs a no-cache baseline (cache-creation surcharge and output included). Even without measured usage, `relay savings` grounds its projection in the **measured prefix-stability rate** from your call history rather than a guess.
 
 ---
@@ -213,18 +213,18 @@ See [`docs/MCP.md`](docs/MCP.md) for host configuration, the full tool reference
 
 ## Documentation
 
-| Document | Purpose |
-| --- | --- |
-| [`docs/WALKTHROUGH.md`](docs/WALKTHROUGH.md) | Hands-on walkthrough proving measured savings on the sample project with real OpenAI Codex |
-| [`docs/USER_INSTALLATION_GUIDE.md`](docs/USER_INSTALLATION_GUIDE.md) | Setup, provider configuration, daily workflow, and troubleshooting |
-| [`docs/GETTING_STARTED.md`](docs/GETTING_STARTED.md) | Short local development quick start |
-| [`docs/COMMANDS.md`](docs/COMMANDS.md) | Full CLI command reference |
-| [`docs/CONFIGURATION.md`](docs/CONFIGURATION.md) | `.relay/config.json` schema reference |
-| [`docs/PROVIDER_ADAPTERS.md`](docs/PROVIDER_ADAPTERS.md) | Provider command examples and adapter design |
-| [`docs/MCP.md`](docs/MCP.md) | MCP server setup, tool reference, agent workflow, and troubleshooting |
-| [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Context construction architecture and module reference |
-| [`AGENTS.md`](AGENTS.md) | Coding agent guidance, Codex integration, and hook documentation |
-| [`.github/copilot-instructions.md`](.github/copilot-instructions.md) | GitHub Copilot workspace instructions |
+| Document                                                             | Purpose                                                                                    |
+| -------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| [`docs/WALKTHROUGH.md`](docs/WALKTHROUGH.md)                         | Hands-on walkthrough proving measured savings on the sample project with real OpenAI Codex |
+| [`docs/USER_INSTALLATION_GUIDE.md`](docs/USER_INSTALLATION_GUIDE.md) | Setup, provider configuration, daily workflow, and troubleshooting                         |
+| [`docs/GETTING_STARTED.md`](docs/GETTING_STARTED.md)                 | Short local development quick start                                                        |
+| [`docs/COMMANDS.md`](docs/COMMANDS.md)                               | Full CLI command reference                                                                 |
+| [`docs/CONFIGURATION.md`](docs/CONFIGURATION.md)                     | `.relay/config.json` schema reference                                                      |
+| [`docs/PROVIDER_ADAPTERS.md`](docs/PROVIDER_ADAPTERS.md)             | Provider command examples and adapter design                                               |
+| [`docs/MCP.md`](docs/MCP.md)                                         | MCP server setup, tool reference, agent workflow, and troubleshooting                      |
+| [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)                       | Context construction architecture and module reference                                     |
+| [`AGENTS.md`](AGENTS.md)                                             | Coding agent guidance, Codex integration, and hook documentation                           |
+| [`.github/copilot-instructions.md`](.github/copilot-instructions.md) | GitHub Copilot workspace instructions                                                      |
 
 ---
 

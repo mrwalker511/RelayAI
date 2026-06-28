@@ -120,6 +120,8 @@ export const KNOWN_CONTEXT_WINDOWS: Record<string, Record<string, number>> = {
     "mixtral": 32000,
     "qwen2.5": 32000,
     "qwen2.5-coder": 128000,
+    "qwen3": 128000,
+    "qwen3-coder": 128000,
     "deepseek-coder-v2": 128000,
     "deepseek-r1": 128000,
     "phi4": 16000,
@@ -127,6 +129,16 @@ export const KNOWN_CONTEXT_WINDOWS: Record<string, Record<string, number>> = {
     "codellama": 16000,
     "gemma3": 32000,
     default: 32000
+  },
+  llama: {
+    "qwen3": 128000,
+    "qwen3-coder": 128000,
+    default: 128000
+  },
+  "llama.cpp": {
+    "qwen3": 128000,
+    "qwen3-coder": 128000,
+    default: 128000
   }
 };
 

@@ -2,11 +2,11 @@
 
 This guide covers three testing levels in order of scope:
 
-1. [Automated Tests](#1-automated-tests) — unit + integration via `pnpm run ci`
-2. [Hook Verification](#2-hook-verification) — confirm lifecycle hooks fire in each supported agent
-3. [Manual Integration Testing](#3-manual-integration-testing) — end-to-end validation against a real project
+1. [Automated Tests](#1-automated-tests) - unit + integration via `pnpm run ci`
+2. [Hook Verification](#2-hook-verification) - confirm lifecycle hooks fire in each supported agent
+3. [Manual Integration Testing](#3-manual-integration-testing) - end-to-end validation against a real project
 
-### 💡 Pro Tip — Autopopulating Session Data
+### 💡 Pro Tip - Autopopulating Session Data
 
 Instead of manually typing token counts and SHAs, you can upload session files directly into the reviewer tool:
 - **Relay metadata**: Drag and drop `.relay/session.json` or `.relay/config.json` to autopopulate SHAs, AI Provider, and date.
@@ -56,7 +56,7 @@ node --test packages/core/dist/tokens/budget.test.js
 |---|---|---|---|
 | `@relay/core` | 20 files | 137 | Config, context zones, git delta, tokens, GC, providers, usage parser (Claude + Codex), savings, output filter |
 | `@relay/cli` | 1 file | 49 | E2E: init, session, ask, `--measure` (claude + codex), `{prompt}` routing, usage record, savings, diff, cache, tokens, gc, MCP server |
-| **Total** | **21 files** | **186** | — |
+| **Total** | **21 files** | **186** | - |
 
 ### End-to-end smoke test (real Codex)
 
@@ -81,11 +81,11 @@ This exercises `--measure` capture, the Codex usage parser (normalizing cached-i
 
 RelayAI ships lifecycle hooks for three coding agents. Each hook set automates:
 
-- **Session start** — `relay session start` (records base git SHA) + `pnpm sigmap` (builds structural skeleton)
-- **Turn end / agent stop** — `relay gc run` (compacts session history into semantic state)
-- **After file edits** — `pnpm sigmap` (keeps structural skeleton current)
+- **Session start** - `relay session start` (records base git SHA) + `pnpm sigmap` (builds structural skeleton)
+- **Turn end / agent stop** - `relay gc run` (compacts session history into semantic state)
+- **After file edits** - `pnpm sigmap` (keeps structural skeleton current)
 
-### 2a. Claude Code — `.claude/settings.json`
+### 2a. Claude Code - `.claude/settings.json`
 
 **Trigger:** Open a Claude Code session in the RelayAI repo.
 
@@ -110,10 +110,10 @@ git rev-parse HEAD
 
 ```bash
 relay cache inspect
-# Run relay ask "..." twice and compare prefix_hash — should be identical
+# Run relay ask "..." twice and compare prefix_hash - should be identical
 ```
 
-### 2b. Codex CLI — `.codex/hooks.json`
+### 2b. Codex CLI - `.codex/hooks.json`
 
 **Trigger:** Open a Codex CLI session in the RelayAI repo.
 
@@ -126,9 +126,9 @@ relay cache inspect
 [ ] After Codex ends its turn → .relay/memory/semantic-state.json updated (Stop hook)
 ```
 
-**PostToolUse matcher:** `write_file|apply_patch` — if your Codex version uses different tool names for file writes, update the `matcher` field in `.codex/hooks.json`.
+**PostToolUse matcher:** `write_file|apply_patch` - if your Codex version uses different tool names for file writes, update the `matcher` field in `.codex/hooks.json`.
 
-### 2c. GitHub Copilot — `.github/hooks/relay-lifecycle.json`
+### 2c. GitHub Copilot - `.github/hooks/relay-lifecycle.json`
 
 **Trigger:** Open a GitHub Copilot coding agent session on this repo.
 
@@ -141,7 +141,7 @@ relay cache inspect
 [ ] After Copilot ends its turn → .relay/memory/semantic-state.json updated (agentStop hook)
 ```
 
-**PostToolUse matcher:** `create_file|edit_file|write_file|apply_patch` — update if needed to match actual Copilot tool names.
+**PostToolUse matcher:** `create_file|edit_file|write_file|apply_patch` - update if needed to match actual Copilot tool names.
 
 ### Common hook troubleshooting
 
@@ -192,7 +192,7 @@ This phase validates RelayAI's effectiveness by comparing a Codex session withou
 
 ---
 
-### Step 2: Phase 1 — Baseline (Codex WITHOUT Relay)
+### Step 2: Phase 1 - Baseline (Codex WITHOUT Relay)
 
 In this phase, we run Codex without any help from Relay to establish a baseline.
 
@@ -224,7 +224,7 @@ In this phase, we run Codex without any help from Relay to establish a baseline.
 
 ---
 
-### Step 3: Phase 2 — Setup Relay in AgentFlow
+### Step 3: Phase 2 - Setup Relay in AgentFlow
 
 Now, initialize and configure Relay in the `AgentFlow` project directory to prepare for the Relay-enabled Codex run.
 
@@ -249,7 +249,7 @@ Now, initialize and configure Relay in the `AgentFlow` project directory to prep
 
 ---
 
-### Step 4: Phase 3 — Configure Codex to use Relay MCP
+### Step 4: Phase 3 - Configure Codex to use Relay MCP
 
 To allow Codex to communicate with Relay, register Relay as an MCP server.
 
@@ -268,7 +268,7 @@ To allow Codex to communicate with Relay, register Relay as an MCP server.
 
 ---
 
-### Step 5: Phase 4 — Relay-Enabled (Codex WITH Relay)
+### Step 5: Phase 4 - Relay-Enabled (Codex WITH Relay)
 
 In this phase, we run Codex with Relay active. Relay will automatically inject high-quality hierarchical context (trunk and domain branches), semantic memory state, and git delta diffs.
 
@@ -300,7 +300,7 @@ In this phase, we run Codex with Relay active. Relay will automatically inject h
 
 ---
 
-### Step 6: Phase 5 — Comparison and Metrics Analysis
+### Step 6: Phase 5 - Comparison and Metrics Analysis
 
 1. **Open the Results Tracker**:
    Open `docs/relay-test-results.html` in your browser. Fill in the baseline and Relay-enabled metrics manually, or use the comparison tool to parse logs automatically.

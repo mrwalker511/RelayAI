@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RelayAI — Commands</title>
+  <style>
+    :root {
+      --bg: #0f1117;
+      --surface: #181c27;
+      --surface2: #1e2333;
+      --border: #2a3045;
+      --accent: #4f8ef7;
+      --accent2: #7c5cbf;
+      --green: #22c55e;
+      --red: #ef4444;
+      --yellow: #f59e0b;
+      --text: #e2e8f0;
+      --muted: #8892a4;
+      --radius: 10px;
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; }
+    body { background: var(--bg); color: var(--text); display: flex; flex-direction: column; min-height: 100vh; }
+
+    /* ── Header ── */
+    header {
+      background: linear-gradient(135deg, #1a1f35 0%, #0f1117 100%);
+      border-bottom: 1px solid var(--border);
+      padding: 14px 28px;
+      display: flex; align-items: center; gap: 14px;
+      position: sticky; top: 0; z-index: 100;
+    }
+    .logo-icon {
+      width: 34px; height: 34px; border-radius: 8px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px; font-weight: 800; color: #fff; flex-shrink: 0;
+    }
+    .logo-name { font-size: 16px; font-weight: 700; letter-spacing: -0.3px; }
+    .logo-sub { font-size: 11px; color: var(--muted); margin-top: 1px; }
+
+    /* ── Layout ── */
+    .layout { display: flex; flex: 1; overflow: hidden; }
+
+    /* ── Sidebar ── */
+    nav {
+      width: 220px; flex-shrink: 0;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      padding: 20px 0;
+      overflow-y: auto;
+      position: sticky; top: 57px; height: calc(100vh - 57px);
+    }
+    .nav-group { margin-bottom: 6px; }
+    .nav-group-label {
+      font-size: 10px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.8px; color: var(--muted);
+      padding: 10px 20px 6px;
+    }
+    .nav-link {
+      display: block; padding: 7px 20px;
+      font-size: 13px; color: var(--muted);
+      text-decoration: none; transition: all 0.15s;
+      border-left: 2px solid transparent;
+    }
+    .nav-link:hover { color: var(--text); background: var(--surface2); }
+    .nav-link.active {
+      color: var(--accent); border-left-color: var(--accent);
+      background: rgba(79,142,247,0.08);
+    }
+
+    /* ── Content ── */
+    main {
+      flex: 1; overflow-y: auto;
+      padding: 40px 48px 80px;
+      max-width: 900px;
+    }
+
+    /* ── Markdown styles ── */
+    .md h1 { font-size: 28px; font-weight: 800; letter-spacing: -0.5px; margin-bottom: 16px; line-height: 1.25; }
+    .md h2 { font-size: 20px; font-weight: 700; margin: 36px 0 12px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+    .md h3 { font-size: 16px; font-weight: 700; margin: 28px 0 10px; color: var(--text); }
+    .md h4 { font-size: 14px; font-weight: 700; margin: 20px 0 8px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
+
+    .md p { font-size: 14px; line-height: 1.75; margin-bottom: 14px; color: var(--text); }
+    .md a { color: var(--accent); text-decoration: none; }
+    .md a:hover { text-decoration: underline; }
+
+    .md ul, .md ol { padding-left: 22px; margin-bottom: 14px; }
+    .md li { font-size: 14px; line-height: 1.7; margin-bottom: 4px; }
+    .md li > p { margin-bottom: 4px; }
+
+    /* task lists */
+    .md ul.contains-task-list { list-style: none; padding-left: 4px; }
+    .md li.task-list-item { display: flex; align-items: flex-start; gap: 8px; }
+    .md li.task-list-item input[type="checkbox"] { margin-top: 4px; accent-color: var(--accent); flex-shrink: 0; }
+
+    .md blockquote {
+      border-left: 3px solid var(--accent2);
+      padding: 10px 18px; margin: 18px 0;
+      background: rgba(124,92,191,0.08); border-radius: 0 6px 6px 0;
+      font-size: 13px; color: var(--muted);
+    }
+    .md blockquote p { margin-bottom: 0; color: var(--muted); }
+
+    .md code {
+      font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+      font-size: 12.5px; background: var(--surface2);
+      border: 1px solid var(--border); border-radius: 4px;
+      padding: 2px 6px; color: #a5d6ff;
+    }
+    .md pre {
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 8px; padding: 18px 20px; margin: 16px 0;
+      overflow-x: auto;
+    }
+    .md pre code {
+      background: none; border: none; padding: 0;
+      font-size: 13px; color: #cdd9e5; line-height: 1.6;
+    }
+
+    .md table {
+      width: 100%; border-collapse: collapse; margin: 18px 0; font-size: 13px;
+    }
+    .md th {
+      text-align: left; padding: 9px 14px;
+      background: var(--surface2); color: var(--muted);
+      font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;
+      border-bottom: 1px solid var(--border);
+    }
+    .md td { padding: 10px 14px; border-bottom: 1px solid var(--border); vertical-align: top; }
+    .md tr:last-child td { border-bottom: none; }
+    .md tr:hover td { background: rgba(255,255,255,0.02); }
+
+    .md hr { border: none; border-top: 1px solid var(--border); margin: 32px 0; }
+
+    .md img { max-width: 100%; border-radius: 8px; }
+
+    /* badges (shields.io etc.) */
+    .md img[src*="shields.io"], .md img[src*="badge"] { border-radius: 3px; }
+
+    /* ── Responsive ── */
+    @media (max-width: 700px) {
+      nav { display: none; }
+      main { padding: 24px 20px 60px; }
+      .md h1 { font-size: 22px; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="logo-icon">R</div>
+    <div>
+      <div class="logo-name">RelayAI</div>
+      <div class="logo-sub">Docs</div>
+    </div>
+  </header>
+  <div class="layout">
+    <nav>
+      <div class="nav-group">
+        <div class="nav-group-label">Project</div>
+        <a href="index.html" class="nav-link">Overview</a>
+        <a href="getting-started.html" class="nav-link">Getting Started</a>
+        <a href="user-installation-guide.html" class="nav-link">Installation Guide</a>
+        <a href="walkthrough.html" class="nav-link">Walkthrough</a>
+      </div>
+      <div class="nav-group">
+        <div class="nav-group-label">Reference</div>
+        <a href="commands.html" class="nav-link active">Commands</a>
+        <a href="configuration.html" class="nav-link">Configuration</a>
+        <a href="provider-adapters.html" class="nav-link">Provider Adapters</a>
+        <a href="mcp.html" class="nav-link">MCP Integration</a>
+        <a href="architecture.html" class="nav-link">Architecture</a>
+      </div>
+      <div class="nav-group">
+        <div class="nav-group-label">Development</div>
+        <a href="testing-plan-doc.html" class="nav-link">Testing Plan</a>
+        <a href="mvp-roadmap.html" class="nav-link">MVP Roadmap</a>
+        <a href="bench-prompts.html" class="nav-link">Bench Prompts</a>
+        <a href="contributing.html" class="nav-link">Contributing</a>
+        <a href="agents.html" class="nav-link">Agents Guide</a>
+        <a href="changelog.html" class="nav-link">Changelog</a>
+        <a href="security.html" class="nav-link">Security</a>
+      </div>
+    </nav>
+    <main>
+      <div class="md">
+        <h1>Command Reference</h1>
+<h2><code>relay init</code></h2>
+<p>Initializes <code>.relay/</code> in the current repository, creating <code>config.json</code> and the <code>memory/</code> directory with default files.</p>
+<hr>
+<h2><code>relay doctor</code></h2>
+<p>Checks whether the current workspace is ready for Relay usage. Prints JSON diagnostics and exits non-zero only when a blocking error is present.</p>
+<p>Doctor checks include:</p>
+<ul>
+<li>Git availability</li>
+<li><code>.relay/</code> initialization</li>
+<li>Config and session validity</li>
+<li>Semantic state validity</li>
+<li>Token budget ordering (<code>warningLimit &lt; requireConfirmationAbove &lt; hardLimit</code>)</li>
+<li>Provider and GC command availability</li>
+</ul>
+<hr>
+<h2><code>relay session start</code></h2>
+<p>Creates a session anchored to the current git SHA. Records the session ID, base SHA, prefix hash, tracked paths, and creation timestamp in <code>.relay/session.json</code>.</p>
+<p>Start a new session when beginning a distinct task or after rebasing.</p>
+<h2><code>relay session status</code></h2>
+<p>Prints current session metadata from <code>.relay/session.json</code>.</p>
+<hr>
+<h2><code>relay ask &lt;prompt&gt;</code></h2>
+<p>Builds a deterministic three-zone prompt payload.</p>
+<p>Without a provider, Relay prints the assembled payload between <code>---BEGIN RELAY PAYLOAD---</code> and <code>---END RELAY PAYLOAD---</code>.</p>
+<p><strong>Options:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>--provider &lt;name&gt;</code></td>
+<td>Route the payload to the named provider command and propagate the exit code. The payload is written to stdin, or substituted into a <code>{prompt}</code> argv placeholder if the command template uses one.</td>
+</tr>
+<tr>
+<td><code>--dry-run</code></td>
+<td>Print the resolved provider command and payload without executing the provider.</td>
+</tr>
+<tr>
+<td><code>--staged</code></td>
+<td>Use staged diff instead of the full session diff.</td>
+</tr>
+<tr>
+<td><code>--diff-mode &lt;mode&gt;</code></td>
+<td>Diff rendering: <code>full</code>, <code>summarized</code>, or <code>auto</code> (default). <code>auto</code> summarizes diffs above 8 000 tokens.</td>
+</tr>
+<tr>
+<td><code>--include-timestamp</code></td>
+<td>Include ISO timestamp in the <code>DYNAMIC_INPUT</code> zone.</td>
+</tr>
+<tr>
+<td><code>--measure</code></td>
+<td>Capture the provider&#39;s reported token usage into the audit ledger for <strong>measured</strong> savings. Tees provider stdout (you still see it) and parses usage; the <code>claude</code> builtin auto-adds <code>--output-format json</code> and the <code>codex</code> builtin auto-adds <code>--json</code>. Codex reports <code>input_tokens</code> inclusive of cached, which Relay normalizes to uncached input. Providers that don&#39;t emit parseable usage (e.g. Copilot): record it with <code>relay usage record</code>.</td>
+</tr>
+</tbody></table>
+<p>Every <code>relay ask</code> also writes per-call ledger fields to the audit log — <code>prefix_hash</code>, per-zone token counts, the <code>tokenizer</code> used, and <code>prefix_stable</code> (whether the cacheable prefix matched the previous call). These power <code>relay savings</code>.</p>
+<hr>
+<h2><code>relay usage record</code></h2>
+<p>Manually record measured provider token usage (for providers whose CLI doesn&#39;t emit a parseable usage envelope).</p>
+<p><strong>Options:</strong> <code>--input &lt;n&gt;</code> (required), <code>--cached-input &lt;n&gt;</code>, <code>--cache-creation &lt;n&gt;</code>, <code>--output &lt;n&gt;</code>, <code>--session &lt;id&gt;</code>. Appends a <code>usage</code> audit event with <code>usage_source: &quot;manual&quot;</code>.</p>
+<hr>
+<h2><code>relay savings</code></h2>
+<p>Reports prompt-cache savings from the audit log in two clearly-labeled sections:</p>
+<ul>
+<li><strong>MEASURED</strong> — actual cost vs a no-cache baseline, computed from recorded provider/manual usage (includes the cache-creation surcharge and output). A single first/cache-creating call can show negative savings; the session aggregate is the honest figure.</li>
+<li><strong>PROJECTED FROM HISTORY</strong> — the <strong>measured</strong> prefix-stability rate (fraction of repeat calls whose cacheable prefix was unchanged) fed into the zone estimator. A projection, not a measurement.</li>
+</ul>
+<p><strong>Options:</strong> <code>--input-cost-per-million &lt;n&gt;</code>, <code>--cached-input-cost-per-million &lt;n&gt;</code>, <code>--cache-creation-cost-per-million &lt;n&gt;</code> (default: input × 1.25), <code>--output-cost-per-million &lt;n&gt;</code> (default: 0), <code>--session &lt;id&gt;</code>, <code>--json</code>.</p>
+<hr>
+<h2><code>relay diff</code></h2>
+<p>Prints the git diff since the current session base SHA.</p>
+<hr>
+<h2><code>relay context inspect</code></h2>
+<p>Prints context-construction diagnostics, including session metadata, prefix hash comparison, zone token counts, semantic state validity, and git diff presence.</p>
+<h2><code>relay context build</code></h2>
+<p>Scaffolds hierarchical context files at <code>.relay/context/</code> by parsing <code>docs/ARCHITECTURE.md</code> and <code>AGENTS.md</code>. Generates:</p>
+<ul>
+<li><code>.relay/context/trunk.md</code> — slim project overview (~300 tokens, always loaded)</li>
+<li><code>.relay/context/branches/{domain}.md</code> — domain-specific details (lazy-loaded when prompt/diff matches)</li>
+</ul>
+<p>After running, enable with <code>&quot;context&quot;: { &quot;hierarchical&quot;: true }</code> in <code>.relay/config.json</code>.</p>
+<hr>
+<h2><code>relay tokens estimate [text...]</code></h2>
+<p>Estimates the token count for the provided text using the configured tokenizer.</p>
+<h2><code>relay tokens budget</code></h2>
+<p>Prints the current token budget configuration (<code>warningLimit</code>, <code>requireConfirmationAbove</code>, <code>hardLimit</code>).</p>
+<h2><code>relay tokens inspect</code></h2>
+<p>Prints zone-by-zone token counts for the current session context and reports the configured budget status (<code>ok</code>, <code>warning</code>, <code>requires_confirmation</code>, or <code>blocked</code>).</p>
+<hr>
+<h2><code>relay cache fingerprint</code></h2>
+<p>Prints the hash of the combined static block and state layer. Use this to detect prefix drift between sessions.</p>
+<h2><code>relay cache inspect</code></h2>
+<p>Prints cache-relevant prefix diagnostics: prefix hash, static and state zone token counts, and the inputs that affect the prefix.</p>
+<p><strong>Options:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>--input-cost-per-million &lt;number&gt;</code></td>
+<td>Per-million-token cost for uncached input (e.g. <code>3.00</code>)</td>
+</tr>
+<tr>
+<td><code>--cached-input-cost-per-million &lt;number&gt;</code></td>
+<td>Per-million-token cost for cached input (e.g. <code>0.30</code>)</td>
+</tr>
+<tr>
+<td><code>--expected-cache-hit-rate &lt;number&gt;</code></td>
+<td>Expected cache hit rate as a decimal (e.g. <code>0.8</code> for 80%) — a guess</td>
+</tr>
+<tr>
+<td><code>--use-recorded-history</code></td>
+<td>Use the <strong>measured</strong> prefix-stability rate from the audit log instead of guessing <code>--expected-cache-hit-rate</code>. The output reports <code>recorded_stability_rate</code> and <code>cache_hit_rate_source</code>.</td>
+</tr>
+</tbody></table>
+<p>Relay only calculates cost estimates from explicit inputs and does not infer provider pricing. For ground-truth numbers, prefer <code>relay ask --measure</code> + <code>relay savings</code>.</p>
+<h2><code>relay cache warm</code></h2>
+<p>Sends a stable prefix-shaped payload to a configured provider to prime provider-side prompt caching.</p>
+<p><strong>Options:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>--provider &lt;name&gt;</code></td>
+<td>Provider command to use for warming.</td>
+</tr>
+<tr>
+<td><code>--dry-run</code></td>
+<td>Print the resolved command and warmup payload without executing the provider.</td>
+</tr>
+</tbody></table>
+<hr>
+<h2><code>relay gc status</code></h2>
+<p>Prints the current garbage collection configuration from <code>.relay/config.json</code>.</p>
+<h2><code>relay gc preview</code></h2>
+<p>Previews the compacted semantic state without writing changes. Useful for checking what GC would produce before committing.</p>
+<h2><code>relay gc run</code></h2>
+<p>Compacts raw session history into semantic state. Sends a schema-constrained prompt to <code>gc.command</code>, or to the configured default provider when <code>gc.command</code> is omitted.</p>
+<p>Writes <code>.relay/memory/semantic-state.json</code>, clears raw history, and saves a snapshot for rollback.</p>
+<h2><code>relay gc restore</code></h2>
+<p>Restores the semantic state snapshot written before the last <code>relay gc run</code>.</p>
+<hr>
+<h2><code>relay mcp</code></h2>
+<p>Runs Relay as a read-only MCP context server over stdio.</p>
+<p>Configure an MCP-compatible coding agent to launch this command. Relay exposes project context, git delta, semantic memory, token budget, and prompt payload as MCP tools without mutating <code>.relay/</code> state.</p>
+<p>See <a href="mcp.html"><code>docs/MCP.md</code></a> for setup instructions and the full tool contract.</p>
+<hr>
+<h2><code>relay completion &lt;shell&gt;</code></h2>
+<p>Prints a shell completion script for <code>bash</code>, <code>zsh</code>, or <code>fish</code> to stdout.</p>
+<p>Source it directly in your current shell:</p>
+<pre><code class="language-bash">source &lt;(relay completion bash)   # bash
+source &lt;(relay completion zsh)    # zsh
+relay completion fish | source    # fish
+</code></pre>
+<p>To make it permanent, add the source line to your shell profile (<code>.bashrc</code>, <code>.zshrc</code>, or <code>~/.config/fish/config.fish</code>). The command prints installation instructions to stderr on first use.</p>
+<hr>
+<h2><code>pnpm sigmap</code></h2>
+<p><em>(Root workspace script, not a relay CLI command)</em></p>
+<p>Generates <code>.relay/sigmap.md</code> — a structural skeleton of the codebase using TypeScript&#39;s compiler API. Extracts interfaces, type aliases, enums, and function signatures while stripping implementation bodies. Token cost is ~10–15% of full source.</p>
+<p>Relay automatically uses this file as <code>sourceSnapshot</code> when <code>.relay/memory/source-snapshot.md</code> is absent or contains the default placeholder.</p>
+
+      </div>
+    </main>
+  </div>
+</body>
+</html>

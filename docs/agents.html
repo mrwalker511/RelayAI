@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RelayAI — Agents Guide</title>
+  <style>
+    :root {
+      --bg: #0f1117;
+      --surface: #181c27;
+      --surface2: #1e2333;
+      --border: #2a3045;
+      --accent: #4f8ef7;
+      --accent2: #7c5cbf;
+      --green: #22c55e;
+      --red: #ef4444;
+      --yellow: #f59e0b;
+      --text: #e2e8f0;
+      --muted: #8892a4;
+      --radius: 10px;
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; }
+    body { background: var(--bg); color: var(--text); display: flex; flex-direction: column; min-height: 100vh; }
+
+    /* ── Header ── */
+    header {
+      background: linear-gradient(135deg, #1a1f35 0%, #0f1117 100%);
+      border-bottom: 1px solid var(--border);
+      padding: 14px 28px;
+      display: flex; align-items: center; gap: 14px;
+      position: sticky; top: 0; z-index: 100;
+    }
+    .logo-icon {
+      width: 34px; height: 34px; border-radius: 8px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px; font-weight: 800; color: #fff; flex-shrink: 0;
+    }
+    .logo-name { font-size: 16px; font-weight: 700; letter-spacing: -0.3px; }
+    .logo-sub { font-size: 11px; color: var(--muted); margin-top: 1px; }
+
+    /* ── Layout ── */
+    .layout { display: flex; flex: 1; overflow: hidden; }
+
+    /* ── Sidebar ── */
+    nav {
+      width: 220px; flex-shrink: 0;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      padding: 20px 0;
+      overflow-y: auto;
+      position: sticky; top: 57px; height: calc(100vh - 57px);
+    }
+    .nav-group { margin-bottom: 6px; }
+    .nav-group-label {
+      font-size: 10px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.8px; color: var(--muted);
+      padding: 10px 20px 6px;
+    }
+    .nav-link {
+      display: block; padding: 7px 20px;
+      font-size: 13px; color: var(--muted);
+      text-decoration: none; transition: all 0.15s;
+      border-left: 2px solid transparent;
+    }
+    .nav-link:hover { color: var(--text); background: var(--surface2); }
+    .nav-link.active {
+      color: var(--accent); border-left-color: var(--accent);
+      background: rgba(79,142,247,0.08);
+    }
+
+    /* ── Content ── */
+    main {
+      flex: 1; overflow-y: auto;
+      padding: 40px 48px 80px;
+      max-width: 900px;
+    }
+
+    /* ── Markdown styles ── */
+    .md h1 { font-size: 28px; font-weight: 800; letter-spacing: -0.5px; margin-bottom: 16px; line-height: 1.25; }
+    .md h2 { font-size: 20px; font-weight: 700; margin: 36px 0 12px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+    .md h3 { font-size: 16px; font-weight: 700; margin: 28px 0 10px; color: var(--text); }
+    .md h4 { font-size: 14px; font-weight: 700; margin: 20px 0 8px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
+
+    .md p { font-size: 14px; line-height: 1.75; margin-bottom: 14px; color: var(--text); }
+    .md a { color: var(--accent); text-decoration: none; }
+    .md a:hover { text-decoration: underline; }
+
+    .md ul, .md ol { padding-left: 22px; margin-bottom: 14px; }
+    .md li { font-size: 14px; line-height: 1.7; margin-bottom: 4px; }
+    .md li > p { margin-bottom: 4px; }
+
+    /* task lists */
+    .md ul.contains-task-list { list-style: none; padding-left: 4px; }
+    .md li.task-list-item { display: flex; align-items: flex-start; gap: 8px; }
+    .md li.task-list-item input[type="checkbox"] { margin-top: 4px; accent-color: var(--accent); flex-shrink: 0; }
+
+    .md blockquote {
+      border-left: 3px solid var(--accent2);
+      padding: 10px 18px; margin: 18px 0;
+      background: rgba(124,92,191,0.08); border-radius: 0 6px 6px 0;
+      font-size: 13px; color: var(--muted);
+    }
+    .md blockquote p { margin-bottom: 0; color: var(--muted); }
+
+    .md code {
+      font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+      font-size: 12.5px; background: var(--surface2);
+      border: 1px solid var(--border); border-radius: 4px;
+      padding: 2px 6px; color: #a5d6ff;
+    }
+    .md pre {
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 8px; padding: 18px 20px; margin: 16px 0;
+      overflow-x: auto;
+    }
+    .md pre code {
+      background: none; border: none; padding: 0;
+      font-size: 13px; color: #cdd9e5; line-height: 1.6;
+    }
+
+    .md table {
+      width: 100%; border-collapse: collapse; margin: 18px 0; font-size: 13px;
+    }
+    .md th {
+      text-align: left; padding: 9px 14px;
+      background: var(--surface2); color: var(--muted);
+      font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;
+      border-bottom: 1px solid var(--border);
+    }
+    .md td { padding: 10px 14px; border-bottom: 1px solid var(--border); vertical-align: top; }
+    .md tr:last-child td { border-bottom: none; }
+    .md tr:hover td { background: rgba(255,255,255,0.02); }
+
+    .md hr { border: none; border-top: 1px solid var(--border); margin: 32px 0; }
+
+    .md img { max-width: 100%; border-radius: 8px; }
+
+    /* badges (shields.io etc.) */
+    .md img[src*="shields.io"], .md img[src*="badge"] { border-radius: 3px; }
+
+    /* ── Responsive ── */
+    @media (max-width: 700px) {
+      nav { display: none; }
+      main { padding: 24px 20px 60px; }
+      .md h1 { font-size: 22px; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="logo-icon">R</div>
+    <div>
+      <div class="logo-name">RelayAI</div>
+      <div class="logo-sub">Docs</div>
+    </div>
+  </header>
+  <div class="layout">
+    <nav>
+      <div class="nav-group">
+        <div class="nav-group-label">Project</div>
+        <a href="index.html" class="nav-link">Overview</a>
+        <a href="getting-started.html" class="nav-link">Getting Started</a>
+        <a href="user-installation-guide.html" class="nav-link">Installation Guide</a>
+        <a href="walkthrough.html" class="nav-link">Walkthrough</a>
+      </div>
+      <div class="nav-group">
+        <div class="nav-group-label">Reference</div>
+        <a href="commands.html" class="nav-link">Commands</a>
+        <a href="configuration.html" class="nav-link">Configuration</a>
+        <a href="provider-adapters.html" class="nav-link">Provider Adapters</a>
+        <a href="mcp.html" class="nav-link">MCP Integration</a>
+        <a href="architecture.html" class="nav-link">Architecture</a>
+      </div>
+      <div class="nav-group">
+        <div class="nav-group-label">Development</div>
+        <a href="testing-plan-doc.html" class="nav-link">Testing Plan</a>
+        <a href="mvp-roadmap.html" class="nav-link">MVP Roadmap</a>
+        <a href="bench-prompts.html" class="nav-link">Bench Prompts</a>
+        <a href="contributing.html" class="nav-link">Contributing</a>
+        <a href="agents.html" class="nav-link active">Agents Guide</a>
+        <a href="changelog.html" class="nav-link">Changelog</a>
+        <a href="security.html" class="nav-link">Security</a>
+      </div>
+    </nav>
+    <main>
+      <div class="md">
+        <h1>AGENTS.md</h1>
+<p>This file provides guidance to coding agents working with this repository. It serves as the primary instruction source for OpenAI Codex and is also referenced by other coding agents.</p>
+<hr>
+<h2>Codex Integration</h2>
+<p>This file is read automatically by OpenAI Codex as the repository&#39;s agent instruction source. The <code>.codex/hooks.json</code> file configures lifecycle automation that runs alongside Codex sessions:</p>
+<table>
+<thead>
+<tr>
+<th>Hook</th>
+<th>Trigger</th>
+<th>Commands</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>SessionStart</code></td>
+<td>When a Codex session begins</td>
+<td><code>relay session start</code> — anchors context to the current git SHA<br><code>pnpm sigmap</code> — regenerates the structural signature map</td>
+</tr>
+<tr>
+<td><code>Stop</code></td>
+<td>When a Codex session ends</td>
+<td><code>relay gc run</code> — compacts verbose session history into <code>SemanticState</code></td>
+</tr>
+<tr>
+<td><code>PostToolUse</code></td>
+<td>After <code>write_file</code> or <code>apply_patch</code></td>
+<td><code>pnpm sigmap</code> — keeps the signature map current after file changes</td>
+</tr>
+</tbody></table>
+<p>These hooks ensure Relay&#39;s context layer is always synchronized with the active Codex session. If you are adapting these hooks for a different agent, see <code>.claude/settings.json</code> for the Claude Code equivalent (which uses <code>Edit|Write|MultiEdit</code> as the PostToolUse matcher).</p>
+<p>For MCP integration — allowing an agent to request Relay context directly via tool calls — see <a href="mcp.html"><code>docs/MCP.md</code></a>.</p>
+<hr>
+<h2>Commands</h2>
+<pre><code class="language-bash">pnpm install          # install all workspace dependencies
+pnpm build            # compile all packages (tsc)
+pnpm typecheck        # type-check all packages without emitting
+pnpm test             # run tests across all packages (must build first)
+pnpm dev              # run CLI via tsx without building
+pnpm sigmap           # generate .relay/sigmap.md (structural skeleton of the codebase)
+pnpm clean            # remove packages/*/dist
+relay completion bash|zsh|fish   # print shell completion script; source it in your shell profile
+</code></pre>
+<p>Filter to a single package:</p>
+<pre><code class="language-bash">pnpm --filter @relay/core build
+pnpm --filter @relay/cli dev
+</code></pre>
+<p>Tests run against compiled output via Node&#39;s built-in test runner. Always build before testing:</p>
+<pre><code class="language-bash">pnpm build &amp;&amp; pnpm test      # full suite (~207 tests across core + cli)
+pnpm run ci                  # build + typecheck + test + pack:check (matches CI)
+</code></pre>
+<p>Run a single test file:</p>
+<pre><code class="language-bash">pnpm --filter @relay/core build
+node --test packages/core/dist/tokens/budget.test.js
+</code></pre>
+<p>There is no ESLint. <code>pnpm typecheck</code> (strict TypeScript) is the lint step.</p>
+<p>For full testing instructions — including hook verification for Claude Code, Codex CLI, and GitHub Copilot, and manual integration testing — see <a href="testing-plan-doc.html"><code>docs/TESTING_PLAN.md</code></a>.</p>
+<h2>Architecture</h2>
+<p>Relay is a deterministic context construction engine for model- and LLM-agnostic coding workflows. Every outbound prompt is assembled through three stable zones to maximize prompt-cache hit rates where the selected provider supports them.</p>
+<h3>Three-zone prompt construction (<code>packages/core/src/context/</code>)</h3>
+<p><code>payload-builder.ts</code> assembles zones in a fixed order:</p>
+<ol>
+<li><strong><code>STATIC_BLOCK</code></strong> — project rules, architecture notes, source snapshots (or hierarchical domain context). Kept stable across requests so provider caches this prefix on the first call.</li>
+<li><strong><code>STATE_LAYER</code></strong> — semantic state JSON, file index, session summary. Also kept stable and ordered.</li>
+<li><strong><code>DYNAMIC_INPUT</code></strong> — current user prompt, git diff, runtime output (automatically filtered), ISO timestamp. All volatile data goes here, placed last so changes don&#39;t bust the cache for zones 1 and 2.</li>
+</ol>
+<p>Zone types are defined in <code>zones.ts</code>; each zone has its own builder (<code>static-block.ts</code>, <code>state-layer.ts</code>, <code>dynamic-input.ts</code>). The <code>prefix-hash.ts</code> module hashes zones 1+2 together to produce a cache fingerprint for diagnostics.</p>
+<h3>Hierarchical Context (<code>packages/core/src/context/hierarchical-loader.ts</code>)</h3>
+<p>An opt-in two-tier loading strategy for <code>STATIC_BLOCK</code>. When <code>context.hierarchical = true</code> in <code>.relay/config.json</code>:</p>
+<ul>
+<li>A slim <code>trunk.md</code> (~300 tokens) is always loaded as the base snapshot.</li>
+<li>Per-domain <code>branches/{domain}.md</code> files are lazy-loaded only when the current prompt+diff text matches domain keywords (scored by <code>DOMAIN_PATTERNS</code> regex matching).</li>
+<li>Domains: <code>git</code>, <code>tokens</code>, <code>memory</code>, <code>providers</code>, <code>config</code>, <code>context</code>.</li>
+<li>The <code>loadHierarchicalContext()</code> function returns a <code>HierarchicalContext</code> with <code>trunk</code>, <code>branches</code>, and <code>loaded</code> (combined string).</li>
+</ul>
+<p>Generate the initial context files with <code>relay context build</code>. This reads <code>docs/ARCHITECTURE.md</code> and scaffolds <code>.relay/context/trunk.md</code> and <code>branches/*.md</code>.</p>
+<h3>Async git operations (<code>packages/core/src/git/</code>)</h3>
+<p><code>getGitDiffSinceAsync</code> and <code>buildPrioritizedFileIndexAsync</code> run <code>git diff</code> and <code>git ls-files</code> concurrently via <code>Promise.all</code> in the <code>relay ask</code> handler, avoiding sequential subprocess blocking. Sync variants remain available for contexts where async is not needed.</p>
+<h3>Tokenizer memoization (<code>packages/core/src/tokens/tokenizer.ts</code>)</h3>
+<p><code>estimateTokens</code> caches results in a process-lifetime two-level Map keyed on <code>(encodingName, correctionFactor) → text → TokenEstimate</code>. Prevents re-encoding the same large text (git diffs, zone content) multiple times per invocation.</p>
+<h3>Team configuration (<code>RELAY_BASE_CONFIG</code>)</h3>
+<p>Set <code>RELAY_BASE_CONFIG=/path/to/base.json</code> to load a shared base configuration before project-local <code>.relay/config.json</code>. Deep-merged using <code>deepMerge</code> in <code>packages/core/src/utils/merge.ts</code> (which guards against prototype pollution via <code>UNSAFE_KEYS</code>). Useful for team-wide provider or token defaults. See <code>docs/CONFIGURATION.md</code> for the full merge rules.</p>
+<h3>Signature Mapping (<code>scripts/gen-sigmap.ts</code>, <code>pnpm sigmap</code>)</h3>
+<p>Generates <code>.relay/sigmap.md</code> — a lightweight structural skeleton of the codebase. Uses TypeScript&#39;s compiler API (<code>ts.createSourceFile</code>) to extract interfaces, type aliases, enums, and function/method signatures while stripping implementation bodies. Token cost is ~10–15% of full source.</p>
+<p>Relay automatically uses <code>.relay/sigmap.md</code> as <code>sourceSnapshot</code> when <code>.relay/memory/source-snapshot.md</code> is absent or contains the default placeholder text. Run <code>pnpm sigmap</code> whenever the codebase structure changes.</p>
+<h3>Output Filtering (<code>packages/core/src/utils/output-filter.ts</code>)</h3>
+<p><code>filterOutput(raw, opts?)</code> is a deterministic middleware function applied automatically to <code>runtimeOutput</code> inside <code>buildDynamicInput()</code>. It runs a pipeline:</p>
+<ol>
+<li>Strip ANSI escape codes</li>
+<li>Collapse consecutive blank lines (max 1)</li>
+<li>Deduplicate consecutive identical lines → <code>[×N repeated]</code> annotation</li>
+<li>Suppress excess success/pass lines beyond <code>maxSuccessOccurrences</code> (default 3) → suppression note</li>
+<li>Truncate to <code>maxLines</code> (default 300) with head-60%/tail-40% strategy</li>
+</ol>
+<p>Disable per-call with <code>outputFilterOptions: { enabled: false }</code>. Tune globally via <code>filter.*</code> in <code>.relay/config.json</code>.</p>
+<h3>Git-anchored delta prompting (<code>packages/core/src/git/</code>)</h3>
+<p>When a session starts (<code>relay session start</code>), <code>snapshot.ts</code> records the current git SHA as <code>base_git_sha</code> in <code>.relay/session.json</code>. All subsequent <code>relay ask</code> calls inject only <code>git diff &lt;base_git_sha&gt;</code> rather than resending full file contents. <code>delta-builder.ts</code> composes this into the <code>DYNAMIC_INPUT</code> zone. <code>tracked-files.ts</code> calls <code>git ls-files</code> to enumerate the file index placed in <code>STATE_LAYER</code>.</p>
+<h3>Token garbage collection (<code>packages/core/src/memory/gc.ts</code>)</h3>
+<p>Raw session history accumulates in <code>.relay/memory/session.raw.md</code>. <code>compactHistoryToState()</code> shells out to the configured GC command with a schema-constrained JSON extraction prompt. The result collapses verbose history (often 10k+ tokens) into a <code>SemanticState</code> struct (~500 tokens) written to <code>.relay/memory/semantic-state.json</code>. This compacted state replaces raw history in the next prompt&#39;s <code>STATE_LAYER</code>. The <code>SemanticState</code> schema tracks: <code>active_target</code>, <code>current_goal</code>, <code>runtime_errors</code>, <code>verified_hypotheses</code>, <code>rejected_hypotheses</code>, <code>next_actions</code>, <code>code_changes</code>.</p>
+<h3>Provider adapters (<code>packages/core/src/providers/</code>)</h3>
+<p>The <code>ProviderAdapter</code> interface requires only <code>name</code> and <code>sendPrompt(payload: string): Promise&lt;number&gt;</code>. <code>ShellProvider</code> implements this by spawning the configured CLI command with the payload. Relay handles all context construction upstream and leaves model execution to the configured provider.</p>
+<h3>Token budgeting (<code>packages/core/src/tokens/</code>)</h3>
+<p><code>tokenizer.ts</code> estimates tokens using js-tiktoken (<code>cl100k_base</code> encoding) with a <code>char/4</code> fallback. <code>budget.ts</code> checks the assembled payload against three thresholds from config: <code>warningLimit</code>, <code>requireConfirmationAbove</code>, <code>hardLimit</code> — returning a status of <code>ok</code>, <code>warning</code>, <code>requires_confirmation</code>, or <code>blocked</code>. <code>anomaly-detector.ts</code> reads <code>.relay/calls.json</code> and warns if more than 10 prompts are sent within 60 seconds.</p>
+<h3>Configuration (<code>packages/core/src/config/relay-config.ts</code>)</h3>
+<p>Config is validated with Zod at load time. The schema covers: <code>provider</code>, <code>routing</code>, <code>gc</code>, <code>tokens</code>, <code>files</code>, <code>context</code> (hierarchical loading), and <code>filter</code> (output filtering). Config is stored at <code>.relay/config.json</code> and created with defaults by <code>relay init</code>.</p>
+<h3>Local runtime state (<code>.relay/</code>)</h3>
+<p>Created by <code>relay init</code>. Not committed to git.</p>
+<pre><code>.relay/
+├── config.json                      # RelayConfig (Zod-validated)
+├── session.json                     # base_git_sha, prefix_hash, tracked_paths
+├── calls.json                       # timestamp log for anomaly detection
+├── sigmap.md                        # generated by pnpm sigmap (structural skeleton)
+├── context/                         # generated by relay context build
+│   ├── trunk.md                     # slim always-loaded project overview
+│   └── branches/                    # domain-specific context, lazy-loaded
+│       ├── git.md
+│       ├── tokens.md
+│       ├── memory.md
+│       ├── providers.md
+│       ├── config.md
+│       └── context.md
+└── memory/
+    ├── semantic-state.json          # compacted SemanticState
+    ├── semantic-state.snapshot.json # pre-gc backup
+    ├── session.raw.md               # raw history (append-only)
+    └── session.compacted.md         # last compaction output
+</code></pre>
+<h3>CLI (<code>packages/cli/src/index.ts</code>)</h3>
+<p>Thin Commander.js router. All business logic lives in <code>@relay/core</code>; the CLI only parses arguments and calls core functions. Key command groups: <code>session</code>, <code>ask</code>, <code>diff</code>, <code>cache</code>, <code>tokens</code>, <code>gc</code>, <code>context</code> (includes <code>inspect</code> and <code>build</code>).</p>
+
+      </div>
+    </main>
+  </div>
+</body>
+</html>

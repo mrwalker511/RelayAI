@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RelayAI — Testing Plan</title>
+  <style>
+    :root {
+      --bg: #0f1117;
+      --surface: #181c27;
+      --surface2: #1e2333;
+      --border: #2a3045;
+      --accent: #4f8ef7;
+      --accent2: #7c5cbf;
+      --green: #22c55e;
+      --red: #ef4444;
+      --yellow: #f59e0b;
+      --text: #e2e8f0;
+      --muted: #8892a4;
+      --radius: 10px;
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; }
+    body { background: var(--bg); color: var(--text); display: flex; flex-direction: column; min-height: 100vh; }
+
+    /* ── Header ── */
+    header {
+      background: linear-gradient(135deg, #1a1f35 0%, #0f1117 100%);
+      border-bottom: 1px solid var(--border);
+      padding: 14px 28px;
+      display: flex; align-items: center; gap: 14px;
+      position: sticky; top: 0; z-index: 100;
+    }
+    .logo-icon {
+      width: 34px; height: 34px; border-radius: 8px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px; font-weight: 800; color: #fff; flex-shrink: 0;
+    }
+    .logo-name { font-size: 16px; font-weight: 700; letter-spacing: -0.3px; }
+    .logo-sub { font-size: 11px; color: var(--muted); margin-top: 1px; }
+
+    /* ── Layout ── */
+    .layout { display: flex; flex: 1; overflow: hidden; }
+
+    /* ── Sidebar ── */
+    nav {
+      width: 220px; flex-shrink: 0;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      padding: 20px 0;
+      overflow-y: auto;
+      position: sticky; top: 57px; height: calc(100vh - 57px);
+    }
+    .nav-group { margin-bottom: 6px; }
+    .nav-group-label {
+      font-size: 10px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.8px; color: var(--muted);
+      padding: 10px 20px 6px;
+    }
+    .nav-link {
+      display: block; padding: 7px 20px;
+      font-size: 13px; color: var(--muted);
+      text-decoration: none; transition: all 0.15s;
+      border-left: 2px solid transparent;
+    }
+    .nav-link:hover { color: var(--text); background: var(--surface2); }
+    .nav-link.active {
+      color: var(--accent); border-left-color: var(--accent);
+      background: rgba(79,142,247,0.08);
+    }
+
+    /* ── Content ── */
+    main {
+      flex: 1; overflow-y: auto;
+      padding: 40px 48px 80px;
+      max-width: 900px;
+    }
+
+    /* ── Markdown styles ── */
+    .md h1 { font-size: 28px; font-weight: 800; letter-spacing: -0.5px; margin-bottom: 16px; line-height: 1.25; }
+    .md h2 { font-size: 20px; font-weight: 700; margin: 36px 0 12px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+    .md h3 { font-size: 16px; font-weight: 700; margin: 28px 0 10px; color: var(--text); }
+    .md h4 { font-size: 14px; font-weight: 700; margin: 20px 0 8px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
+
+    .md p { font-size: 14px; line-height: 1.75; margin-bottom: 14px; color: var(--text); }
+    .md a { color: var(--accent); text-decoration: none; }
+    .md a:hover { text-decoration: underline; }
+
+    .md ul, .md ol { padding-left: 22px; margin-bottom: 14px; }
+    .md li { font-size: 14px; line-height: 1.7; margin-bottom: 4px; }
+    .md li > p { margin-bottom: 4px; }
+
+    /* task lists */
+    .md ul.contains-task-list { list-style: none; padding-left: 4px; }
+    .md li.task-list-item { display: flex; align-items: flex-start; gap: 8px; }
+    .md li.task-list-item input[type="checkbox"] { margin-top: 4px; accent-color: var(--accent); flex-shrink: 0; }
+
+    .md blockquote {
+      border-left: 3px solid var(--accent2);
+      padding: 10px 18px; margin: 18px 0;
+      background: rgba(124,92,191,0.08); border-radius: 0 6px 6px 0;
+      font-size: 13px; color: var(--muted);
+    }
+    .md blockquote p { margin-bottom: 0; color: var(--muted); }
+
+    .md code {
+      font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+      font-size: 12.5px; background: var(--surface2);
+      border: 1px solid var(--border); border-radius: 4px;
+      padding: 2px 6px; color: #a5d6ff;
+    }
+    .md pre {
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 8px; padding: 18px 20px; margin: 16px 0;
+      overflow-x: auto;
+    }
+    .md pre code {
+      background: none; border: none; padding: 0;
+      font-size: 13px; color: #cdd9e5; line-height: 1.6;
+    }
+
+    .md table {
+      width: 100%; border-collapse: collapse; margin: 18px 0; font-size: 13px;
+    }
+    .md th {
+      text-align: left; padding: 9px 14px;
+      background: var(--surface2); color: var(--muted);
+      font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;
+      border-bottom: 1px solid var(--border);
+    }
+    .md td { padding: 10px 14px; border-bottom: 1px solid var(--border); vertical-align: top; }
+    .md tr:last-child td { border-bottom: none; }
+    .md tr:hover td { background: rgba(255,255,255,0.02); }
+
+    .md hr { border: none; border-top: 1px solid var(--border); margin: 32px 0; }
+
+    .md img { max-width: 100%; border-radius: 8px; }
+
+    /* badges (shields.io etc.) */
+    .md img[src*="shields.io"], .md img[src*="badge"] { border-radius: 3px; }
+
+    /* ── Responsive ── */
+    @media (max-width: 700px) {
+      nav { display: none; }
+      main { padding: 24px 20px 60px; }
+      .md h1 { font-size: 22px; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="logo-icon">R</div>
+    <div>
+      <div class="logo-name">RelayAI</div>
+      <div class="logo-sub">Docs</div>
+    </div>
+  </header>
+  <div class="layout">
+    <nav>
+      <div class="nav-group">
+        <div class="nav-group-label">Project</div>
+        <a href="index.html" class="nav-link">Overview</a>
+        <a href="getting-started.html" class="nav-link">Getting Started</a>
+        <a href="user-installation-guide.html" class="nav-link">Installation Guide</a>
+        <a href="walkthrough.html" class="nav-link">Walkthrough</a>
+      </div>
+      <div class="nav-group">
+        <div class="nav-group-label">Reference</div>
+        <a href="commands.html" class="nav-link">Commands</a>
+        <a href="configuration.html" class="nav-link">Configuration</a>
+        <a href="provider-adapters.html" class="nav-link">Provider Adapters</a>
+        <a href="mcp.html" class="nav-link">MCP Integration</a>
+        <a href="architecture.html" class="nav-link">Architecture</a>
+      </div>
+      <div class="nav-group">
+        <div class="nav-group-label">Development</div>
+        <a href="testing-plan-doc.html" class="nav-link active">Testing Plan</a>
+        <a href="mvp-roadmap.html" class="nav-link">MVP Roadmap</a>
+        <a href="bench-prompts.html" class="nav-link">Bench Prompts</a>
+        <a href="contributing.html" class="nav-link">Contributing</a>
+        <a href="agents.html" class="nav-link">Agents Guide</a>
+        <a href="changelog.html" class="nav-link">Changelog</a>
+        <a href="security.html" class="nav-link">Security</a>
+      </div>
+    </nav>
+    <main>
+      <div class="md">
+        <h1>RelayAI Testing Guide</h1>
+<p>This guide covers three testing levels in order of scope:</p>
+<ol>
+<li><a href="#1-automated-tests">Automated Tests</a> - unit + integration via <code>pnpm run ci</code></li>
+<li><a href="#2-hook-verification">Hook Verification</a> - confirm lifecycle hooks fire in each supported agent</li>
+<li><a href="#3-manual-integration-testing">Manual Integration Testing</a> - end-to-end validation against a real project</li>
+</ol>
+<h3>💡 Pro Tip - Autopopulating Session Data</h3>
+<p>Instead of manually typing token counts and SHAs, you can upload session files directly into the reviewer tool:</p>
+<ul>
+<li><strong>Relay metadata</strong>: Drag and drop <code>.relay/session.json</code> or <code>.relay/config.json</code> to autopopulate SHAs, AI Provider, and date.</li>
+<li><strong>Codex sessions</strong>: Locate your Codex log files under <code>~/.codex/sessions/</code> and upload the <code>.jsonl</code> files. The reviewer tool will display an interactive <strong>Turn Selector</strong> allowing you to select turns and import their token metrics automatically into either the <strong>Baseline</strong> or <strong>Relay-Enabled</strong> slots.</li>
+<li><strong>Export/Import State</strong>: You can export the entire state of your results tracker as a JSON file at any time and upload it later to resume.</li>
+</ul>
+<hr>
+<h2>1. Automated Tests</h2>
+<h3>Prerequisites</h3>
+<pre><code class="language-bash"># In the RelayAI repo
+pnpm install
+pnpm build
+</code></pre>
+<h3>Run the full local CI pipeline</h3>
+<pre><code class="language-bash">pnpm run ci
+</code></pre>
+<p>This runs four steps in order:</p>
+<table>
+<thead>
+<tr>
+<th>Step</th>
+<th>Command</th>
+<th>What it checks</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Build</td>
+<td><code>pnpm build</code></td>
+<td>TypeScript compiles without errors</td>
+</tr>
+<tr>
+<td>Typecheck</td>
+<td><code>pnpm typecheck</code></td>
+<td>Strict type checking (no <code>any</code> leaks, no missing types)</td>
+</tr>
+<tr>
+<td>Test</td>
+<td><code>pnpm test</code></td>
+<td>All 186 unit + integration tests pass</td>
+</tr>
+<tr>
+<td>Pack check</td>
+<td><code>pnpm pack:check</code></td>
+<td>Both packages are publishable (no missing files)</td>
+</tr>
+</tbody></table>
+<p><strong>Expected result:</strong> All steps exit 0. Test output should show <code># pass 137</code> (core) and <code># pass 49</code> (cli), <code># fail 0</code>.</p>
+<h3>Run a single test file</h3>
+<pre><code class="language-bash"># Build first, then run one file
+pnpm --filter @relay/core build
+node --test packages/core/dist/tokens/budget.test.js
+</code></pre>
+<h3>Test inventory</h3>
+<table>
+<thead>
+<tr>
+<th>Package</th>
+<th>Test files</th>
+<th>Test count</th>
+<th>Focus areas</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>@relay/core</code></td>
+<td>20 files</td>
+<td>137</td>
+<td>Config, context zones, git delta, tokens, GC, providers, usage parser (Claude + Codex), savings, output filter</td>
+</tr>
+<tr>
+<td><code>@relay/cli</code></td>
+<td>1 file</td>
+<td>49</td>
+<td>E2E: init, session, ask, <code>--measure</code> (claude + codex), <code>{prompt}</code> routing, usage record, savings, diff, cache, tokens, gc, MCP server</td>
+</tr>
+<tr>
+<td><strong>Total</strong></td>
+<td><strong>21 files</strong></td>
+<td><strong>186</strong></td>
+<td>-</td>
+</tr>
+</tbody></table>
+<h3>End-to-end smoke test (real Codex)</h3>
+<p>To validate the full assemble → ask → measure → report loop against a real
+provider, run the bundled sample project. This requires the <a href="https://github.com/openai/codex"><code>codex</code></a>
+CLI on your PATH and <code>codex login</code> (it makes real Codex calls):</p>
+<pre><code class="language-bash">./examples/sample-project/try-relay.sh
+</code></pre>
+<p><strong>Expected:</strong> exit 0, and the output shows</p>
+<ul>
+<li>three <code>ask --provider codex --measure</code> calls, with <code>cached_input_tokens</code> growing across calls as Codex&#39;s prompt cache warms,</li>
+<li><code>prefix_stable</code> flipping <code>false → true</code> in the audit ledger,</li>
+<li>a <code>relay savings</code> <strong>MEASURED</strong> section with <code>calls with usage: 3</code> and a <strong>PROJECTED</strong> section at <code>100.0%</code> prefix-stability.</li>
+</ul>
+<p>This exercises <code>--measure</code> capture, the Codex usage parser (normalizing cached-inclusive input), the per-call ledger, and the <code>savings</code> math. See <a href="walkthrough.html"><code>WALKTHROUGH.md</code></a> for the annotated manual version. (The automated suite covers the same parse → ledger → savings path with a fixture, so no Codex account is needed for <code>pnpm test</code>.)</p>
+<hr>
+<h2>2. Hook Verification</h2>
+<p>RelayAI ships lifecycle hooks for three coding agents. Each hook set automates:</p>
+<ul>
+<li><strong>Session start</strong> - <code>relay session start</code> (records base git SHA) + <code>pnpm sigmap</code> (builds structural skeleton)</li>
+<li><strong>Turn end / agent stop</strong> - <code>relay gc run</code> (compacts session history into semantic state)</li>
+<li><strong>After file edits</strong> - <code>pnpm sigmap</code> (keeps structural skeleton current)</li>
+</ul>
+<h3>2a. Claude Code - <code>.claude/settings.json</code></h3>
+<p><strong>Trigger:</strong> Open a Claude Code session in the RelayAI repo.</p>
+<p><strong>Verification checklist:</strong></p>
+<pre><code>[ ] .relay/session.json created (sessionStart hook: relay session start)
+[ ] .relay/sigmap.md written or updated (sessionStart hook: pnpm sigmap)
+[ ] Edit any source file via Claude → .relay/sigmap.md timestamp updates (PostToolUse hook)
+[ ] After Claude ends its turn → .relay/memory/semantic-state.json updated (Stop hook)
+</code></pre>
+<p><strong>Check session anchoring:</strong></p>
+<pre><code class="language-bash">cat .relay/session.json | grep base_git_sha
+# Should match current git HEAD
+git rev-parse HEAD
+</code></pre>
+<p><strong>Check prefix stability across prompts:</strong></p>
+<pre><code class="language-bash">relay cache inspect
+# Run relay ask &quot;...&quot; twice and compare prefix_hash - should be identical
+</code></pre>
+<h3>2b. Codex CLI - <code>.codex/hooks.json</code></h3>
+<p><strong>Trigger:</strong> Open a Codex CLI session in the RelayAI repo.</p>
+<p><strong>Verification checklist:</strong></p>
+<pre><code>[ ] .relay/session.json created (SessionStart hook: relay session start)
+[ ] .relay/sigmap.md written or updated (SessionStart hook: pnpm sigmap)
+[ ] Edit any file via Codex → .relay/sigmap.md timestamp updates (PostToolUse hook)
+[ ] After Codex ends its turn → .relay/memory/semantic-state.json updated (Stop hook)
+</code></pre>
+<p><strong>PostToolUse matcher:</strong> <code>write_file|apply_patch</code> - if your Codex version uses different tool names for file writes, update the <code>matcher</code> field in <code>.codex/hooks.json</code>.</p>
+<h3>2c. GitHub Copilot - <code>.github/hooks/relay-lifecycle.json</code></h3>
+<p><strong>Trigger:</strong> Open a GitHub Copilot coding agent session on this repo.</p>
+<p><strong>Verification checklist:</strong></p>
+<pre><code>[ ] .relay/session.json created (sessionStart hook: relay session start)
+[ ] .relay/sigmap.md written or updated (sessionStart hook: pnpm sigmap)
+[ ] Ask Copilot to edit a file → .relay/sigmap.md timestamp updates (postToolUse hook)
+[ ] After Copilot ends its turn → .relay/memory/semantic-state.json updated (agentStop hook)
+</code></pre>
+<p><strong>PostToolUse matcher:</strong> <code>create_file|edit_file|write_file|apply_patch</code> - update if needed to match actual Copilot tool names.</p>
+<h3>Common hook troubleshooting</h3>
+<p>| Symptom                           | Likely cause                              | Fix                                                                                                                       |
+| --------------------------------- | ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- | ----------------------- | ------------------------------------------------ |
+| <code>.relay/session.json</code> not created | <code>relay</code> not on PATH                       | Run <code>pnpm install -g @relay/cli</code> or use <code>node packages/cli/dist/index.js</code>                                                 |
+| <code>sigmap.md</code> not updated           | <code>pnpm</code> / <code>node</code> not on PATH in hook shell | Hooks now fall back to <code>npx tsx scripts/gen-sigmap.ts</code>. Alternatively, use absolute path: <code>$(which pnpm) --silent sigmap</code> |
+| <code>semantic-state.json</code> not updated | No GC command configured                  | Set <code>gc.command</code> in <code>.relay/config.json</code>                                                                                  |
+| Hook fires but errors silently    | <code>2&gt;/dev/null                              |                                                                                                                           | true</code> suppresses output | Temporarily remove the suppression to see errors |</p>
+<hr>
+<h2>3. Manual Integration Testing (Codex vs. Codex + RelayAI)</h2>
+<p>This phase validates RelayAI&#39;s effectiveness by comparing a Codex session without Relay (Baseline) against a Codex session with Relay (Relay-Enabled). We use the live project <a href="https://github.com/mrwalker511/AgentFlow"><code>AgentFlow</code></a>.</p>
+<hr>
+<h3>Step 1: Initial Setup</h3>
+<ol>
+<li><p><strong>Verify RelayAI CLI is functional</strong>:
+Make sure you are in the <code>RelayAI</code> directory:</p>
+<pre><code class="language-bash">cd /home/matthew/projects/RelayAI
+pnpm install
+pnpm build
+node packages/cli/dist/index.js --help
+</code></pre>
+</li>
+<li><p><strong>Prepare the AgentFlow project</strong>:
+Ensure you have the <code>AgentFlow</code> project cloned and built:</p>
+<pre><code class="language-bash">cd /home/matthew/projects
+# If not already cloned:
+# git clone https://github.com/mrwalker511/AgentFlow.git
+cd AgentFlow
+npm install
+npm run build
+npm test
+</code></pre>
+<p><em>Note: Ensure all tests pass before proceeding.</em></p>
+</li>
+<li><p><strong>Record the baseline git SHA</strong>:
+Record the current Git HEAD SHA of AgentFlow. This will act as the baseline anchor:</p>
+<pre><code class="language-bash">git rev-parse HEAD
+</code></pre>
+</li>
+</ol>
+<hr>
+<h3>Step 2: Phase 1 - Baseline (Codex WITHOUT Relay)</h3>
+<p>In this phase, we run Codex without any help from Relay to establish a baseline.</p>
+<ol>
+<li><p><strong>Open a fresh Codex session in AgentFlow</strong>:
+Make sure you are in the <code>AgentFlow</code> directory, and start Codex. Do <strong>NOT</strong> have Relay configured in your Codex MCP config yet.</p>
+<pre><code class="language-bash">cd /home/matthew/projects/AgentFlow
+codex
+</code></pre>
+</li>
+<li><p><strong>Run the 5 test prompts</strong>:
+Enter the following 5 prompts in order. Wait for Codex to finish responding to each before entering the next.</p>
+<ul>
+<li><strong>P1</strong>: <code>Explain the overall architecture of this project</code></li>
+<li><strong>P2</strong>: <code>Explain how the semantic-engine clusters events and determines risk levels</code></li>
+<li><strong>P3</strong>: <code>Add support for poetry run test to classifyCommand as a test_run</code></li>
+<li><strong>P4</strong>: <code>Summarize what has changed in the active diff</code></li>
+<li><strong>P5</strong>: <code>Write unit tests for the classifyCommand function in event-engine</code></li>
+</ul>
+</li>
+<li><p><strong>Locate and save the session file</strong>:
+Codex CLI automatically saves session JSON logs to <code>~/.codex/sessions/</code>.</p>
+<ul>
+<li>List files to find the latest session JSON:<pre><code class="language-bash">ls -lt ~/.codex/sessions/ | head -5
+</code></pre>
+</li>
+<li>Copy and rename this file to a safe location:<pre><code class="language-bash">cp ~/.codex/sessions/&lt;latest-uuid&gt;.json ~/relay-test-baseline.json
+</code></pre>
+</li>
+</ul>
+</li>
+</ol>
+<hr>
+<h3>Step 3: Phase 2 - Setup Relay in AgentFlow</h3>
+<p>Now, initialize and configure Relay in the <code>AgentFlow</code> project directory to prepare for the Relay-enabled Codex run.</p>
+<ol>
+<li><p><strong>Initialize Relay</strong>:
+Run the <code>init</code> command in the <code>AgentFlow</code> directory using your locally built Relay CLI:</p>
+<pre><code class="language-bash">cd /home/matthew/projects/AgentFlow
+node RelayAI/packages/cli/dist/index.js init
+</code></pre>
+</li>
+<li><p><strong>Verify Relay Health</strong>:
+Ensure all setup checks pass:</p>
+<pre><code class="language-bash">node /home/matthew/projects/RelayAI/packages/cli/dist/index.js doctor
+</code></pre>
+</li>
+<li><p><strong>Start the Relay session</strong>:
+Anchor Relay to the baseline Git SHA you recorded in Step 1:</p>
+<pre><code class="language-bash">node ~/projects/RelayAI/RelayAI/packages/cli/dist/index.js session start
+</code></pre>
+</li>
+</ol>
+<hr>
+<h3>Step 4: Phase 3 - Configure Codex to use Relay MCP</h3>
+<p>To allow Codex to communicate with Relay, register Relay as an MCP server.</p>
+<ol>
+<li><strong>Edit the Codex configuration</strong>:
+Open <code>~/.codex/config.json</code> (create it if it doesn&#39;t exist) and add the <code>relay</code> MCP server pointing to your local Relay CLI build:<pre><code class="language-json">{
+  &quot;mcpServers&quot;: {
+    &quot;relay&quot;: {
+      &quot;command&quot;: &quot;node&quot;,
+      &quot;args&quot;: [
+        &quot;~/projects/RelayAI/RelayAI/packages/cli/dist/index.js&quot;,
+        &quot;mcp&quot;
+      ]
+    }
+  }
+}
+</code></pre>
+</li>
+</ol>
+<hr>
+<h3>Step 5: Phase 4 - Relay-Enabled (Codex WITH Relay)</h3>
+<p>In this phase, we run Codex with Relay active. Relay will automatically inject high-quality hierarchical context (trunk and domain branches), semantic memory state, and git delta diffs.</p>
+<ol>
+<li><p><strong>Open a fresh Codex session in AgentFlow</strong>:
+Start Codex. It will automatically detect the configuration in <code>~/.codex/config.json</code> and start the Relay MCP server:</p>
+<pre><code class="language-bash">cd /home/matthew/projects/AgentFlow
+codex
+</code></pre>
+<p><em>Verify: When Codex starts, ensure it lists the Relay MCP tools (such as <code>get_prompt_payload</code>).</em></p>
+</li>
+<li><p><strong>Run the same 5 prompts</strong>:
+Enter the exact same prompts as in the baseline phase, in the same order:</p>
+<ul>
+<li><strong>P1</strong>: <code>Explain the overall architecture of this project</code></li>
+<li><strong>P2</strong>: <code>Explain how the semantic-engine clusters events and determines risk levels</code></li>
+<li><strong>P3</strong>: <code>Add support for poetry run test to classifyCommand as a test_run</code></li>
+<li><strong>P4</strong>: <code>Summarize what has changed in the active diff</code></li>
+<li><strong>P5</strong>: <code>Write unit tests for the classifyCommand function in event-engine</code></li>
+</ul>
+</li>
+<li><p><strong>Locate and save the session file</strong>:</p>
+<ul>
+<li>List the latest sessions:<pre><code class="language-bash">ls -lt ~/.codex/sessions/ | head -5
+</code></pre>
+</li>
+<li>Copy and rename this session file:<pre><code class="language-bash">cp ~/.codex/sessions/&lt;latest-uuid&gt;.json ~/relay-test-enabled.json
+</code></pre>
+</li>
+</ul>
+</li>
+</ol>
+<hr>
+<h3>Step 6: Phase 5 - Comparison and Metrics Analysis</h3>
+<ol>
+<li><p><strong>Open the Results Tracker</strong>:
+Open <code>docs/relay-test-results.html</code> in your browser. Fill in the baseline and Relay-enabled metrics manually, or use the comparison tool to parse logs automatically.</p>
+</li>
+<li><p><strong>Open the Session Compare tool</strong>:
+Open <code>docs/session-compare.html</code> in your browser.</p>
+<ul>
+<li>Upload <code>~/relay-test-baseline.json</code> as the Baseline session.</li>
+<li>Upload <code>~/relay-test-enabled.json</code> as the Relay-Enabled session.</li>
+</ul>
+</li>
+<li><p><strong>Observe the Metrics</strong>:
+Review the calculated fields:</p>
+<ul>
+<li><strong>Token Reduction %</strong>: Relay&#39;s cache-friendly dynamic zone should produce significant token savings on follow-up prompts.</li>
+<li><strong>Quality Improvement</strong>: Relay&#39;s hierarchical context (trunk + branches) and semantic memory should lead to more accurate answers.</li>
+<li><strong>Context Accuracy &amp; Hallucination Rate</strong>: Note whether Codex was able to correctly reference event clustering and risk engine files in AgentFlow without hallucinating paths.</li>
+</ul>
+</li>
+</ol>
+<hr>
+<h3>Step 7: Pass/Fail Verification Checklist</h3>
+<p>All signals must pass before marking the Relay integration as successful:</p>
+<table>
+<thead>
+<tr>
+<th>Signal</th>
+<th>Command</th>
+<th>Pass Condition</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>CLI healthy</td>
+<td><code>relay doctor</code></td>
+<td>Exits with code 0, all diagnostics are green.</td>
+</tr>
+<tr>
+<td>Session anchored</td>
+<td><code>relay session start</code></td>
+<td>Base git SHA is correctly recorded in <code>.relay/session.json</code>.</td>
+</tr>
+<tr>
+<td>Token zones populated</td>
+<td><code>relay tokens inspect</code></td>
+<td><code>STATIC_BLOCK</code>, <code>STATE_LAYER</code>, and <code>DYNAMIC_INPUT</code> are all populated.</td>
+</tr>
+<tr>
+<td>Cache prefix stable</td>
+<td><code>relay cache inspect</code></td>
+<td>The prefix hash remains identical across prompts 2+.</td>
+</tr>
+<tr>
+<td>Diff anchored</td>
+<td><code>relay diff</code></td>
+<td>Only git delta/diff changes are shown in context, not full file contents.</td>
+</tr>
+<tr>
+<td>Follow-up prompts smaller</td>
+<td><code>relay tokens inspect</code></td>
+<td>The context size on prompts P2–P5 is smaller than prompt P1 due to cache optimization.</td>
+</tr>
+<tr>
+<td>GC preview works</td>
+<td><code>relay gc preview</code></td>
+<td>History compacted successfully into <code>.relay/memory/semantic-state.json</code>.</td>
+</tr>
+</tbody></table>
+<hr>
+<h2>Quick Reference</h2>
+<pre><code># Automated tests (run this first)
+pnpm run ci                  → all 186 tests must pass
+
+# Hook verification (for each agent)
+cat .relay/session.json      → base_git_sha should match git rev-parse HEAD
+ls -la .relay/sigmap.md      → modified timestamp should be recent
+cat .relay/memory/semantic-state.json  → non-empty after first Stop/agentStop
+
+# Integration health check
+relay doctor                 → all checks green
+relay tokens inspect         → all 3 zones populated
+relay cache inspect          → prefix hash stable across prompts
+relay diff                   → only delta, not full files
+</code></pre>
+
+      </div>
+    </main>
+  </div>
+</body>
+</html>

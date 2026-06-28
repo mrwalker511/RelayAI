@@ -13,6 +13,7 @@
     "pack:check": "pnpm clean && pnpm build && npm pack --dry-run --cache /tmp/npm-cache ./packages/core && npm pack --dry-run --cache /tmp/npm-cache ./packages/cli",
     "compare": "tsx scripts/compare.ts",
     "sigmap": "tsx scripts/gen-sigmap.ts",
+    "pretest": "pnpm build",
     "test": "pnpm -r test",
     "typecheck": "pnpm -r typecheck",
     "clean": "rm -rf packages/*/dist"

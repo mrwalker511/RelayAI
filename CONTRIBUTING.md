@@ -31,6 +31,8 @@ docs/     # User-facing markdown guides
 | `pnpm audit --audit-level=high` | Check for known CVEs |
 | `pnpm pack:check` | Verify publishable package shape |
 
+`pnpm test` automatically builds before running tests. You can run it directly from a fresh clone without a separate `pnpm build` step.
+
 ## Making Changes
 
 - **Bug fixes** — open a PR against `main` with a test that reproduces the bug

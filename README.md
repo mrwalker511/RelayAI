@@ -87,7 +87,6 @@ The stable zones come first so provider caches hit on repeat calls. Volatile dat
 ## Prerequisites
 
 - **Node.js 20 or newer**
-- **pnpm 9** — `npm install -g pnpm`
 - **git**
 - A model or coding-agent CLI that can read a prompt from stdin (Claude, Ollama, ChatGPT CLI, etc.)
 
@@ -120,7 +119,7 @@ To work on Relay itself, clone the repository and build from source:
 ```bash
 git clone https://github.com/mrwalker511/relayai.git RelayAI
 cd RelayAI
-pnpm install
+pnpm install   # requires pnpm 9 — npm install -g pnpm
 pnpm build
 ```
 
@@ -130,13 +129,12 @@ Confirm the CLI works:
 node packages/cli/dist/index.js --help
 ```
 
-Create a shell alias so you can use `relay` from any repository:
+During development, use `pnpm dev` instead of a shell alias:
 
 ```bash
-alias relay='node ~/projects/RelayAI/RelayAI/packages/cli/dist/index.js'
+pnpm dev --help
+pnpm dev ask "test prompt"
 ```
-
-Replace `/home/matthew/projects/RelayAI` with your actual clone path. Add the alias to your shell profile (`.bashrc`, `.zshrc`, etc.) once you've confirmed it works.
 
 ---
 
@@ -257,7 +255,7 @@ RelayAI/
 pnpm install        # install all workspace dependencies
 pnpm build          # compile all packages
 pnpm typecheck      # type-check without emitting
-pnpm test           # run tests (build first)
+pnpm test           # run tests
 pnpm dev            # run CLI via tsx without building
 pnpm run ci         # full CI: build + typecheck + test + pack:check
 pnpm pack:check     # validate package artifacts (dry run)

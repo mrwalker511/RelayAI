@@ -6,42 +6,36 @@ Relay does not replace your model CLI. It sits in front of it.
 
 ## Who This Guide Is For
 
-Use this guide if you want to install Relay from this repository and use it in another local codebase. If you are changing Relay itself, also read the development commands in the root `README.md`.
+Use this guide if you want to install Relay and use it in your own codebase. If you are changing Relay itself, read [`docs/GETTING_STARTED.md`](GETTING_STARTED.md) instead.
 
 ## Requirements
 
 - Node.js 20 or newer
-- pnpm 9
 - git
-- A git repository where you want Relay to manage context
-- Optional: a model or agent CLI that can read a prompt from stdin
+
+## Install
+
+```bash
+npm install -g @relay/cli
+```
+
+If `relay --help` prints the command list, the install succeeded.
+
+Or run without installing:
+
+```bash
+npx @relay/cli --help
+```
+
+## Before You Initialize a Project
+
+Confirm the following before running `relay init`:
+
+- [ ] Node.js 20 or newer: `node --version`
+- [ ] You are inside a git repository with at least one commit: `git log --oneline -1`
+- [ ] A provider CLI is installed (e.g. `claude --version`, `codex --version`, `ollama --version`). Optional for first install; required to route prompts.
 
 Relay stores all runtime state in a local `.relay/` directory inside the repository where you run it. That directory is intended to stay uncommitted.
-
-## Install Relay From Source
-
-Clone this repository, install dependencies, and build the workspace:
-
-```bash
-git clone <relay-repository-url>
-cd RelayAI
-pnpm install
-pnpm build
-```
-
-From the Relay checkout, confirm the CLI works:
-
-```bash
-node packages/cli/dist/index.js --help
-```
-
-To use Relay from other repositories, define a shell alias that points to the built CLI entrypoint while preserving your current working directory:
-
-```bash
-alias relay='node /absolute/path/to/RelayAI/packages/cli/dist/index.js'
-```
-
-Replace `/absolute/path/to/RelayAI` with the path to your local Relay checkout. Add the alias to your shell profile only after confirming it works in a new terminal.
 
 ## Initialize a Project
 
@@ -69,7 +63,11 @@ Run the readiness check:
 relay doctor
 ```
 
-`relay doctor` prints JSON diagnostics. Fix blocking errors before using Relay for provider execution.
+`relay doctor` checks: git repository presence, `.relay/` structure, `config.json` validity, session metadata, token budget ordering, and provider command availability.
+
+- `"status": "ok"` — ready
+- `"status": "warning"` — degraded but functional (e.g. no session started yet)
+- `"status": "error"` — blocking issue; the `message` field explains what to fix
 
 ## Shell Tab Completion (Optional)
 
@@ -148,6 +146,30 @@ Example:
 
 Provider commands are arrays of command arguments. Relay sends the assembled prompt to the provider process on stdin.
 
+### Claude CLI
+
+```json
+{
+  "provider": {
+    "default": "claude",
+    "commands": { "claude": ["claude", "--dangerously-skip-permissions"] }
+  }
+}
+```
+
+### OpenAI Codex
+
+```json
+{
+  "provider": {
+    "default": "codex",
+    "commands": { "codex": ["codex", "exec", "-"] }
+  }
+}
+```
+
+For more provider configurations (Ollama, Copilot, multi-provider), see [`docs/PROVIDER_ADAPTERS.md`](PROVIDER_ADAPTERS.md).
+
 Validate the configuration:
 
 ```bash
@@ -186,7 +208,6 @@ Recommended habits:
 - Use `relay context inspect` when prompt contents or cache behavior look surprising.
 - Use `relay tokens inspect` before sending a large prompt.
 - Keep `.relay/` out of git.
-- Run `pnpm run ci` in the Relay checkout before preparing package artifacts or publishing changes.
 
 ## Cache and Token Tools
 
@@ -242,13 +263,11 @@ GC requires either `gc.command` or a configured default provider command in `.re
 
 ### `relay` command not found
 
-Confirm the workspace command works:
+Re-run `npm install -g @relay/cli`, then verify `npm bin -g` is on your PATH:
 
 ```bash
-node /absolute/path/to/RelayAI/packages/cli/dist/index.js --help
+npm bin -g   # should print a directory — confirm it's in your PATH
 ```
-
-If it works, fix your shell alias and open a new terminal.
 
 ### `.relay/config.json is invalid`
 
@@ -287,6 +306,27 @@ relay tokens inspect
 relay gc preview
 relay gc run
 ```
+
+## Building From Source (Contributors)
+
+If you want to modify Relay itself rather than just use it:
+
+```bash
+git clone https://github.com/mrwalker511/relayai.git RelayAI
+cd RelayAI
+pnpm install   # requires pnpm 9 — npm install -g pnpm
+pnpm build
+node packages/cli/dist/index.js --help
+```
+
+During development, use `pnpm dev` to run the CLI without rebuilding:
+
+```bash
+pnpm dev --help
+pnpm dev ask "test prompt"
+```
+
+See [`docs/GETTING_STARTED.md`](GETTING_STARTED.md) for the full contributor workflow.
 
 ## Reference Docs
 

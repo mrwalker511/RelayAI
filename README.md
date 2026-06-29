@@ -256,6 +256,7 @@ pnpm install        # install all workspace dependencies
 pnpm build          # compile all packages
 pnpm typecheck      # type-check without emitting
 pnpm test           # run tests
+pnpm run coverage   # run tests with coverage report
 pnpm dev            # run CLI via tsx without building
 pnpm run ci         # full CI: build + typecheck + test + pack:check
 pnpm pack:check     # validate package artifacts (dry run)

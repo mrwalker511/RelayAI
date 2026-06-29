@@ -293,6 +293,9 @@ relay completion fish | source    # fish — add to ~/.config/fish/config.fish
   }
 }
 </code></pre>
+<blockquote>
+<p><strong>Warning:</strong> <code>--dangerously-skip-permissions</code> bypasses Claude&#39;s interactive confirmation prompts — Claude will run tools (file writes, shell commands) without asking. Only use this in automated pipelines where you control the prompt content. See <a href="provider-adapters.html"><code>docs/PROVIDER_ADAPTERS.md</code></a> for the full guidance.</p>
+</blockquote>
 <h3>OpenAI Codex</h3>
 <pre><code class="language-json">{
   &quot;provider&quot;: {

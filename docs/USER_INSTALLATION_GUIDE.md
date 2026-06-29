@@ -157,6 +157,8 @@ Provider commands are arrays of command arguments. Relay sends the assembled pro
 }
 ```
 
+> **Warning:** `--dangerously-skip-permissions` bypasses Claude's interactive confirmation prompts — Claude will run tools (file writes, shell commands) without asking. Only use this in automated pipelines where you control the prompt content. See [`docs/PROVIDER_ADAPTERS.md`](PROVIDER_ADAPTERS.md) for the full guidance.
+
 ### OpenAI Codex
 
 ```json

@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 import { Command, InvalidArgumentError } from "commander";
 import { appendFileSync, mkdirSync, unlinkSync, writeFileSync, readFileSync, existsSync } from "node:fs";
-import { join } from "node:path";
+import { join, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
 import { createInterface } from "node:readline";
 import { runMcpServer } from "./mcp-server.js";
 import { BASH_COMPLETION, ZSH_COMPLETION, FISH_COMPLETION, installHint } from "./completions.js";
@@ -49,6 +50,8 @@ import {
 import type { RelayConfig, StaticBlockInput, TokenEstimateOptions, ProviderUsage, ZoneTokenReport } from "@relay/core";
 
 const program = new Command();
+const _pkgDir = dirname(dirname(fileURLToPath(import.meta.url)));
+const _pkgVersion = (JSON.parse(readFileSync(join(_pkgDir, "package.json"), "utf8")) as { version: string }).version;
 const relayDir = join(process.cwd(), ".relay");
 const callLogPath = join(relayDir, "calls.json");
 const auditLogPath = join(relayDir, "audit.log");
@@ -57,8 +60,8 @@ function auditAppend(cfg: RelayConfig, fields: { event: string; session_id: stri
   if (!cfg.audit.enabled) return;
   try {
     appendAuditEvent(auditLogPath, fields, cfg.audit.maxLines);
-  } catch {
-    // Audit log write failures are non-fatal
+  } catch (err) {
+    process.stderr.write(`[relay] Warning: could not write to audit log: ${(err as Error).message}\n`);
   }
 }
 
@@ -75,7 +78,12 @@ function previousAskPrefixHash(sessionId: string | null): string | undefined {
 }
 
 function ensureRelayDir(): void {
-  mkdirSync(join(relayDir, "memory"), { recursive: true });
+  try {
+    mkdirSync(join(relayDir, "memory"), { recursive: true });
+  } catch (err) {
+    process.stderr.write(`Error: cannot create .relay workspace: ${(err as Error).message}\nCheck directory permissions and available disk space.\n`);
+    process.exit(1);
+  }
 }
 
 function readRelayConfig(): RelayConfig {
@@ -137,6 +145,10 @@ function parseCacheHitRate(value: string): number {
 }
 
 function confirm(question: string): Promise<boolean> {
+  if (!process.stdin.isTTY) {
+    process.stderr.write(`Warning: cannot prompt — stdin is not a TTY. Re-run interactively or raise the token budget in .relay/config.json.\n`);
+    return Promise.resolve(false);
+  }
   const rl = createInterface({ input: process.stdin, output: process.stderr });
   return new Promise((resolve) => {
     rl.question(`${question} [y/N] `, (answer) => {
@@ -324,7 +336,7 @@ function appendAskHistory(entry: {
 program
   .name("relay")
   .description("Local-first context and prompt-cache optimizer for coding CLIs.")
-  .version("0.1.0");
+  .version(_pkgVersion);
 
 program.command("init").description("Initialize Relay in the current repository.").action(() => {
   ensureRelayDir();
@@ -332,13 +344,13 @@ program.command("init").description("Initialize Relay in the current repository.
   if (!existsSync(configPath)) {
     writeFileSync(configPath, JSON.stringify(DEFAULT_RELAY_CONFIG, null, 2));
   } else {
-    console.log("config.json already exists — skipping (existing configuration preserved).");
+    process.stderr.write("config.json already exists — skipping (existing configuration preserved).\n");
   }
   const semanticStatePath = join(relayDir, "memory", "semantic-state.json");
   if (!existsSync(semanticStatePath)) {
     writeFileSync(semanticStatePath, serializeSemanticState(createEmptySemanticState()));
   } else {
-    console.log("memory/semantic-state.json already exists — skipping (existing state preserved).");
+    process.stderr.write("memory/semantic-state.json already exists — skipping (existing state preserved).\n");
   }
   const rawHistoryPath = join(relayDir, "memory", "session.raw.md");
   if (!existsSync(rawHistoryPath)) {
@@ -365,9 +377,9 @@ program.command("init").description("Initialize Relay in the current repository.
   if (!alreadyCovered) {
     const gitignoreEntry = "# Relay session data\n.relay/memory/session.raw.md\n.relay/memory/session.compacted.md\n.relay/memory/semantic-state.json\n.relay/memory/semantic-state.snapshot.json\n.relay/session.json\n.relay/calls.json\n.relay/audit.log\n";
     appendFileSync(gitignorePath, gitignoreContent.endsWith("\n") || gitignoreContent === "" ? gitignoreEntry : `\n${gitignoreEntry}`);
-    console.log("Updated .gitignore to exclude Relay session data.");
+    process.stderr.write("Updated .gitignore to exclude Relay session data.\n");
   }
-  console.log("Initialized .relay workspace.");
+  process.stderr.write("Initialized .relay workspace.\n");
 });
 
 const session = program.command("session").description("Manage Relay sessions.");
@@ -509,8 +521,8 @@ program.command("ask")
       process.stderr.write(`Tip: run \`relay gc run\` to compact context before proceeding.\n`);
       const ok = await confirm("Proceed anyway?");
       if (!ok) {
-        process.stderr.write("Aborted.\n");
-        process.exit(0);
+        process.stderr.write("Operation cancelled.\n");
+        process.exit(1);
       }
     } else if (budget.status === "warning") {
       auditAppend(cfg, {
@@ -773,8 +785,8 @@ cache.command("warm")
       process.stderr.write(`Tip: run \`relay gc run\` to compact context before proceeding.\n`);
       const ok = await confirm("Proceed anyway?");
       if (!ok) {
-        process.stderr.write("Aborted.\n");
-        process.exit(0);
+        process.stderr.write("Operation cancelled.\n");
+        process.exit(1);
       }
     } else if (budget.status === "warning") {
       process.stderr.write(`Warning: ${budget.message} (${budget.tokens.toLocaleString()} tokens)\n`);

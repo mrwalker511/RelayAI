@@ -1200,28 +1200,48 @@ program.command("savings")
     }
 
     const money = (n: number) => `$${n.toFixed(4)}`;
+    const pct = (n: number) => `${(n * 100).toFixed(1)}%`;
     const out: string[] = [];
-    out.push("MEASURED (from recorded provider/manual usage)");
+    out.push("MEASURED (from recorded provider usage)");
     if (measured && measured.callsWithUsage > 0) {
-      out.push(`  calls with usage:    ${measured.callsWithUsage}`);
-      out.push(`  input / cache-read:  ${measured.totalInputTokens.toLocaleString()} / ${measured.totalCachedInputTokens.toLocaleString()} tokens`);
-      out.push(`  cache-write / output:${measured.totalCacheCreationTokens.toLocaleString()} / ${measured.totalOutputTokens.toLocaleString()} tokens`);
-      out.push(`  actual vs baseline:  ${money(measured.actualCost)} vs ${money(measured.baselineCost)}`);
-      out.push(`  saved:               ${money(measured.savings)}  (negative on a first/cache-creating call is expected; aggregate is the honest figure)`);
+      const totalSeenTokens = measured.totalInputTokens + measured.totalCachedInputTokens + measured.totalCacheCreationTokens;
+      const hitRate = totalSeenTokens > 0 ? measured.totalCachedInputTokens / totalSeenTokens : 0;
+      const savingsPct = measured.baselineCost > 0 ? measured.savings / measured.baselineCost : 0;
+      out.push(`  calls with usage:     ${measured.callsWithUsage}`);
+      out.push(`  cache hit rate:       ${pct(hitRate)}`);
+      out.push(`  input / cache-read:   ${measured.totalInputTokens.toLocaleString()} / ${measured.totalCachedInputTokens.toLocaleString()} tokens`);
+      out.push(`  cache-write / output: ${measured.totalCacheCreationTokens.toLocaleString()} / ${measured.totalOutputTokens.toLocaleString()} tokens`);
+      out.push("");
+      out.push("  cost breakdown:");
+      out.push(`    uncached input:     ${money(measured.inputCost)}`);
+      out.push(`    cache reads:        ${money(measured.cachedReadCost)}`);
+      out.push(`    cache writes:       ${money(measured.cacheCreationCost)}`);
+      out.push(`    output:             ${money(measured.outputCost)}`);
+      out.push(`    actual total:       ${money(measured.actualCost)}`);
+      out.push(`    baseline (no cache):${money(measured.baselineCost)}`);
+      out.push(`    saved:              ${money(measured.savings)}  (${pct(savingsPct)})`);
     } else {
       out.push("  (no recorded usage yet — run `relay ask --measure` or `relay usage record`)");
     }
     out.push("");
-    out.push("PROJECTED FROM HISTORY (measured prefix-stability rate × zone estimator)");
-    out.push(`  prefix-stability:    ${(stability.stabilityRate * 100).toFixed(1)}% over ${stability.asks} ask(s)`);
+    out.push("PROJECTED FROM HISTORY (Relay zone estimator)");
+    out.push(`  prefix-stability:     ${pct(stability.stabilityRate)} over ${stability.asks} ask(s)`);
     if (projected) {
+      const totalAvgZone = projected.avgStaticBlockTokens + projected.avgStateLayerTokens + projected.avgDynamicInputTokens;
       out.push(`  avg zones (S/St/D):  ${projected.avgStaticBlockTokens} / ${projected.avgStateLayerTokens} / ${projected.avgDynamicInputTokens} tokens`);
       out.push(`  projected/call saved:${money(projected.estimate.estimatedSavings)}  (PROJECTION, not measured)`);
+      out.push("");
+      out.push(`  Note: Projection covers only Relay-managed zones (~${totalAvgZone} tokens avg).`);
+      out.push("  Your provider adds its own context (system prompts, tool definitions, conversation");
+      out.push("  history) that Relay does not compose — measured savings will typically exceed this.");
     }
     out.push("");
     out.push("NOTES");
     if (!pricingDefined) out.push("  Pass --input-cost-per-million (and optionally --cached/--cache-creation/--output) for cost figures.");
-    if (pricingDefined) out.push(`  Pricing used: input ${money(opts.inputCostPerMillion!)}/M, cache-read ${money(cachedInputCostPerMillion)}/M.`);
+    if (pricingDefined) {
+      const outputRate = opts.outputCostPerMillion ?? 0;
+      out.push(`  Pricing used: input ${money(opts.inputCostPerMillion!)}/M, cache-read ${money(cachedInputCostPerMillion)}/M, output ${money(outputRate)}/M.`);
+    }
     if (!measured || measured.callsWithUsage === 0) out.push("  No measured usage recorded — projection above is grounded in real prefix stability but uses the estimator for tokens.");
     process.stdout.write(out.join("\n") + "\n");
   });

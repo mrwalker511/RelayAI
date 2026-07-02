@@ -470,7 +470,7 @@ test("relay ask prefix hash is stable when only the prompt changes", { skip: can
 });
 
 test("relay doctor reports warnings before Relay init without failing", { skip: canSpawnNode ? false : "nested Node execution is unavailable in this sandbox" }, () => {
-  const result = runRelay(["doctor"], tempGitWorkspace()).result;
+  const result = runRelay(["doctor", "--json"], tempGitWorkspace()).result;
   const report = JSON.parse(result.stdout);
 
   assert.equal(result.status, 0);
@@ -482,7 +482,7 @@ test("relay doctor reports initialized workspace diagnostics", { skip: canSpawnN
   const cwd = tempGitWorkspace();
   assert.equal(runRelay(["init"], cwd).result.status, 0);
 
-  const result = runRelay(["doctor"], cwd).result;
+  const result = runRelay(["doctor", "--json"], cwd).result;
   const report = JSON.parse(result.stdout);
 
   assert.equal(result.status, 0);
@@ -496,12 +496,19 @@ test("relay doctor exits nonzero on corrupted config", { skip: canSpawnNode ? fa
   assert.equal(runRelay(["init"], cwd).result.status, 0);
   writeFileSync(join(cwd, ".relay", "config.json"), "{");
 
-  const result = runRelay(["doctor"], cwd).result;
+  const result = runRelay(["doctor", "--json"], cwd).result;
   const report = JSON.parse(result.stdout);
 
   assert.notEqual(result.status, 0);
   assert.equal(report.status, "error");
   assert.equal(report.checks.find((check: { id: string }) => check.id === "config").status, "error");
+});
+
+test("relay doctor human-readable output shows remediation hints", { skip: canSpawnNode ? false : "nested Node execution is unavailable in this sandbox" }, () => {
+  const result = runRelay(["doctor"], tempGitWorkspace()).result;
+  assert.equal(result.status, 0);
+  assert.ok(result.stdout.includes("→"), "expected remediation arrows in output");
+  assert.ok(result.stdout.includes("relay init"), "expected init hint in output");
 });
 
 test("relay mcp lists read-only context tools", { skip: canSpawnNode ? false : "nested Node execution is unavailable in this sandbox" }, async () => {

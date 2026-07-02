@@ -651,13 +651,34 @@ program.command("diff")
     console.log(safeGetGitDiff((sessionData.base_git_sha as string | undefined) || "HEAD"));
   });
 
-program.command("doctor").description("Check whether the current workspace is ready for Relay dogfooding.").action(() => {
-  const report = runRelayDoctor(process.cwd());
-  console.log(JSON.stringify(report, null, 2));
-  if (report.status === "error") {
-    process.exit(1);
-  }
-});
+program.command("doctor")
+  .description("Check whether the current workspace is ready for Relay dogfooding.")
+  .option("--json", "Emit raw JSON instead of human-readable output")
+  .action((opts: { json?: boolean }) => {
+    const report = runRelayDoctor(process.cwd());
+    if (opts.json) {
+      console.log(JSON.stringify(report, null, 2));
+    } else {
+      const icon: Record<string, string> = { ok: "✓", warning: "!", error: "✗" };
+      const lines: string[] = [];
+      for (const check of report.checks) {
+        lines.push(`  ${icon[check.status] ?? "?"} ${check.message}`);
+        if (check.status !== "ok" && check.remediation) {
+          lines.push(`      → ${check.remediation}`);
+        }
+      }
+      lines.push("");
+      const summary =
+        report.status === "ok" ? "All checks passed. Relay is ready." :
+        report.status === "warning" ? "Relay is usable but some checks need attention." :
+        "One or more checks failed — Relay may not work correctly.";
+      lines.push(summary);
+      process.stdout.write(lines.join("\n") + "\n");
+    }
+    if (report.status === "error") {
+      process.exit(1);
+    }
+  });
 
 program
   .command("mcp")

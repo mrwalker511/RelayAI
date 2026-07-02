@@ -196,6 +196,6 @@ relay usage record --input 1200 --cached-input 8000 --cache-creation 300 --outpu
 | `relay: command not found` | Use the built CLI: `node packages/cli/dist/index.js …`, or define the `relay()` shell function shown above. |
 | `--measure: could not parse provider usage` | The provider didn't emit a usage envelope on stdout. Use the `codex` (or `claude`) builtin, or record usage with `relay usage record`. Copilot can't be auto-measured. |
 | `savings` shows no MEASURED section | No usage recorded yet — run `relay ask --provider codex --measure` or `relay usage record` first. |
-| `compare` errors on `@relay/core` | Run it from the RelayAI repo root, not from the sample copy. |
+| `compare` errors on `@relay-cache/core` | Run it from the RelayAI repo root, not from the sample copy. |
 
 See also: [`COMMANDS.md`](COMMANDS.md) · [`GETTING_STARTED.md`](GETTING_STARTED.md) · [`TESTING_PLAN.md`](TESTING_PLAN.md)

@@ -5,13 +5,13 @@
  * Compares token counts for a Relay-assembled payload vs the naive baseline
  * (all tracked file contents concatenated). No live provider required.
  *
- * Requires: pnpm build (imports @relay/core dist)
+ * Requires: pnpm build (imports @relay-cache/core dist)
  */
 
 import { readFileSync, existsSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { listTrackedFiles, estimateTokens, readRelayWorkspace, RelayConfigSchema, estimateZoneAwareInputCost } from "@relay/core";
-import type { TokenEstimateOptions } from "@relay/core";
+import { listTrackedFiles, estimateTokens, readRelayWorkspace, RelayConfigSchema, estimateZoneAwareInputCost } from "@relay-cache/core";
+import type { TokenEstimateOptions } from "@relay-cache/core";
 
 // ── Argument parsing ──────────────────────────────────────────────────────────
 

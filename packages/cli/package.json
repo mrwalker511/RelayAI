@@ -1,5 +1,5 @@
 {
-  "name": "@relay/cli",
+  "name": "@relay-cache/cli",
   "version": "0.1.0",
   "description": "Local-first context and prompt-cache optimizer for coding agents and model CLIs.",
   "type": "module",
@@ -52,7 +52,7 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",
-    "@relay/core": "workspace:*",
+    "@relay-cache/core": "workspace:*",
     "commander": "^15.0.0",
     "zod": "^4.4.3"
   },

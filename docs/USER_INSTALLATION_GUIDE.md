@@ -16,7 +16,7 @@ Use this guide if you want to install Relay and use it in your own codebase. If 
 ## Install
 
 ```bash
-npm install -g @relay/cli
+npm install -g @relay-cache/cli
 ```
 
 If `relay --help` prints the command list, the install succeeded.
@@ -24,7 +24,7 @@ If `relay --help` prints the command list, the install succeeded.
 Or run without installing:
 
 ```bash
-npx @relay/cli --help
+npx @relay-cache/cli --help
 ```
 
 ## Before You Initialize a Project
@@ -265,7 +265,7 @@ GC requires either `gc.command` or a configured default provider command in `.re
 
 ### `relay` command not found
 
-Re-run `npm install -g @relay/cli`, then verify `npm bin -g` is on your PATH:
+Re-run `npm install -g @relay-cache/cli`, then verify `npm bin -g` is on your PATH:
 
 ```bash
 npm bin -g   # should print a directory — confirm it's in your PATH

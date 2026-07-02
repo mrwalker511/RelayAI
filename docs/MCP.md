@@ -379,7 +379,7 @@ The `relay` binary is not on the PATH seen by the MCP host process. Use the full
 }
 ```
 
-Or install the package globally: `npm install -g @relay/cli`.
+Or install the package globally: `npm install -g @relay-cache/cli`.
 
 ### Tools return empty or invalid session data
 

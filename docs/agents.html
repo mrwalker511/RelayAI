@@ -230,15 +230,15 @@ pnpm clean            # remove packages/*/dist
 relay completion bash|zsh|fish   # print shell completion script; source it in your shell profile
 </code></pre>
 <p>Filter to a single package:</p>
-<pre><code class="language-bash">pnpm --filter @relay/core build
-pnpm --filter @relay/cli dev
+<pre><code class="language-bash">pnpm --filter @relay-cache/core build
+pnpm --filter @relay-cache/cli dev
 </code></pre>
 <p>Tests run against compiled output via Node&#39;s built-in test runner. Always build before testing:</p>
 <pre><code class="language-bash">pnpm build &amp;&amp; pnpm test      # full suite (~207 tests across core + cli)
 pnpm run ci                  # build + typecheck + test + pack:check (matches CI)
 </code></pre>
 <p>Run a single test file:</p>
-<pre><code class="language-bash">pnpm --filter @relay/core build
+<pre><code class="language-bash">pnpm --filter @relay-cache/core build
 node --test packages/core/dist/tokens/budget.test.js
 </code></pre>
 <p>There is no ESLint. <code>pnpm typecheck</code> (strict TypeScript) is the lint step.</p>
@@ -314,7 +314,7 @@ node --test packages/core/dist/tokens/budget.test.js
     └── session.compacted.md         # last compaction output
 </code></pre>
 <h3>CLI (<code>packages/cli/src/index.ts</code>)</h3>
-<p>Thin Commander.js router. All business logic lives in <code>@relay/core</code>; the CLI only parses arguments and calls core functions. Key command groups: <code>session</code>, <code>ask</code>, <code>diff</code>, <code>cache</code>, <code>tokens</code>, <code>gc</code>, <code>context</code> (includes <code>inspect</code> and <code>build</code>).</p>
+<p>Thin Commander.js router. All business logic lives in <code>@relay-cache/core</code>; the CLI only parses arguments and calls core functions. Key command groups: <code>session</code>, <code>ask</code>, <code>diff</code>, <code>cache</code>, <code>tokens</code>, <code>gc</code>, <code>context</code> (includes <code>inspect</code> and <code>build</code>).</p>
 
       </div>
     </main>

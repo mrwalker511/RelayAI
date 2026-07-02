@@ -36,8 +36,8 @@ relay completion bash|zsh|fish   # print shell completion script; source it in y
 Filter to a single package:
 
 ```bash
-pnpm --filter @relay/core build
-pnpm --filter @relay/cli dev
+pnpm --filter @relay-cache/core build
+pnpm --filter @relay-cache/cli dev
 ```
 
 Tests run against compiled output via Node's built-in test runner. Always build before testing:
@@ -50,7 +50,7 @@ pnpm run ci                  # build + typecheck + test + pack:check (matches CI
 Run a single test file:
 
 ```bash
-pnpm --filter @relay/core build
+pnpm --filter @relay-cache/core build
 node --test packages/core/dist/tokens/budget.test.js
 ```
 
@@ -161,4 +161,4 @@ Created by `relay init`. Not committed to git.
 
 ### CLI (`packages/cli/src/index.ts`)
 
-Thin Commander.js router. All business logic lives in `@relay/core`; the CLI only parses arguments and calls core functions. Key command groups: `session`, `ask`, `diff`, `cache`, `tokens`, `gc`, `context` (includes `inspect` and `build`).
+Thin Commander.js router. All business logic lives in `@relay-cache/core`; the CLI only parses arguments and calls core functions. Key command groups: `session`, `ask`, `diff`, `cache`, `tokens`, `gc`, `context` (includes `inspect` and `build`).

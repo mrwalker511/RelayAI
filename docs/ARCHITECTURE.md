@@ -18,7 +18,7 @@ Developer
                     │
                     ▼
 ┌───────────────────────────────────────────────────────┐
-│  @relay/core  (packages/core)                         │
+│  @relay-cache/core  (packages/core)                         │
 │                                                       │
 │  ┌──────────────┐  ┌──────────────┐  ┌─────────────┐ │
 │  │ Repo Scanner │  │ Git Delta    │  │ Semantic    │ │

@@ -244,7 +244,7 @@ pnpm build
 <p><strong>Expected result:</strong> All steps exit 0. Test output should show <code># pass 137</code> (core) and <code># pass 49</code> (cli), <code># fail 0</code>.</p>
 <h3>Run a single test file</h3>
 <pre><code class="language-bash"># Build first, then run one file
-pnpm --filter @relay/core build
+pnpm --filter @relay-cache/core build
 node --test packages/core/dist/tokens/budget.test.js
 </code></pre>
 <h3>Test inventory</h3>
@@ -258,13 +258,13 @@ node --test packages/core/dist/tokens/budget.test.js
 </tr>
 </thead>
 <tbody><tr>
-<td><code>@relay/core</code></td>
+<td><code>@relay-cache/core</code></td>
 <td>20 files</td>
 <td>137</td>
 <td>Config, context zones, git delta, tokens, GC, providers, usage parser (Claude + Codex), savings, output filter</td>
 </tr>
 <tr>
-<td><code>@relay/cli</code></td>
+<td><code>@relay-cache/cli</code></td>
 <td>1 file</td>
 <td>49</td>
 <td>E2E: init, session, ask, <code>--measure</code> (claude + codex), <code>{prompt}</code> routing, usage record, savings, diff, cache, tokens, gc, MCP server</td>
@@ -335,7 +335,7 @@ git rev-parse HEAD
 <h3>Common hook troubleshooting</h3>
 <p>| Symptom                           | Likely cause                              | Fix                                                                                                                       |
 | --------------------------------- | ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- | ----------------------- | ------------------------------------------------ |
-| <code>.relay/session.json</code> not created | <code>relay</code> not on PATH                       | Run <code>pnpm install -g @relay/cli</code> or use <code>node packages/cli/dist/index.js</code>                                                 |
+| <code>.relay/session.json</code> not created | <code>relay</code> not on PATH                       | Run <code>pnpm install -g @relay-cache/cli</code> or use <code>node packages/cli/dist/index.js</code>                                                 |
 | <code>sigmap.md</code> not updated           | <code>pnpm</code> / <code>node</code> not on PATH in hook shell | Hooks now fall back to <code>npx tsx scripts/gen-sigmap.ts</code>. Alternatively, use absolute path: <code>$(which pnpm) --silent sigmap</code> |
 | <code>semantic-state.json</code> not updated | No GC command configured                  | Set <code>gc.command</code> in <code>.relay/config.json</code>                                                                                  |
 | Hook fires but errors silently    | <code>2&gt;/dev/null                              |                                                                                                                           | true</code> suppresses output | Temporarily remove the suppression to see errors |</p>

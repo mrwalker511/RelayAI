@@ -16,8 +16,8 @@ pnpm test
 
 ```
 packages/
-  core/   # @relay/core — context engine, git, tokens, memory, providers
-  cli/    # @relay/cli  — Commander.js command router, MCP server
+  core/   # @relay-cache/core — context engine, git, tokens, memory, providers
+  cli/    # @relay-cache/cli  — Commander.js command router, MCP server
 docs/     # User-facing markdown guides
 ```
 

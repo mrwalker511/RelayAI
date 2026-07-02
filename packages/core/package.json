@@ -1,5 +1,5 @@
 {
-  "name": "@relay/core",
+  "name": "@relay-cache/core",
   "version": "0.1.0",
   "description": "Core context engine for the Relay prompt-cache optimizer.",
   "type": "module",

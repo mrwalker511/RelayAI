@@ -42,8 +42,8 @@ relay completion bash|zsh|fish   # print shell completion script to stdout
 Filter to a single package:
 
 ```bash
-pnpm --filter @relay/core build
-pnpm --filter @relay/cli dev
+pnpm --filter @relay-cache/core build
+pnpm --filter @relay-cache/cli dev
 ```
 
 Run a single test file after building:

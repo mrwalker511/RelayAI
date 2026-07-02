@@ -46,8 +46,8 @@ import {
   summarizePrefixStability,
   projectSavingsFromHistory,
   deepMerge
-} from "@relay/core";
-import type { RelayConfig, StaticBlockInput, TokenEstimateOptions, ProviderUsage, ZoneTokenReport } from "@relay/core";
+} from "@relay-cache/core";
+import type { RelayConfig, StaticBlockInput, TokenEstimateOptions, ProviderUsage, ZoneTokenReport } from "@relay-cache/core";
 
 const program = new Command();
 const _pkgDir = dirname(dirname(fileURLToPath(import.meta.url)));

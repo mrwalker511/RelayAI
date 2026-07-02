@@ -1,7 +1,7 @@
 # Relay CLI
 
 [![CI](https://github.com/mrwalker511/RelayAI/actions/workflows/ci.yml/badge.svg)](https://github.com/mrwalker511/RelayAI/actions/workflows/ci.yml)
-[![npm](https://img.shields.io/npm/v/@relay/cli)](https://www.npmjs.com/package/@relay/cli)
+[![npm](https://img.shields.io/npm/v/@relay-cache/cli)](https://www.npmjs.com/package/@relay-cache/cli)
 [![Node.js ≥ 20](https://img.shields.io/badge/node-%3E%3D20-brightgreen)](https://nodejs.org)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
@@ -16,13 +16,13 @@ Relay does **not** replace your model or coding agent. It gives them cleaner, re
 ## Install
 
 ```bash
-npm install -g @relay/cli
+npm install -g @relay-cache/cli
 ```
 
 Or run without installing:
 
 ```bash
-npx @relay/cli --help
+npx @relay-cache/cli --help
 ```
 
 **Requirements:** Node.js 20+, git.
@@ -95,7 +95,7 @@ The stable zones come first so provider caches hit on repeat calls. Volatile dat
 ## Installation
 
 ```bash
-npm install -g @relay/cli
+npm install -g @relay-cache/cli
 ```
 
 After installing, the `relay` command is available globally:
@@ -107,7 +107,7 @@ relay --help
 Or run without installing using `npx`:
 
 ```bash
-npx @relay/cli --help
+npx @relay-cache/cli --help
 ```
 
 ---
@@ -265,8 +265,8 @@ pnpm pack:check     # validate package artifacts (dry run)
 Filter commands to a single package:
 
 ```bash
-pnpm --filter @relay/core build
-pnpm --filter @relay/cli dev
+pnpm --filter @relay-cache/core build
+pnpm --filter @relay-cache/cli dev
 ```
 
 CI runs on every push and pull request to `main`. The pipeline runs `build`, `typecheck`, `test`, and `pack:check` on Node.js 22.

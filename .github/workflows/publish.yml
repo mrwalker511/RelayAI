@@ -25,11 +25,11 @@ jobs:
       - run: pnpm build
       - run: pnpm typecheck
       - run: pnpm test
-      - name: Publish @relay/core
-        run: pnpm --filter @relay/core publish --access public --no-git-checks
+      - name: Publish @relay-cache/core
+        run: pnpm --filter @relay-cache/core publish --access public --no-git-checks --provenance
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-      - name: Publish @relay/cli
-        run: pnpm --filter @relay/cli publish --access public --no-git-checks
+      - name: Publish @relay-cache/cli
+        run: pnpm --filter @relay-cache/cli publish --access public --no-git-checks --provenance
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

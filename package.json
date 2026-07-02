@@ -8,7 +8,7 @@
   "scripts": {
     "build": "pnpm -r build",
     "ci": "pnpm build && pnpm typecheck && pnpm test && pnpm pack:check",
-    "dev": "pnpm --filter @relay/cli dev",
+    "dev": "pnpm --filter @relay-cache/cli dev",
     "lint": "pnpm -r lint",
     "pack:check": "pnpm clean && pnpm build && npm pack --dry-run --cache /tmp/npm-cache ./packages/core && npm pack --dry-run --cache /tmp/npm-cache ./packages/cli",
     "compare": "tsx scripts/compare.ts",

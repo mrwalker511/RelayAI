@@ -39,6 +39,10 @@ export interface MeasuredSavingsResult {
   actualCost: number;
   baselineCost: number;
   savings: number;
+  inputCost: number;
+  cachedReadCost: number;
+  cacheCreationCost: number;
+  outputCost: number;
 }
 
 /**
@@ -86,7 +90,11 @@ export function computeMeasuredSavings(
     totalOutputTokens,
     actualCost: cost.actualCost,
     baselineCost: cost.baselineCost,
-    savings: cost.savings
+    savings: cost.savings,
+    inputCost: cost.inputCost,
+    cachedReadCost: cost.cachedReadCost,
+    cacheCreationCost: cost.cacheCreationCost,
+    outputCost: cost.outputCost
   };
 }
 

@@ -1,6 +1,6 @@
 {
   "name": "@relay-cache/cli",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Local-first context and prompt-cache optimizer for coding agents and model CLIs.",
   "type": "module",
   "main": "dist/index.js",

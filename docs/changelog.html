@@ -191,6 +191,18 @@
 <p>All notable changes to this project will be documented in this file.</p>
 <p>The format is based on <a href="https://keepachangelog.com/en/1.1.0/">Keep a Changelog</a>.</p>
 <h2>[Unreleased]</h2>
+<h2>[0.1.1] — 2026-07-07</h2>
+<h3>Added</h3>
+<ul>
+<li><code>relay doctor</code> now prints a human-readable checklist (<code>✓</code> / <code>!</code> / <code>✗</code>) with inline fix hints instead of raw JSON. Use <code>--json</code> to restore machine-readable output.</li>
+<li><code>relay savings</code> now shows cache hit rate %, an itemized cost breakdown (uncached input / cache reads / cache writes / output), savings percentage, and a note explaining why the projected figure is smaller than measured savings.</li>
+<li>npm publish provenance (<code>--provenance</code>) added to the publish workflow — each release is cryptographically linked to the GitHub Actions run that built it.</li>
+<li>Tests added for <code>context/static-block</code>, <code>context/state-layer</code>, <code>memory/semantic-state</code>, and <code>utils/fs</code> modules; extended coverage for <code>audit/savings</code> sessionId filtering and cost breakdown fields.</li>
+</ul>
+<h3>Changed</h3>
+<ul>
+<li>npm scope renamed from <code>@relay/*</code> to <code>@relay-cache/*</code> (<code>@relay</code> was unavailable). Install path: <code>npm install -g @relay-cache/cli</code>. The <code>relay</code> command name is unchanged.</li>
+</ul>
 <h3>Fixed</h3>
 <ul>
 <li>TypeScript build: added <code>&quot;types&quot;: [&quot;node&quot;]</code> to <code>tsconfig.base.json</code> so <code>node:*</code> imports resolve correctly</li>
@@ -199,19 +211,16 @@
 <li>Output filtering: failure lines (<code>Error:</code>, <code>FAILED</code>, <code>AssertionError</code>) are now preserved unconditionally and never dropped by truncation</li>
 <li>Shell provider: user-configured <code>provider.commands</code> are validated for shell metacharacters before being passed to <code>spawn()</code></li>
 <li>Git operations: silent failures now emit a warning to stderr before returning empty fallbacks</li>
+<li>Lockfile drift: <code>@types/node</code> version aligned between <code>package.json</code> and <code>pnpm-lock.yaml</code></li>
 </ul>
-<h3>Added</h3>
+<h3>Added (infrastructure)</h3>
 <ul>
 <li><code>LICENSE</code> file (MIT)</li>
 <li><code>SECURITY.md</code> with vulnerability reporting policy</li>
 <li><code>CONTRIBUTING.md</code> with dev setup and PR guidelines</li>
-<li><code>CHANGELOG.md</code> (this file)</li>
 <li><code>.github/dependabot.yml</code> for weekly npm dependency updates</li>
 <li>CI: Node 20 added to test matrix (alongside Node 22)</li>
 <li>CI: <code>pnpm audit --audit-level=high</code> step added</li>
-<li>Tests: markdown-fence GC extraction cases in <code>gc.test.ts</code></li>
-<li>Tests: failure-line preservation cases in <code>output-filter.test.ts</code></li>
-<li>Tests: shell provider command allowlist validation in <code>shell-provider.test.ts</code></li>
 </ul>
 <h2>[0.1.0] — 2025-01-01</h2>
 <h3>Added</h3>

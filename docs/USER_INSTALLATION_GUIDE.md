@@ -52,10 +52,15 @@ Relay creates:
 .relay/
 ├── config.json
 └── memory/
+    ├── architecture-notes.md
+    ├── project-rules.md
     ├── semantic-state.json
+    ├── session.compacted.md
     ├── session.raw.md
-    └── session.compacted.md
+    └── source-snapshot.md
 ```
+
+The three markdown files at the top (`project-rules.md`, `architecture-notes.md`, `source-snapshot.md`) seed the stable STATIC zone — edit them to describe your project's conventions, architecture, and key source excerpts.
 
 Run the readiness check:
 

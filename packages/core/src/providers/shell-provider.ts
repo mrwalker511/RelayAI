@@ -170,6 +170,17 @@ export function createShellProvider(name: string, config: RelayConfig): ShellPro
   return new ShellProvider(name, command, args);
 }
 
+/**
+ * Resolve a provider name requested on the command line. An omitted name and
+ * the literal alias "default" both resolve to config.provider.default, unless
+ * the user has explicitly configured a provider named "default".
+ */
+export function resolveProviderName(requested: string | undefined, config: RelayConfig): string {
+  if (!requested) return config.provider.default;
+  if (requested === "default" && !config.provider.commands?.["default"]) return config.provider.default;
+  return requested;
+}
+
 export type RelayTask = "ask" | "gc" | "diff" | "summarize" | "default";
 
 export function resolveProviderNameForTask(task: RelayTask, config: RelayConfig): string {

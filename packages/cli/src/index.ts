@@ -20,6 +20,7 @@ import {
   createSessionSnapshot,
   createShellProvider,
   createShellProviderForTask,
+  resolveProviderName,
   detectPromptLoop,
   estimateTokens,
   estimateZoneAwareInputCost,
@@ -535,7 +536,7 @@ program.command("ask")
     }
 
     if (options.dryRun) {
-      const name = options.provider ?? cfg.provider.default;
+      const name = resolveProviderName(options.provider, cfg);
       let provider;
       try { provider = createShellProvider(name, cfg); }
       catch (err) { process.stderr.write(`${(err as Error).message}\n`); process.exit(1); }
@@ -567,8 +568,9 @@ program.command("ask")
     }
 
     if (options.provider) {
+      const providerName = resolveProviderName(options.provider, cfg);
       let provider;
-      try { provider = createShellProvider(options.provider, cfg); }
+      try { provider = createShellProvider(providerName, cfg); }
       catch (err) { process.stderr.write(`${(err as Error).message}\n`); process.exit(1); }
       if (options.measure) provider = provider.withMeasure();
       const result = await provider.sendPrompt(payload, { capture: options.measure });
@@ -588,7 +590,7 @@ program.command("ask")
         budgetStatus: budget.status,
         baseRef,
         route: "provider",
-        provider: options.provider,
+        provider: providerName,
         model: options.model,
         providerExitCode: exitCode
       });
@@ -596,7 +598,7 @@ program.command("ask")
         event: "ask",
         session_id: activeSessionId,
         route: "provider",
-        provider: options.provider,
+        provider: providerName,
         model: options.model ?? null,
         budget_status: budget.status,
         budget_tokens: budget.tokens,
@@ -791,7 +793,7 @@ cache.command("warm")
     const payload = buildPromptPayload(zones);
     const resolvedTokens = resolveTokenBudget(cfg);
     const budget = checkTokenBudget(payload, resolvedTokens, tokenizerOptions);
-    const name = options.provider ?? cfg.provider.default;
+    const name = resolveProviderName(options.provider, cfg);
 
     process.stderr.write(`Prefix hash: ${getPrefixHash(zones.staticBlock, zones.stateLayer)}\n`);
     printZoneBreakdown(inspectZoneTokens(zones, tokenizerOptions));
@@ -1258,7 +1260,7 @@ program.command("savings")
     }
     out.push("");
     out.push("NOTES");
-    if (!pricingDefined) out.push("  Pass --input-cost-per-million (and optionally --cached/--cache-creation/--output) for cost figures.");
+    if (!pricingDefined) out.push("  Pass --input-cost-per-million (and optionally --cached-input-cost-per-million, --cache-creation-cost-per-million, --output-cost-per-million) for cost figures.");
     if (pricingDefined) {
       const outputRate = opts.outputCostPerMillion ?? 0;
       out.push(`  Pricing used: input ${money(opts.inputCostPerMillion!)}/M, cache-read ${money(cachedInputCostPerMillion)}/M, output ${money(outputRate)}/M.`);

@@ -178,6 +178,26 @@ test("relay ask --provider records provider route and exit code in raw session h
   assert.match(rawHistory, /### Prompt\n\nsend through provider/);
 });
 
+test("relay ask --provider default routes through the configured default provider", { skip: canSpawnNode ? false : "nested Node execution is unavailable in this sandbox" }, () => {
+  const cwd = tempWorkspace();
+  assert.equal(runRelay(["init"], cwd).result.status, 0);
+  const configPath = join(cwd, ".relay", "config.json");
+  const config = JSON.parse(readFileSync(configPath, "utf8"));
+  config.provider.default = "test";
+  config.provider.commands = {
+    test: [process.execPath, "-e", "process.stdin.resume(); process.stdin.on('end', () => process.exit(0));"]
+  };
+  writeFileSync(configPath, JSON.stringify(config, null, 2));
+
+  const result = runRelay(["ask", "--provider", "default", "route to the default provider"], cwd).result;
+  const rawHistory = readFileSync(join(cwd, ".relay", "memory", "session.raw.md"), "utf8");
+
+  assert.equal(result.status, 0);
+  assert.doesNotMatch(result.stderr, /Unknown provider/);
+  assert.match(rawHistory, /- route: provider/);
+  assert.match(rawHistory, /- provider: test/);
+});
+
 test("relay gc preview reports missing GC command before calling a provider", { skip: canSpawnNode ? false : "nested Node execution is unavailable in this sandbox" }, () => {
   const cwd = tempWorkspace();
   assert.equal(runRelay(["init"], cwd).result.status, 0);

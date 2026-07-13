@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { createShellProvider, ShellProvider } from "./shell-provider.js";
+import { createShellProvider, resolveProviderName, ShellProvider } from "./shell-provider.js";
 import type { RelayConfig } from "../config/relay-config.js";
 
 const baseConfig: RelayConfig = {
@@ -158,4 +158,32 @@ test("createShellProvider does not validate built-in defaults for metacharacters
   // Built-in defaults like "ollama" with args are pre-vetted — must not throw
   const provider = createShellProvider("local", baseConfig);
   assert.equal(provider.name, "local");
+});
+
+test("resolveProviderName falls back to config default when no name is requested", () => {
+  const config = {
+    ...baseConfig,
+    provider: { default: "local-llm", commands: { "local-llm": ["llm"] } },
+  };
+  assert.equal(resolveProviderName(undefined, config), "local-llm");
+});
+
+test("resolveProviderName treats 'default' as an alias for the configured default", () => {
+  const config = {
+    ...baseConfig,
+    provider: { default: "local-llm", commands: { "local-llm": ["llm"] } },
+  };
+  assert.equal(resolveProviderName("default", config), "local-llm");
+});
+
+test("resolveProviderName keeps a provider literally named 'default' when one is configured", () => {
+  const config = {
+    ...baseConfig,
+    provider: { default: "local-llm", commands: { "local-llm": ["llm"], default: ["other-cli"] } },
+  };
+  assert.equal(resolveProviderName("default", config), "default");
+});
+
+test("resolveProviderName passes explicit provider names through unchanged", () => {
+  assert.equal(resolveProviderName("claude", baseConfig), "claude");
 });

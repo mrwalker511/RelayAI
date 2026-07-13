@@ -1,7 +1,13 @@
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { readRelayWorkspace, summarizeContextHealth } from "@relay-cache/core";
 import { z } from "zod";
+
+const _pkgDir = dirname(dirname(fileURLToPath(import.meta.url)));
+const _pkgVersion = (JSON.parse(readFileSync(join(_pkgDir, "package.json"), "utf8")) as { version: string }).version;
 
 function jsonContent(value: unknown) {
   return {
@@ -54,7 +60,7 @@ export function createRelayMcpServer(cwd?: string): McpServer {
   const resolveCwd = () => cwd ?? process.cwd();
   const server = new McpServer({
     name: "relay",
-    version: "0.1.0"
+    version: _pkgVersion
   });
 
   server.registerTool(

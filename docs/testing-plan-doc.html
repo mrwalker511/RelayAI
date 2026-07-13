@@ -233,7 +233,7 @@ pnpm build
 <tr>
 <td>Test</td>
 <td><code>pnpm test</code></td>
-<td>All 186 unit + integration tests pass</td>
+<td>All 239 unit + integration tests pass</td>
 </tr>
 <tr>
 <td>Pack check</td>
@@ -241,7 +241,7 @@ pnpm build
 <td>Both packages are publishable (no missing files)</td>
 </tr>
 </tbody></table>
-<p><strong>Expected result:</strong> All steps exit 0. Test output should show <code># pass 137</code> (core) and <code># pass 49</code> (cli), <code># fail 0</code>.</p>
+<p><strong>Expected result:</strong> All steps exit 0. Test output should show <code># pass 181</code> (core) and <code># pass 58</code> (cli), <code># fail 0</code>.</p>
 <h3>Run a single test file</h3>
 <pre><code class="language-bash"># Build first, then run one file
 pnpm --filter @relay-cache/core build
@@ -259,20 +259,20 @@ node --test packages/core/dist/tokens/budget.test.js
 </thead>
 <tbody><tr>
 <td><code>@relay-cache/core</code></td>
-<td>20 files</td>
-<td>137</td>
+<td>25 files</td>
+<td>181</td>
 <td>Config, context zones, git delta, tokens, GC, providers, usage parser (Claude + Codex), savings, output filter</td>
 </tr>
 <tr>
 <td><code>@relay-cache/cli</code></td>
 <td>1 file</td>
-<td>49</td>
+<td>58</td>
 <td>E2E: init, session, ask, <code>--measure</code> (claude + codex), <code>{prompt}</code> routing, usage record, savings, diff, cache, tokens, gc, MCP server</td>
 </tr>
 <tr>
 <td><strong>Total</strong></td>
-<td><strong>21 files</strong></td>
-<td><strong>186</strong></td>
+<td><strong>26 files</strong></td>
+<td><strong>239</strong></td>
 <td>-</td>
 </tr>
 </tbody></table>
@@ -341,13 +341,13 @@ git rev-parse HEAD
 | Hook fires but errors silently    | <code>2&gt;/dev/null                              |                                                                                                                           | true</code> suppresses output | Temporarily remove the suppression to see errors |</p>
 <hr>
 <h2>3. Manual Integration Testing (Codex vs. Codex + RelayAI)</h2>
-<p>This phase validates RelayAI&#39;s effectiveness by comparing a Codex session without Relay (Baseline) against a Codex session with Relay (Relay-Enabled). We use the live project <a href="https://github.com/mrwalker511/AgentFlow"><code>AgentFlow</code></a>.</p>
+<p>This phase validates RelayAI&#39;s effectiveness by comparing a Codex session without Relay (Baseline) against a Codex session with Relay (Relay-Enabled). The steps below use <a href="https://github.com/mrwalker511/AgentFlow"><code>AgentFlow</code></a> as the example target project — substitute any real project you work in. Paths are written as <code>/path/to/...</code>; replace them with the actual locations on your machine.</p>
 <hr>
 <h3>Step 1: Initial Setup</h3>
 <ol>
 <li><p><strong>Verify RelayAI CLI is functional</strong>:
 Make sure you are in the <code>RelayAI</code> directory:</p>
-<pre><code class="language-bash">cd /home/matthew/projects/RelayAI
+<pre><code class="language-bash">cd /path/to/RelayAI
 pnpm install
 pnpm build
 node packages/cli/dist/index.js --help
@@ -355,7 +355,7 @@ node packages/cli/dist/index.js --help
 </li>
 <li><p><strong>Prepare the AgentFlow project</strong>:
 Ensure you have the <code>AgentFlow</code> project cloned and built:</p>
-<pre><code class="language-bash">cd /home/matthew/projects
+<pre><code class="language-bash">cd /path/to/projects
 # If not already cloned:
 # git clone https://github.com/mrwalker511/AgentFlow.git
 cd AgentFlow
@@ -377,7 +377,7 @@ Record the current Git HEAD SHA of AgentFlow. This will act as the baseline anch
 <ol>
 <li><p><strong>Open a fresh Codex session in AgentFlow</strong>:
 Make sure you are in the <code>AgentFlow</code> directory, and start Codex. Do <strong>NOT</strong> have Relay configured in your Codex MCP config yet.</p>
-<pre><code class="language-bash">cd /home/matthew/projects/AgentFlow
+<pre><code class="language-bash">cd /path/to/AgentFlow
 codex
 </code></pre>
 </li>
@@ -409,18 +409,18 @@ Codex CLI automatically saves session JSON logs to <code>~/.codex/sessions/</cod
 <ol>
 <li><p><strong>Initialize Relay</strong>:
 Run the <code>init</code> command in the <code>AgentFlow</code> directory using your locally built Relay CLI:</p>
-<pre><code class="language-bash">cd /home/matthew/projects/AgentFlow
-node RelayAI/packages/cli/dist/index.js init
+<pre><code class="language-bash">cd /path/to/AgentFlow
+node /path/to/RelayAI/packages/cli/dist/index.js init
 </code></pre>
 </li>
 <li><p><strong>Verify Relay Health</strong>:
 Ensure all setup checks pass:</p>
-<pre><code class="language-bash">node /home/matthew/projects/RelayAI/packages/cli/dist/index.js doctor
+<pre><code class="language-bash">node /path/to/RelayAI/packages/cli/dist/index.js doctor
 </code></pre>
 </li>
 <li><p><strong>Start the Relay session</strong>:
 Anchor Relay to the baseline Git SHA you recorded in Step 1:</p>
-<pre><code class="language-bash">node ~/projects/RelayAI/RelayAI/packages/cli/dist/index.js session start
+<pre><code class="language-bash">node /path/to/RelayAI/packages/cli/dist/index.js session start
 </code></pre>
 </li>
 </ol>
@@ -434,7 +434,7 @@ Open <code>~/.codex/config.json</code> (create it if it doesn&#39;t exist) and a
     &quot;relay&quot;: {
       &quot;command&quot;: &quot;node&quot;,
       &quot;args&quot;: [
-        &quot;~/projects/RelayAI/RelayAI/packages/cli/dist/index.js&quot;,
+        &quot;/path/to/RelayAI/packages/cli/dist/index.js&quot;,
         &quot;mcp&quot;
       ]
     }
@@ -449,7 +449,7 @@ Open <code>~/.codex/config.json</code> (create it if it doesn&#39;t exist) and a
 <ol>
 <li><p><strong>Open a fresh Codex session in AgentFlow</strong>:
 Start Codex. It will automatically detect the configuration in <code>~/.codex/config.json</code> and start the Relay MCP server:</p>
-<pre><code class="language-bash">cd /home/matthew/projects/AgentFlow
+<pre><code class="language-bash">cd /path/to/AgentFlow
 codex
 </code></pre>
 <p><em>Verify: When Codex starts, ensure it lists the Relay MCP tools (such as <code>get_prompt_payload</code>).</em></p>

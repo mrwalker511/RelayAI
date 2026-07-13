@@ -221,10 +221,14 @@ relay init
 <pre><code class="language-txt">.relay/
 ├── config.json
 └── memory/
+    ├── architecture-notes.md
+    ├── project-rules.md
     ├── semantic-state.json
+    ├── session.compacted.md
     ├── session.raw.md
-    └── session.compacted.md
+    └── source-snapshot.md
 </code></pre>
+<p>The three markdown files at the top (<code>project-rules.md</code>, <code>architecture-notes.md</code>, <code>source-snapshot.md</code>) seed the stable STATIC zone — edit them to describe your project&#39;s conventions, architecture, and key source excerpts.</p>
 <p>Run the readiness check:</p>
 <pre><code class="language-bash">relay doctor
 </code></pre>

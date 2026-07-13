@@ -38,10 +38,10 @@ This runs four steps in order:
 | ---------- | ----------------- | ------------------------------------------------------- |
 | Build      | `pnpm build`      | TypeScript compiles without errors                      |
 | Typecheck  | `pnpm typecheck`  | Strict type checking (no `any` leaks, no missing types) |
-| Test       | `pnpm test`       | All 186 unit + integration tests pass                   |
+| Test       | `pnpm test`       | All 239 unit + integration tests pass                   |
 | Pack check | `pnpm pack:check` | Both packages are publishable (no missing files)        |
 
-**Expected result:** All steps exit 0. Test output should show `# pass 137` (core) and `# pass 49` (cli), `# fail 0`.
+**Expected result:** All steps exit 0. Test output should show `# pass 181` (core) and `# pass 58` (cli), `# fail 0`.
 
 ### Run a single test file
 
@@ -55,9 +55,9 @@ node --test packages/core/dist/tokens/budget.test.js
 
 | Package       | Test files   | Test count | Focus areas                                                                                                                           |
 | ------------- | ------------ | ---------- | ------------------------------------------------------------------------------------------------------------------------------------- |
-| `@relay-cache/core` | 20 files     | 137        | Config, context zones, git delta, tokens, GC, providers, usage parser (Claude + Codex), savings, output filter                        |
-| `@relay-cache/cli`  | 1 file       | 49         | E2E: init, session, ask, `--measure` (claude + codex), `{prompt}` routing, usage record, savings, diff, cache, tokens, gc, MCP server |
-| **Total**     | **21 files** | **186**    | -                                                                                                                                     |
+| `@relay-cache/core` | 25 files     | 181        | Config, context zones, git delta, tokens, GC, providers, usage parser (Claude + Codex), savings, output filter                        |
+| `@relay-cache/cli`  | 1 file       | 58         | E2E: init, session, ask, `--measure` (claude + codex), `{prompt}` routing, usage record, savings, diff, cache, tokens, gc, MCP server |
+| **Total**     | **26 files** | **239**    | -                                                                                                                                     |
 
 ### End-to-end smoke test (real Codex)
 
@@ -158,7 +158,7 @@ relay cache inspect
 
 ## 3. Manual Integration Testing (Codex vs. Codex + RelayAI)
 
-This phase validates RelayAI's effectiveness by comparing a Codex session without Relay (Baseline) against a Codex session with Relay (Relay-Enabled). We use the live project [`AgentFlow`](https://github.com/mrwalker511/AgentFlow).
+This phase validates RelayAI's effectiveness by comparing a Codex session without Relay (Baseline) against a Codex session with Relay (Relay-Enabled). The steps below use [`AgentFlow`](https://github.com/mrwalker511/AgentFlow) as the example target project — substitute any real project you work in. Paths are written as `/path/to/...`; replace them with the actual locations on your machine.
 
 ---
 
@@ -168,7 +168,7 @@ This phase validates RelayAI's effectiveness by comparing a Codex session withou
    Make sure you are in the `RelayAI` directory:
 
    ```bash
-   cd /home/matthew/projects/RelayAI
+   cd /path/to/RelayAI
    pnpm install
    pnpm build
    node packages/cli/dist/index.js --help
@@ -178,7 +178,7 @@ This phase validates RelayAI's effectiveness by comparing a Codex session withou
    Ensure you have the `AgentFlow` project cloned and built:
 
    ```bash
-   cd /home/matthew/projects
+   cd /path/to/projects
    # If not already cloned:
    # git clone https://github.com/mrwalker511/AgentFlow.git
    cd AgentFlow
@@ -205,7 +205,7 @@ In this phase, we run Codex without any help from Relay to establish a baseline.
    Make sure you are in the `AgentFlow` directory, and start Codex. Do **NOT** have Relay configured in your Codex MCP config yet.
 
    ```bash
-   cd /home/matthew/projects/AgentFlow
+   cd /path/to/AgentFlow
    codex
    ```
 
@@ -238,21 +238,21 @@ Now, initialize and configure Relay in the `AgentFlow` project directory to prep
    Run the `init` command in the `AgentFlow` directory using your locally built Relay CLI:
 
    ```bash
-   cd /home/matthew/projects/AgentFlow
-   node RelayAI/packages/cli/dist/index.js init
+   cd /path/to/AgentFlow
+   node /path/to/RelayAI/packages/cli/dist/index.js init
    ```
 
 2. **Verify Relay Health**:
    Ensure all setup checks pass:
 
    ```bash
-   node /home/matthew/projects/RelayAI/packages/cli/dist/index.js doctor
+   node /path/to/RelayAI/packages/cli/dist/index.js doctor
    ```
 
 3. **Start the Relay session**:
    Anchor Relay to the baseline Git SHA you recorded in Step 1:
    ```bash
-   node ~/projects/RelayAI/RelayAI/packages/cli/dist/index.js session start
+   node /path/to/RelayAI/packages/cli/dist/index.js session start
    ```
 
 ---
@@ -269,7 +269,7 @@ To allow Codex to communicate with Relay, register Relay as an MCP server.
        "relay": {
          "command": "node",
          "args": [
-           "~/projects/RelayAI/RelayAI/packages/cli/dist/index.js",
+           "/path/to/RelayAI/packages/cli/dist/index.js",
            "mcp"
          ]
        }
@@ -287,7 +287,7 @@ In this phase, we run Codex with Relay active. Relay will automatically inject h
    Start Codex. It will automatically detect the configuration in `~/.codex/config.json` and start the Relay MCP server:
 
    ```bash
-   cd /home/matthew/projects/AgentFlow
+   cd /path/to/AgentFlow
    codex
    ```
 

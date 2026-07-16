@@ -35,6 +35,8 @@ const MD_TO_HTML: Record<string, string> = {
   "MVP_ROADMAP.md": "mvp-roadmap.html",
   "docs/bench-prompts.md": "bench-prompts.html",
   "bench-prompts.md": "bench-prompts.html",
+  "docs/BENCHMARKS.md": "benchmarks.html",
+  "BENCHMARKS.md": "benchmarks.html",
 };
 
 const PAGES: Array<{ src: string; out: string; label: string; group: string }> = [
@@ -49,6 +51,7 @@ const PAGES: Array<{ src: string; out: string; label: string; group: string }> =
   { src: join(DOCS, "ARCHITECTURE.md"),                    out: "architecture.html",         label: "Architecture",            group: "Reference" },
   { src: join(DOCS, "TESTING_PLAN.md"),                    out: "testing-plan-doc.html",     label: "Testing Plan",            group: "Development" },
   { src: join(DOCS, "MVP_ROADMAP.md"),                     out: "mvp-roadmap.html",          label: "MVP Roadmap",             group: "Development" },
+  { src: join(DOCS, "BENCHMARKS.md"),                      out: "benchmarks.html",           label: "Benchmarks",              group: "Development" },
   { src: join(DOCS, "bench-prompts.md"),                   out: "bench-prompts.html",        label: "Bench Prompts",           group: "Development" },
   { src: join(ROOT, "CONTRIBUTING.md"),                    out: "contributing.html",         label: "Contributing",            group: "Development" },
   { src: join(ROOT, "AGENTS.md"),                          out: "agents.html",               label: "Agents Guide",            group: "Development" },

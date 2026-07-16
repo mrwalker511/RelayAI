@@ -272,6 +272,7 @@
         <div class="nav-group-label">Development</div>
         <a href="testing-plan-doc.html" class="nav-link">Testing Plan</a>
         <a href="mvp-roadmap.html" class="nav-link">MVP Roadmap</a>
+        <a href="benchmarks.html" class="nav-link">Benchmarks</a>
         <a href="bench-prompts.html" class="nav-link">Bench Prompts</a>
         <a href="contributing.html" class="nav-link">Contributing</a>
         <a href="agents.html" class="nav-link">Agents Guide</a>
@@ -286,6 +287,10 @@
 <p>All notable changes to this project will be documented in this file.</p>
 <p>The format is based on <a href="https://keepachangelog.com/en/1.1.0/">Keep a Changelog</a>.</p>
 <h2>[Unreleased]</h2>
+<h3>Added</h3>
+<ul>
+<li>First recorded benchmark results in <code>docs/BENCHMARKS.md</code> (and on the docs site): 89.3% measured cache hit rate and 72.7% measured cost savings over a live provider session with 100% prefix stability; 97.4–99.5% synthetic five-turn session reduction via <code>pnpm run bench</code>. Headline numbers now lead the README.</li>
+</ul>
 <h3>Fixed</h3>
 <ul>
 <li>CI: realigned <code>@types/node</code>, <code>tsx</code>, and <code>typescript</code> specifiers in <code>package.json</code> with <code>pnpm-lock.yaml</code> — a bad merge resolution on the July dependabot PRs dropped the manifest bumps and broke <code>pnpm install --frozen-lockfile</code></li>

@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="description" content="Relay — local-first context and prompt-cache optimizer for coding agents and model CLIs." />
-  <title>RelayAI — Security</title>
+  <title>RelayAI — Benchmarks</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%232563eb'/%3E%3Ctext x='16' y='22' text-anchor='middle' font-family='system-ui,sans-serif' font-size='18' font-weight='700' fill='white'%3ER%3C/text%3E%3C/svg%3E" />
   <style>
     :root {
@@ -272,52 +272,235 @@
         <div class="nav-group-label">Development</div>
         <a href="testing-plan-doc.html" class="nav-link">Testing Plan</a>
         <a href="mvp-roadmap.html" class="nav-link">MVP Roadmap</a>
-        <a href="benchmarks.html" class="nav-link">Benchmarks</a>
+        <a href="benchmarks.html" class="nav-link active">Benchmarks</a>
         <a href="bench-prompts.html" class="nav-link">Bench Prompts</a>
         <a href="contributing.html" class="nav-link">Contributing</a>
         <a href="agents.html" class="nav-link">Agents Guide</a>
         <a href="changelog.html" class="nav-link">Changelog</a>
-        <a href="security.html" class="nav-link active">Security</a>
+        <a href="security.html" class="nav-link">Security</a>
       </div>
     </nav>
     <main>
       <div class="content">
       <div class="md">
-        <h1>Security Policy</h1>
-<h2>Supported Versions</h2>
+        <h1>Benchmarks</h1>
+<p>First recorded benchmark results for Relay, produced with the repository&#39;s own
+tooling on 2026-07-16. Two tiers: a <strong>synthetic</strong> benchmark anyone can re-run in
+seconds with no API key, and a <strong>live measured</strong> run against a real provider
+with real billed token counts.</p>
+<p>Target repository for both tiers: RelayAI itself at commit <code>a1d7850</code>
+(107 tracked source files, ~148,600 tokens when naively concatenated).
+Prompts: the five fixed prompts from <a href="bench-prompts.html"><code>bench-prompts.md</code></a>.</p>
+<hr>
+<h2>Headline results</h2>
 <table>
 <thead>
 <tr>
-<th>Version</th>
-<th>Supported</th>
+<th>Metric</th>
+<th>Result</th>
 </tr>
 </thead>
 <tbody><tr>
-<td>0.1.x</td>
-<td>Yes</td>
+<td>Measured cache hit rate (live provider, 7 calls)</td>
+<td><strong>89.3%</strong></td>
+</tr>
+<tr>
+<td>Measured cost vs the same calls uncached</td>
+<td><strong>$1.46 vs $5.34 — 72.7% saved</strong></td>
+</tr>
+<tr>
+<td>Prefix-hash stability across all bench turns</td>
+<td><strong>100%</strong> (both tiers)</td>
+</tr>
+<tr>
+<td>Synthetic 5-turn session vs naive baseline</td>
+<td><strong>97.4–99.5% fewer effective input tokens</strong></td>
 </tr>
 </tbody></table>
-<h2>Reporting a Vulnerability</h2>
-<p>Please <strong>do not</strong> open a public GitHub issue for security vulnerabilities.</p>
-<p>Report security issues via <a href="https://github.com/mrwalker511/relayai/security/advisories/new">GitHub private security advisories</a>.</p>
-<p>Include:</p>
+<hr>
+<h2>Tier 1 — Synthetic (no API key, reproducible)</h2>
+<p>Runs the five bench prompts through Relay&#39;s payload assembly and models a
+five-turn session. The baseline is the naive strategy: concatenate every
+tracked source file into every call and pay full input price each time.
+Relay pays full price on turn 1, then the cache-eligible prefix
+(<code>STATIC_BLOCK</code> + <code>STATE_LAYER</code>) at 0.1× (Anthropic&#39;s cache-read ratio) on
+turns 2–5, with only <code>DYNAMIC_INPUT</code> at full price.</p>
+<pre><code class="language-bash">pnpm build
+relay init &amp;&amp; relay session start
+pnpm sigmap        # optional: structural snapshot for the static zone
+pnpm run bench
+</code></pre>
+<h3>Mode A — hierarchical context (<code>context.hierarchical: true</code>)</h3>
+<p>Trunk summary in <code>STATIC_BLOCK</code>; prompt-selected domain branches ride in
+<code>DYNAMIC_INPUT</code> so they never bust the prefix.</p>
+<table>
+<thead>
+<tr>
+<th>Turn</th>
+<th>STATIC</th>
+<th>STATE</th>
+<th>DYNAMIC</th>
+<th>Relay total</th>
+<th>Baseline</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>1</td>
+<td>435</td>
+<td>1,022</td>
+<td>37</td>
+<td>1,494</td>
+<td>148,588</td>
+</tr>
+<tr>
+<td>2</td>
+<td>435</td>
+<td>1,022</td>
+<td>44</td>
+<td>1,501</td>
+<td>148,595</td>
+</tr>
+<tr>
+<td>3</td>
+<td>435</td>
+<td>1,022</td>
+<td>45</td>
+<td>1,502</td>
+<td>148,596</td>
+</tr>
+<tr>
+<td>4</td>
+<td>435</td>
+<td>1,022</td>
+<td>41</td>
+<td>1,498</td>
+<td>148,592</td>
+</tr>
+<tr>
+<td>5</td>
+<td>435</td>
+<td>1,022</td>
+<td>1,482</td>
+<td>2,939</td>
+<td>148,596</td>
+</tr>
+</tbody></table>
+<p>Prefix stable across all 5 turns: <strong>yes</strong>.
+Five-turn session: baseline <strong>742,967</strong> vs Relay <strong>3,689</strong> effective
+full-price tokens — <strong>99.5% less</strong>.</p>
+<h3>Mode B — sigmap snapshot (<code>context.hierarchical: false</code> + <code>pnpm sigmap</code>)</h3>
+<p>The full structural signature map (33 modules, ~50 KB) sits in
+<code>STATIC_BLOCK</code>, giving the model deep codebase context that is paid for
+once and then read from cache.</p>
+<table>
+<thead>
+<tr>
+<th>Turn</th>
+<th>STATIC</th>
+<th>STATE</th>
+<th>DYNAMIC</th>
+<th>Relay total</th>
+<th>Baseline</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>1</td>
+<td>12,849</td>
+<td>1,022</td>
+<td>37</td>
+<td>13,908</td>
+<td>148,588</td>
+</tr>
+<tr>
+<td>2</td>
+<td>12,849</td>
+<td>1,022</td>
+<td>44</td>
+<td>13,915</td>
+<td>148,595</td>
+</tr>
+<tr>
+<td>3</td>
+<td>12,849</td>
+<td>1,022</td>
+<td>45</td>
+<td>13,916</td>
+<td>148,596</td>
+</tr>
+<tr>
+<td>4</td>
+<td>12,849</td>
+<td>1,022</td>
+<td>41</td>
+<td>13,912</td>
+<td>148,592</td>
+</tr>
+<tr>
+<td>5</td>
+<td>12,849</td>
+<td>1,022</td>
+<td>45</td>
+<td>13,916</td>
+<td>148,596</td>
+</tr>
+</tbody></table>
+<p>Prefix stable across all 5 turns: <strong>yes</strong>.
+Five-turn session: baseline <strong>742,967</strong> vs Relay <strong>19,631</strong> effective
+full-price tokens — <strong>97.4% less</strong>.</p>
+<hr>
+<h2>Tier 2 — Live measured (real provider, real billed tokens)</h2>
+<p>The flow from the <a href="testing-plan-doc.html">testing plan</a>: a Relay session in Mode B
+(12,849-token stable static block), one warm-up call plus the five bench
+prompts sent through <code>relay ask --provider claude --measure</code>, usage captured
+from the provider&#39;s JSON envelope into the audit ledger, then read back with
+<code>relay savings</code> at Claude Sonnet pricing ($3/M input, $0.30/M cache read,
+$15/M output).</p>
+<p>Provider: Claude Code CLI in headless mode (agentic — the model reads files
+with tools, so each turn makes several API iterations; every iteration
+re-reads the conversation prefix, which is exactly where a stable cached
+prefix pays off).</p>
+<pre><code class="language-text">MEASURED (from recorded provider usage)
+  calls with usage:     7
+  cache hit rate:       89.3%
+  input / cache-read:   301 / 1,486,755 tokens
+  cache-write / output: 177,600 / 23,032 tokens
+
+  cost breakdown:
+    uncached input:     $0.0009
+    cache reads:        $0.4460
+    cache writes:       $0.6660
+    output:             $0.3455
+    actual total:       $1.4584
+    baseline (no cache):$5.3394
+    saved:              $3.8810  (72.7%)
+
+PROJECTED FROM HISTORY (Relay zone estimator)
+  prefix-stability:     100.0% over 7 ask(s)
+  avg zones (S/St/D):  12849 / 1003 / 39 tokens
+</code></pre>
+<p><strong>Reading the numbers:</strong> across the session the provider billed 1.49M tokens
+as cache reads at 0.1× price and only 301 tokens as full-price input — an
+89.3% hit rate. The identical work with caching disabled would have cost
+$5.34; it actually cost $1.46. Relay&#39;s contribution is the 100% prefix
+stability: the payload never changed shape between calls, so nothing Relay
+composed ever invalidated the cache.</p>
+<hr>
+<h2>Caveats — read before quoting</h2>
 <ul>
-<li>A description of the vulnerability and its potential impact</li>
-<li>Steps to reproduce</li>
-<li>Any relevant file paths or code snippets</li>
-</ul>
-<p><strong>Response SLA:</strong> We aim to acknowledge reports within 72 hours and provide a fix or mitigation within 14 days for confirmed high-severity issues.</p>
-<h2>Scope</h2>
-<p>RelayAI is a local-first CLI tool. Security considerations include:</p>
-<ul>
-<li><strong>Provider command injection</strong> — commands in <code>.relay/config.json</code> are validated against a metacharacter allowlist before being passed to <code>spawn()</code></li>
-<li><strong>Session data privacy</strong> — <code>.relay/</code> contains project context and git history; it is excluded from git via <code>.gitignore</code> but is not encrypted at rest</li>
-<li><strong>Dependency vulnerabilities</strong> — run <code>pnpm audit</code> to check for known CVEs in dependencies</li>
-</ul>
-<h2>Out of Scope</h2>
-<ul>
-<li>Attacks that require direct filesystem access to the user&#39;s machine</li>
-<li>Issues in provider CLIs (Claude, OpenAI, Ollama, etc.) — report those upstream</li>
+<li><strong>The synthetic baseline is deliberately naive.</strong> Real coding agents don&#39;t
+concatenate the whole repo; they read files selectively. The synthetic
+comparison isolates what Relay&#39;s <em>assembly strategy</em> saves versus
+brute-force context stuffing, not versus a tuned agent.</li>
+<li><strong>The measured run includes provider overhead.</strong> The Claude Code CLI adds
+its own system prompt and tool definitions to every call; those tokens are
+in the measured totals (and also benefit from the stable prefix). The
+measured 72.7% is savings from caching on the session as a whole, with
+Relay keeping its share of the prefix 100% stable.</li>
+<li><strong>Token counts are estimator-based in Tier 1</strong> (js-tiktoken via
+<code>estimateTokens</code>); provider tokenizers will differ by a few percent.</li>
+<li><strong>Single repository, single session.</strong> These are first numbers, not a
+study: one target repo (~4,500 LOC), five fixed prompts, one live session.
+Re-run <code>pnpm run bench</code> on your own repos — results scale with repo size.</li>
 </ul>
 
       </div>

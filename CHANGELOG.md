@@ -6,6 +6,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+- First recorded benchmark results in `docs/BENCHMARKS.md` (and on the docs site): 89.3% measured cache hit rate and 72.7% measured cost savings over a live provider session with 100% prefix stability; 97.4–99.5% synthetic five-turn session reduction via `pnpm run bench`. Headline numbers now lead the README.
+
 ### Fixed
 - CI: realigned `@types/node`, `tsx`, and `typescript` specifiers in `package.json` with `pnpm-lock.yaml` — a bad merge resolution on the July dependabot PRs dropped the manifest bumps and broke `pnpm install --frozen-lockfile`
 - CI/publish: the `pnpm audit` step is temporarily non-blocking — npm retired the legacy audit endpoint on 2026-07-15 and every `pnpm audit` call now fails with HTTP 410 until pnpm migrates to the bulk advisory endpoint (pnpm/pnpm#11265)

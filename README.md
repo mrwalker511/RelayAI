@@ -19,6 +19,13 @@ Relay does **not** replace your model or coding agent. It gives them cleaner, re
 | Provider flexibility               | Shell-based adapters for any CLI that reads stdin                               |
 | Native agent integration           | Read-only MCP server gives agents deterministic context via standard tool calls |
 
+## Benchmarks
+
+First recorded results on this repository (5 fixed prompts, details and caveats in [docs/BENCHMARKS.md](docs/BENCHMARKS.md)):
+
+- **Measured, live provider:** 89.3% cache hit rate; $1.46 actual vs $5.34 uncached — **72.7% saved**, with 100% prefix stability across the session.
+- **Synthetic, no API key** (`pnpm run bench`): a five-turn session costs **97.4–99.5% fewer** effective input tokens than naively resending the repository every call.
+
 ---
 
 ## Install

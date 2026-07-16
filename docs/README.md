@@ -6,9 +6,10 @@ because two of them are generated and should never be edited by hand.
 ## Markdown sources (edit these)
 
 The `UPPER_CASE.md` files (plus `bench-prompts.md`) are the canonical
-documentation sources: `ARCHITECTURE.md`, `COMMANDS.md`, `CONFIGURATION.md`,
-`GETTING_STARTED.md`, `MCP.md`, `MVP_ROADMAP.md`, `PROVIDER_ADAPTERS.md`,
-`TESTING_PLAN.md`, `USER_INSTALLATION_GUIDE.md`, `WALKTHROUGH.md`.
+documentation sources: `ARCHITECTURE.md`, `BENCHMARKS.md`, `COMMANDS.md`,
+`CONFIGURATION.md`, `GETTING_STARTED.md`, `MCP.md`, `MVP_ROADMAP.md`,
+`PROVIDER_ADAPTERS.md`, `TESTING_PLAN.md`, `USER_INSTALLATION_GUIDE.md`,
+`WALKTHROUGH.md`.
 
 ## Generated HTML (do not edit)
 

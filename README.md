@@ -1,7 +1,6 @@
 # Relay CLI
 
 [![CI](https://github.com/mrwalker511/RelayAI/actions/workflows/ci.yml/badge.svg)](https://github.com/mrwalker511/RelayAI/actions/workflows/ci.yml)
-[![npm](https://img.shields.io/npm/v/@relay-cache/cli)](https://www.npmjs.com/package/@relay-cache/cli)
 [![Node.js ≥ 20](https://img.shields.io/badge/node-%3E%3D20-brightgreen)](https://nodejs.org)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
@@ -15,17 +14,16 @@ Relay does **not** replace your model or coding agent. It gives them cleaner, re
 
 ## Install
 
-```bash
-npm install -g @relay-cache/cli
-```
-
-Or run without installing:
+Relay runs from source (npm publication is pending):
 
 ```bash
-npx @relay-cache/cli --help
+git clone https://github.com/mrwalker511/relayai.git RelayAI
+cd RelayAI
+pnpm install && pnpm build
+alias relay="node $(pwd)/packages/cli/dist/index.js"
 ```
 
-**Requirements:** Node.js 20+, git.
+**Requirements:** Node.js 20+, git, pnpm 9 (`npm install -g pnpm`).
 
 ---
 
@@ -94,21 +92,22 @@ The stable zones come first so provider caches hit on repeat calls. Volatile dat
 
 ## Installation
 
+Relay is installed from source. Clone the repository, build it, and point a `relay` alias at the built CLI:
+
 ```bash
-npm install -g @relay-cache/cli
+git clone https://github.com/mrwalker511/relayai.git RelayAI
+cd RelayAI
+pnpm install && pnpm build
+alias relay="node $(pwd)/packages/cli/dist/index.js"
 ```
 
-After installing, the `relay` command is available globally:
+Confirm the `relay` command works:
 
 ```bash
 relay --help
 ```
 
-Or run without installing using `npx`:
-
-```bash
-npx @relay-cache/cli --help
-```
+Add the `alias` line to your shell profile (`~/.bashrc`, `~/.zshrc`) to make it permanent. Publication to the npm registry is planned; until then, source builds are the supported install path.
 
 ---
 

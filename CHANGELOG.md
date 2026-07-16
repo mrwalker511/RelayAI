@@ -19,7 +19,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Tests added for `context/static-block`, `context/state-layer`, `memory/semantic-state`, and `utils/fs` modules; extended coverage for `audit/savings` sessionId filtering and cost breakdown fields.
 
 ### Changed
-- npm scope renamed from `@relay/*` to `@relay-cache/*` (`@relay` was unavailable). Install path: `npm install -g @relay-cache/cli`. The `relay` command name is unchanged.
+- npm scope renamed from `@relay/*` to `@relay-cache/*` in the package manifests (`@relay` was unavailable). Publication to the npm registry is pending; Relay is installed from source. The `relay` command name is unchanged.
 
 ### Fixed
 - TypeScript build: added `"types": ["node"]` to `tsconfig.base.json` so `node:*` imports resolve correctly

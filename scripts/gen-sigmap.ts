@@ -6,7 +6,9 @@
  *
  * Run: pnpm sigmap
  */
-import ts from "typescript";
+// typescript@7 (native) no longer exports the classic compiler API from the
+// package root, so signature extraction parses with a pinned TS5 alias.
+import * as ts from "typescript5";
 import { readFileSync, writeFileSync, mkdirSync, readdirSync } from "node:fs";
 import { join, relative } from "node:path";
 

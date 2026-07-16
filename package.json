@@ -18,7 +18,8 @@
     "pretest": "pnpm build",
     "test": "pnpm -r test",
     "typecheck": "pnpm -r typecheck",
-    "clean": "rm -rf packages/*/dist"
+    "clean": "rm -rf packages/*/dist",
+    "bench": "tsx scripts/bench.ts"
   },
   "pnpm": {
     "overrides": {
@@ -29,6 +30,7 @@
     "@types/node": "^26.1.1",
     "marked": "^18.0.6",
     "tsx": "^4.23.1",
-    "typescript": "^7.0.2"
+    "typescript": "^7.0.2",
+    "typescript5": "npm:typescript@^5.9.3"
   }
 }

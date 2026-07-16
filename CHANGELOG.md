@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed
+- CI: realigned `@types/node`, `tsx`, and `typescript` specifiers in `package.json` with `pnpm-lock.yaml` — a bad merge resolution on the July dependabot PRs dropped the manifest bumps and broke `pnpm install --frozen-lockfile`
+- CI/publish: the `pnpm audit` step is temporarily non-blocking — npm retired the legacy audit endpoint on 2026-07-15 and every `pnpm audit` call now fails with HTTP 410 until pnpm migrates to the bulk advisory endpoint (pnpm/pnpm#11265)
+
 ## [0.1.1] — 2026-07-07
 
 ### Added

@@ -20,8 +20,11 @@ jobs:
           cache: pnpm
           registry-url: https://registry.npmjs.org
       - run: pnpm install --frozen-lockfile
+      # Non-blocking until pnpm migrates off the retired npm audit endpoint
+      # (registry returns 410 for every `pnpm audit` call — pnpm/pnpm#11265).
       - name: Security audit
         run: pnpm audit --audit-level=high
+        continue-on-error: true
       - run: pnpm build
       - run: pnpm typecheck
       - run: pnpm test

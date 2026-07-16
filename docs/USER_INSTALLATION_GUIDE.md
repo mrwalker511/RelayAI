@@ -12,20 +12,20 @@ Use this guide if you want to install Relay and use it in your own codebase. If 
 
 - Node.js 20 or newer
 - git
+- pnpm 9 (`npm install -g pnpm`)
 
 ## Install
 
-```bash
-npm install -g @relay-cache/cli
-```
-
-If `relay --help` prints the command list, the install succeeded.
-
-Or run without installing:
+Relay is installed from source (npm publication is pending). Clone the repository, build it, and point a `relay` alias at the built CLI:
 
 ```bash
-npx @relay-cache/cli --help
+git clone https://github.com/mrwalker511/relayai.git RelayAI
+cd RelayAI
+pnpm install && pnpm build
+alias relay="node $(pwd)/packages/cli/dist/index.js"
 ```
+
+If `relay --help` prints the command list, the install succeeded. Add the `alias` line to your shell profile (`~/.bashrc`, `~/.zshrc`) to make it permanent.
 
 ## Before You Initialize a Project
 
@@ -270,11 +270,14 @@ GC requires either `gc.command` or a configured default provider command in `.re
 
 ### `relay` command not found
 
-Re-run `npm install -g @relay-cache/cli`, then verify `npm bin -g` is on your PATH:
+The `relay` alias points at the built CLI inside your RelayAI clone, so it must be defined in the current shell. Re-create it (or add it to your shell profile), and confirm the build exists:
 
 ```bash
-npm bin -g   # should print a directory — confirm it's in your PATH
+alias relay="node /path/to/RelayAI/packages/cli/dist/index.js"
+node /path/to/RelayAI/packages/cli/dist/index.js --help   # verify the build directly
 ```
+
+If `dist/` is missing, run `pnpm build` in the RelayAI clone first.
 
 ### `.relay/config.json is invalid`
 

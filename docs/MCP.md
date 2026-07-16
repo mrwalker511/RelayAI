@@ -370,7 +370,7 @@ If you see `[relay-mcp] fatal: ...`, the error message will tell you exactly wha
 
 ### `relay: command not found`
 
-The `relay` binary is not on the PATH seen by the MCP host process. Use the full path form:
+The `relay` binary is not on the PATH seen by the MCP host process (shell aliases are not visible to it). Use the full path form:
 
 ```json
 {
@@ -378,8 +378,6 @@ The `relay` binary is not on the PATH seen by the MCP host process. Use the full
   "args": ["/absolute/path/to/RelayAI/packages/cli/dist/index.js", "mcp"]
 }
 ```
-
-Or install the package globally: `npm install -g @relay-cache/cli`.
 
 ### Tools return empty or invalid session data
 

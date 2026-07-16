@@ -10,43 +10,6 @@ Relay wraps your existing provider command, builds deterministic prompt payloads
 
 Relay does **not** replace your model or coding agent. It gives them cleaner, repeatable, cache-optimized context.
 
----
-
-## Install
-
-Relay runs from source (npm publication is pending):
-
-```bash
-git clone https://github.com/mrwalker511/relayai.git RelayAI
-cd RelayAI
-pnpm install && pnpm build
-alias relay="node $(pwd)/packages/cli/dist/index.js"
-```
-
-**Requirements:** Node.js 20+, git, pnpm 9 (`npm install -g pnpm`).
-
----
-
-## 5-minute quickstart
-
-```bash
-# inside any git repository
-relay init                               # create .relay/ workspace
-relay doctor                             # verify setup
-relay session start                      # anchor context to current git SHA
-relay ask "Summarize the active diff"    # print cache-optimized payload
-
-# wire up to your provider
-relay ask "Review this diff" --provider claude   # pipe payload to claude CLI
-
-# tab completion (optional)
-source <(relay completion bash)          # or zsh / fish
-```
-
-That's it. Add `--measure` to track real token savings, `relay gc run` to compact history, and `relay audit` to inspect the event log.
-
----
-
 | Need                               | What Relay Provides                                                             |
 | ---------------------------------- | ------------------------------------------------------------------------------- |
 | Lower repeated prompt cost         | Stable prompt zones designed for provider cache reuse                           |
@@ -58,86 +21,57 @@ That's it. Add `--measure` to track real token savings, `relay gc run` to compac
 
 ---
 
-## How It Works
+## Install
 
-Relay assembles every outbound prompt in three ordered zones:
+**Requirements:** Node.js 20+, git, pnpm 9 (`npm install -g pnpm`), and a model or coding-agent CLI that reads a prompt from stdin (Claude, Codex, Ollama, etc.).
 
-```
-┌─────────────────────────────────────────┐
-│  STATIC_BLOCK                           │  ← project rules, architecture notes,
-│  (stable across requests)               │    source snapshots
-├─────────────────────────────────────────┤
-│  STATE_LAYER                            │  ← semantic memory, file index,
-│  (stable, structured)                   │    session summary
-├─────────────────────────────────────────┤
-│  DYNAMIC_INPUT                          │  ← current prompt, git diff,
-│  (volatile, always last)                │    runtime output, timestamp
-└─────────────────────────────────────────┘
-          │
-          ▼
-   configured provider CLI  (stdin)
-```
-
-The stable zones come first so provider caches hit on repeat calls. Volatile data goes last so it never busts the cached prefix. Relay also records a base git SHA at session start — follow-up prompts include only the diff since that base, not the whole repository.
-
----
-
-## Prerequisites
-
-- **Node.js 20 or newer**
-- **git**
-- A model or coding-agent CLI that can read a prompt from stdin (Claude, Ollama, ChatGPT CLI, etc.)
-
----
-
-## Installation
-
-Relay is installed from source. Clone the repository, build it, and point a `relay` alias at the built CLI:
+Relay installs from source (npm publication is pending). Clone, build, and link — after this, `relay` is a real command in any directory, no alias needed:
 
 ```bash
 git clone https://github.com/mrwalker511/relayai.git RelayAI
 cd RelayAI
 pnpm install && pnpm build
-alias relay="node $(pwd)/packages/cli/dist/index.js"
-```
-
-Confirm the `relay` command works:
-
-```bash
+cd packages/cli && pnpm link --global
 relay --help
 ```
 
-Add the `alias` line to your shell profile (`~/.bashrc`, `~/.zshrc`) to make it permanent. Publication to the npm registry is planned; until then, source builds are the supported install path.
+If `pnpm link --global` reports `Unable to find the global bin directory`, run `pnpm setup` once, restart your shell, and re-run the link command.
+
+<details>
+<summary>Prefer not to link globally? Use a shell alias instead.</summary>
+
+From the repository root:
+
+```bash
+alias relay="node $(pwd)/packages/cli/dist/index.js"
+```
+
+Add the line to your shell profile (`~/.bashrc`, `~/.zshrc`) to make it permanent.
+
+</details>
 
 ---
 
-## Local Development
+## Quickstart
 
-To work on Relay itself, clone the repository and build from source:
-
-```bash
-git clone https://github.com/mrwalker511/relayai.git RelayAI
-cd RelayAI
-pnpm install   # requires pnpm 9 — npm install -g pnpm
-pnpm build
-```
-
-Confirm the CLI works:
+Run these commands inside any git repository you want Relay to manage:
 
 ```bash
-node packages/cli/dist/index.js --help
+relay init                               # create .relay/ with config and memory files
+relay doctor                             # verify workspace readiness
+relay session start                      # anchor context to the current git SHA
+relay ask "Summarize the active diff"    # print the assembled, cache-optimized payload
+
+# wire up to your provider
+relay ask "Review this diff" --provider claude   # pipe payload to the claude CLI
+
+# tab completion (optional)
+source <(relay completion bash)          # or zsh / fish
 ```
 
-During development, use `pnpm dev` instead of a shell alias:
+Without `--provider`, `relay ask` prints the payload between `---BEGIN RELAY PAYLOAD---` and `---END RELAY PAYLOAD---` so you can inspect exactly what would be sent. Add `--measure` to track real token savings, `relay gc run` to compact history, and `relay audit` to inspect the event log.
 
-```bash
-pnpm dev --help
-pnpm dev ask "test prompt"
-```
-
----
-
-## Quick Start
+For a complete walkthrough including provider setup, see [`docs/USER_INSTALLATION_GUIDE.md`](docs/USER_INSTALLATION_GUIDE.md).
 
 ### See it work (real OpenAI Codex)
 
@@ -147,21 +81,6 @@ pnpm install && pnpm build
 ```
 
 This runs RelayAI against the bundled [sample project](examples/sample-project) using the real OpenAI Codex CLI as the measured provider, and prints **measured** token savings building up across calls. It requires the [`codex`](https://github.com/openai/codex) CLI on your PATH and `codex login` (it makes real Codex calls). The annotated version is in [`docs/WALKTHROUGH.md`](docs/WALKTHROUGH.md).
-
-### Use it on your own repo
-
-Run these commands inside the repository you want Relay to manage:
-
-```bash
-relay init                          # create .relay/ with config and memory files
-relay doctor                        # verify workspace readiness
-relay session start                 # anchor context to the current git SHA
-relay ask "Summarize this repo"     # print the assembled prompt payload
-```
-
-Without `--provider`, `relay ask` prints the payload between `---BEGIN RELAY PAYLOAD---` and `---END RELAY PAYLOAD---`. Once you have a provider configured, add `--provider default` to route the payload to your model.
-
-For a complete walkthrough including provider setup, see [`docs/USER_INSTALLATION_GUIDE.md`](docs/USER_INSTALLATION_GUIDE.md).
 
 ---
 
@@ -191,6 +110,30 @@ Relay distinguishes two kinds of numbers, and labels them as such:
 
 - **Estimated** — local token math from the bundled tokenizer (`relay tokens inspect`, `relay cache inspect`, `pnpm run compare`). Useful and offline, but a model of cost, not a bill. `compare` shows both the first-call (cold-cache) size and the amortized repeat-call (warm-cache) cost, because savings accrue on repeat calls — a single call on a small repo can cost _more_.
 - **Measured** — the provider's actual reported usage. `relay ask --measure` captures it (e.g. Claude's `cache_read_input_tokens`) into the audit ledger; `relay usage record` ingests it for providers that don't emit it; `relay savings` then reports real cost vs a no-cache baseline (cache-creation surcharge and output included). Even without measured usage, `relay savings` grounds its projection in the **measured prefix-stability rate** from your call history rather than a guess.
+
+---
+
+## How It Works
+
+Relay assembles every outbound prompt in three ordered zones:
+
+```
+┌─────────────────────────────────────────┐
+│  STATIC_BLOCK                           │  ← project rules, architecture notes,
+│  (stable across requests)               │    source snapshots
+├─────────────────────────────────────────┤
+│  STATE_LAYER                            │  ← semantic memory, file index,
+│  (stable, structured)                   │    session summary
+├─────────────────────────────────────────┤
+│  DYNAMIC_INPUT                          │  ← current prompt, git diff,
+│  (volatile, always last)                │    runtime output, timestamp
+└─────────────────────────────────────────┘
+          │
+          ▼
+   configured provider CLI  (stdin)
+```
+
+The stable zones come first so provider caches hit on repeat calls. Volatile data goes last so it never busts the cached prefix. Relay also records a base git SHA at session start — follow-up prompts include only the diff since that base, not the whole repository.
 
 ---
 
@@ -249,6 +192,15 @@ RelayAI/
 ---
 
 ## Development
+
+To work on Relay itself, see [`docs/GETTING_STARTED.md`](docs/GETTING_STARTED.md). During development, run the CLI via `pnpm dev` instead of the linked command so changes take effect without rebuilding:
+
+```bash
+pnpm dev --help
+pnpm dev ask "test prompt"
+```
+
+Common workspace scripts:
 
 ```bash
 pnpm install        # install all workspace dependencies

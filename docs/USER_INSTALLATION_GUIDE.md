@@ -16,16 +16,26 @@ Use this guide if you want to install Relay and use it in your own codebase. If 
 
 ## Install
 
-Relay is installed from source (npm publication is pending). Clone the repository, build it, and point a `relay` alias at the built CLI:
+Relay is installed from source (npm publication is pending). Clone the repository, build it, and link the CLI globally so `relay` works in any directory:
 
 ```bash
 git clone https://github.com/mrwalker511/relayai.git RelayAI
 cd RelayAI
 pnpm install && pnpm build
+cd packages/cli && pnpm link --global
+```
+
+If `relay --help` prints the command list, the install succeeded.
+
+If `pnpm link --global` reports `Unable to find the global bin directory`, run `pnpm setup` once, restart your shell, and re-run the link command.
+
+Alternatively, if you prefer not to link globally, point a shell alias at the built CLI from the repository root:
+
+```bash
 alias relay="node $(pwd)/packages/cli/dist/index.js"
 ```
 
-If `relay --help` prints the command list, the install succeeded. Add the `alias` line to your shell profile (`~/.bashrc`, `~/.zshrc`) to make it permanent.
+Add the `alias` line to your shell profile (`~/.bashrc`, `~/.zshrc`) to make it permanent.
 
 ## Before You Initialize a Project
 
@@ -270,7 +280,15 @@ GC requires either `gc.command` or a configured default provider command in `.re
 
 ### `relay` command not found
 
-The `relay` alias points at the built CLI inside your RelayAI clone, so it must be defined in the current shell. Re-create it (or add it to your shell profile), and confirm the build exists:
+If you installed with `pnpm link --global`, confirm the link exists and pnpm's global bin directory is on your PATH:
+
+```bash
+which relay        # should print a path under pnpm's global bin directory
+pnpm setup         # if the bin directory is missing from PATH; then restart your shell
+cd /path/to/RelayAI/packages/cli && pnpm link --global   # re-create the link
+```
+
+If you used a shell alias instead, it must be defined in the current shell. Re-create it (or add it to your shell profile), and confirm the build exists:
 
 ```bash
 alias relay="node /path/to/RelayAI/packages/cli/dist/index.js"

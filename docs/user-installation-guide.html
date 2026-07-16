@@ -294,13 +294,18 @@
 <li>pnpm 9 (<code>npm install -g pnpm</code>)</li>
 </ul>
 <h2>Install</h2>
-<p>Relay is installed from source (npm publication is pending). Clone the repository, build it, and point a <code>relay</code> alias at the built CLI:</p>
+<p>Relay is installed from source (npm publication is pending). Clone the repository, build it, and link the CLI globally so <code>relay</code> works in any directory:</p>
 <pre><code class="language-bash">git clone https://github.com/mrwalker511/relayai.git RelayAI
 cd RelayAI
 pnpm install &amp;&amp; pnpm build
-alias relay=&quot;node $(pwd)/packages/cli/dist/index.js&quot;
+cd packages/cli &amp;&amp; pnpm link --global
 </code></pre>
-<p>If <code>relay --help</code> prints the command list, the install succeeded. Add the <code>alias</code> line to your shell profile (<code>~/.bashrc</code>, <code>~/.zshrc</code>) to make it permanent.</p>
+<p>If <code>relay --help</code> prints the command list, the install succeeded.</p>
+<p>If <code>pnpm link --global</code> reports <code>Unable to find the global bin directory</code>, run <code>pnpm setup</code> once, restart your shell, and re-run the link command.</p>
+<p>Alternatively, if you prefer not to link globally, point a shell alias at the built CLI from the repository root:</p>
+<pre><code class="language-bash">alias relay=&quot;node $(pwd)/packages/cli/dist/index.js&quot;
+</code></pre>
+<p>Add the <code>alias</code> line to your shell profile (<code>~/.bashrc</code>, <code>~/.zshrc</code>) to make it permanent.</p>
 <h2>Before You Initialize a Project</h2>
 <p>Confirm the following before running <code>relay init</code>:</p>
 <ul>
@@ -461,7 +466,12 @@ relay gc run
 <p>GC requires either <code>gc.command</code> or a configured default provider command in <code>.relay/config.json</code>.</p>
 <h2>Troubleshooting</h2>
 <h3><code>relay</code> command not found</h3>
-<p>The <code>relay</code> alias points at the built CLI inside your RelayAI clone, so it must be defined in the current shell. Re-create it (or add it to your shell profile), and confirm the build exists:</p>
+<p>If you installed with <code>pnpm link --global</code>, confirm the link exists and pnpm&#39;s global bin directory is on your PATH:</p>
+<pre><code class="language-bash">which relay        # should print a path under pnpm&#39;s global bin directory
+pnpm setup         # if the bin directory is missing from PATH; then restart your shell
+cd /path/to/RelayAI/packages/cli &amp;&amp; pnpm link --global   # re-create the link
+</code></pre>
+<p>If you used a shell alias instead, it must be defined in the current shell. Re-create it (or add it to your shell profile), and confirm the build exists:</p>
 <pre><code class="language-bash">alias relay=&quot;node /path/to/RelayAI/packages/cli/dist/index.js&quot;
 node /path/to/RelayAI/packages/cli/dist/index.js --help   # verify the build directly
 </code></pre>

@@ -269,4 +269,4 @@ pnpm --filter @relay-cache/core build
 pnpm --filter @relay-cache/cli dev
 ```
 
-CI runs on every push and pull request to `main`. The pipeline runs `build`, `typecheck`, `test`, and `pack:check` on Node.js 22.
+CI runs on every push and pull request to `main`. The pipeline runs `build`, `typecheck`, `test`, and `pack:check` on Node.js 20 and 22.

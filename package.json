@@ -18,7 +18,8 @@
     "pretest": "pnpm build",
     "test": "pnpm -r test",
     "typecheck": "pnpm -r typecheck",
-    "clean": "rm -rf packages/*/dist"
+    "clean": "rm -rf packages/*/dist",
+    "bench": "tsx scripts/bench.ts"
   },
   "pnpm": {
     "overrides": {

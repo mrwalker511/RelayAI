@@ -5,7 +5,7 @@ tooling on 2026-07-16. Two tiers: a **synthetic** benchmark anyone can re-run in
 seconds with no API key, and a **live measured** run against a real provider
 with real billed token counts.
 
-Target repository for both tiers: RelayAI itself at commit `a1d7850`
+Target repository for both tiers: RelayAI itself at commit `cea85eb`
 (107 tracked source files, ~148,600 tokens when naively concatenated).
 Prompts: the five fixed prompts from [`bench-prompts.md`](bench-prompts.md).
 

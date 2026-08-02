@@ -6,9 +6,21 @@
 
 > Local-first context and prompt-cache optimizer for coding agents and model CLIs.
 
-Relay wraps your existing provider command, builds deterministic prompt payloads from your repository state, and structures content into stable zones so provider-side caching can work more effectively across sessions.
+Resending your whole repository on every prompt costs money and defeats provider-side prompt caching. Relay wraps your existing provider command, builds deterministic prompt payloads from your repository state, and structures content into stable zones — plus git diffs instead of full resends — so that cache works across sessions instead of missing every time.
 
 Relay does **not** replace your model or coding agent. It gives them cleaner, repeatable, cache-optimized context.
+
+### Try it in 5 minutes, no account needed
+
+```bash
+git clone https://github.com/mrwalker511/relayai.git RelayAI && cd RelayAI
+pnpm install && pnpm build
+relay() { node packages/cli/dist/index.js "$@"; }   # skip global linking for now
+relay init && relay session start
+pnpm run bench
+```
+
+No API key, no provider CLI, no login — this runs Relay against its own repository and prints a five-turn session comparison. Look for the **"fewer effective input tokens"** line at the end (97–99% in our own runs); that's the number that matters. Full explanation in [docs/BENCHMARKS.md](docs/BENCHMARKS.md).
 
 | Need                               | What Relay Provides                                                             |
 | ---------------------------------- | ------------------------------------------------------------------------------- |
@@ -80,14 +92,14 @@ Without `--provider`, `relay ask` prints the payload between `---BEGIN RELAY PAY
 
 For a complete walkthrough including provider setup, see [`docs/USER_INSTALLATION_GUIDE.md`](docs/USER_INSTALLATION_GUIDE.md).
 
-### See it work (real OpenAI Codex)
+### See it work with a real provider (optional — requires an OpenAI Codex account)
 
 ```bash
 pnpm install && pnpm build
 ./examples/sample-project/try-relay.sh
 ```
 
-This runs RelayAI against the bundled [sample project](examples/sample-project) using the real OpenAI Codex CLI as the measured provider, and prints **measured** token savings building up across calls. It requires the [`codex`](https://github.com/openai/codex) CLI on your PATH and `codex login` (it makes real Codex calls). The annotated version is in [`docs/WALKTHROUGH.md`](docs/WALKTHROUGH.md).
+This runs RelayAI against the bundled [sample project](examples/sample-project) using the real OpenAI Codex CLI as the measured provider, and prints **measured** token savings building up across calls. It requires the [`codex`](https://github.com/openai/codex) CLI on your PATH and `codex login` (it makes real Codex calls) — if you don't have Codex set up, the no-account `pnpm run bench` command above shows the same mechanics without any external dependency. The annotated version is in [`docs/WALKTHROUGH.md`](docs/WALKTHROUGH.md).
 
 ---
 

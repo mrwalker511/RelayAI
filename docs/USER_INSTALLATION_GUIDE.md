@@ -167,6 +167,17 @@ Provider commands are arrays of command arguments. Relay sends the assembled pro
 {
   "provider": {
     "default": "claude",
+    "commands": { "claude": ["claude"] }
+  }
+}
+```
+
+For unattended automation (e.g. CI pipelines) where you control the prompt content, you can instead use:
+
+```json
+{
+  "provider": {
+    "default": "claude",
     "commands": { "claude": ["claude", "--dangerously-skip-permissions"] }
   }
 }

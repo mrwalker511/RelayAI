@@ -55,7 +55,7 @@
   "dependencies": {
     "fast-glob": "^3.3.2",
     "js-tiktoken": "^1.0.15",
-    "zod": "^4.4.3"
+    "zod": "^4.5.2"
   },
   "devDependencies": {
     "typescript": "^7.0.2"
